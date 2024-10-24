@@ -86,6 +86,7 @@ class Biodiversity(models.Model):
 
     
 class Facility(models.Model):
+    user = models.ForeignKey(CustomUser,on_delete=models.CASCADE)
     facility_name = models.CharField(max_length=255)
     facility_head = models.CharField(max_length=255)
     location = models.CharField(max_length=255)
@@ -102,10 +103,9 @@ class UploadData(models.Model):
         ('Biodiversity', 'Biodiversity'),
         ('Logistics', 'Logistics')
     )
-
+    user = models.ForeignKey(CustomUser,on_delete=models.CASCADE)
     facility = models.ForeignKey(Facility, on_delete=models.CASCADE)
     date = models.DateField()
     category = models.CharField(max_length=50, choices=CATEGORY_CHOICES)
-
     def __str__(self):
         return f"{self.facility.facility_name} - {self.category} - {self.date}"

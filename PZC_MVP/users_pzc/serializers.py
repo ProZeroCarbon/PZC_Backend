@@ -124,6 +124,7 @@ class FacilitySerializer(serializers.ModelSerializer):
         
     def create(self, validated_data):
         user = self.context['request'].user
+        validated_data.pop('user', None)
         facility = Facility.objects.create(user=user, **validated_data)
         return facility
 
@@ -134,7 +135,7 @@ class UploadDataSerializer(serializers.ModelSerializer):
     
     def create(self, validated_data):
         user = self.context['request'].user
-        upload_data = UploadData.objects.create(user=user, **validated_data)
+        upload_data = UploadData.objects.create(user=user, **validated_data)  # User associated
         return upload_data
 
     def validate(self, data):

@@ -1,5 +1,5 @@
 
-
+from django.contrib.auth import authenticate
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
@@ -24,21 +24,40 @@ class LoginView(APIView):
         if serializer.is_valid():
             email = serializer.validated_data['email']
             password = serializer.validated_data['password']
-            try:
-                user = CustomUser.objects.get(email=email)
-            except CustomUser.DoesNotExist:
+            user = authenticate(email=email, password=password)  # Use authenticate here
+            if user is None:
                 return Response({"error": "Invalid credentials"}, status=status.HTTP_401_UNAUTHORIZED)
 
-            if user.check_password(password):
-                refresh = RefreshToken.for_user(user)
-                response = Response({
-                    'refresh': str(refresh),
-                    'access': str(refresh.access_token),
-                }, status=status.HTTP_200_OK)
-                response.set_cookie('access_token', str(refresh.access_token), httponly=True)
-                return response
-            return Response({"error": "Invalid credentials"}, status=status.HTTP_401_UNAUTHORIZED)
+            refresh = RefreshToken.for_user(user)
+            response = Response({
+                'refresh': str(refresh),
+                'access': str(refresh.access_token),
+            }, status=status.HTTP_200_OK)
+            response.set_cookie('access_token', str(refresh.access_token), httponly=True)
+            return response
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+# class LoginView(APIView):
+#     def post(self, request):
+#         serializer = UserLoginSerializer(data=request.data)
+#         if serializer.is_valid():
+#             email = serializer.validated_data['email']
+#             password = serializer.validated_data['password']
+#             try:
+#                 user = CustomUser.objects.get(email=email)
+#             except CustomUser.DoesNotExist:
+#                 return Response({"error": "Invalid credentials"}, status=status.HTTP_401_UNAUTHORIZED)
+
+#             if user.check_password(password):
+#                 refresh = RefreshToken.for_user(user)
+#                 response = Response({
+#                     'refresh': str(refresh),
+#                     'access': str(refresh.access_token),
+#                 }, status=status.HTTP_200_OK)
+#                 response.set_cookie('access_token', str(refresh.access_token), httponly=True)
+#                 return response
+#             return Response({"error": "Invalid credentials"}, status=status.HTTP_401_UNAUTHORIZED)
+#         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 #Dashboard View
 class DashboardView(APIView):
@@ -90,6 +109,7 @@ class WasteView(APIView):
         waste_data = Waste.objects.filter(user=user)
         waste_serializer = WasteSerializer(waste_data,many=True)
         user_data = {
+            'email':user.email,
             'waste_data' : waste_serializer.data
         }
         return Response(user_data, status=status.HTTP_200_OK)
@@ -302,7 +322,7 @@ class FacilityCreateView(APIView):
     def post(self, request):
         serializer = FacilitySerializer(data=request.data, context={'request': request})
         if serializer.is_valid():
-            serializer.save()  # Associate the facility with the logged-in user
+            serializer.save(user=request.user)  # Associate the facility with the logged-in user
             return Response({"message": "Facility added successfully."}, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
@@ -311,39 +331,39 @@ class UploadDataCreateView(APIView):
     permission_classes = [IsAuthenticated]  
 
     def post(self, request):
-        upload_serializer = UploadDataSerializer(data=request.data)
+        upload_serializer = UploadDataSerializer(data=request.data, context={'request': request})
         if upload_serializer.is_valid():
-            upload_data = upload_serializer.save(user=request.user) 
+            upload_data = upload_serializer.save()  # Save already associates user through serializer
 
             category = request.data.get('category')
             category_data = request.data.get('category_data')
 
             # Handling specific category data
             if category == 'Waste':
-                waste_serializer = WasteCreateSerializer(data=category_data)
+                waste_serializer = WasteCreateSerializer(data=category_data, context={'request': request})
                 if waste_serializer.is_valid():
-                    waste_serializer.save(user=request.user)
+                    waste_serializer.save()  # User is handled in serializer
                     return Response({"message": "Waste data added successfully."}, status=status.HTTP_201_CREATED)
                 return Response(waste_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
             elif category == 'Energy':
-                energy_serializer = EnergyCreateSerializer(data=category_data)
+                energy_serializer = EnergyCreateSerializer(data=category_data, context={'request': request})
                 if energy_serializer.is_valid():
-                    energy_serializer.save(user=request.user)
+                    energy_serializer.save()
                     return Response({"message": "Energy data added successfully."}, status=status.HTTP_201_CREATED)
                 return Response(energy_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
             elif category == 'Water':
-                water_serializer = WaterCreateSerializer(data=category_data)
+                water_serializer = WaterCreateSerializer(data=category_data, context={'request': request})
                 if water_serializer.is_valid():
-                    water_serializer.save(user=request.user)
+                    water_serializer.save()
                     return Response({"message": "Water data added successfully."}, status=status.HTTP_201_CREATED)
                 return Response(water_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
             elif category == 'Biodiversity':
-                biodiversity_serializer = BiodiversityCreateSerializer(data=category_data)
+                biodiversity_serializer = BiodiversityCreateSerializer(data=category_data, context={'request': request})
                 if biodiversity_serializer.is_valid():
-                    biodiversity_serializer.save(user=request.user)
+                    biodiversity_serializer.save()
                     return Response({"message": "Biodiversity data added successfully."}, status=status.HTTP_201_CREATED)
                 return Response(biodiversity_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
