@@ -1,12 +1,13 @@
 
 from django.contrib.auth import authenticate
+from django.shortcuts import get_object_or_404
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework_simplejwt.tokens import RefreshToken
-from .serializers import UserRegisterSerializer, UserLoginSerializer,WasteSerializer,WasteCreateSerializer,EnergyCreateSerializer,EnergySerializer,WaterCreateSerializer,WaterSerializer,UploadDataSerializer,BiodiversityCreateSerializer,BiodiversitySerializer,FacilitySerializer,UploadDataSerializer
-from .models import CustomUser,Waste,Energy,Water,UploadData,Biodiversity,Facility
+from .serializers import UserRegisterSerializer, UserLoginSerializer,WasteSerializer,WasteCreateSerializer,EnergyCreateSerializer,EnergySerializer,WaterCreateSerializer,WaterSerializer,BiodiversityCreateSerializer,BiodiversitySerializer,FacilitySerializer,LogisticesSerializer
+from .models import CustomUser,Waste,Energy,Water,Biodiversity,Facility,Logistices
 
 #Register View
 class RegisterView(APIView):
@@ -37,28 +38,6 @@ class LoginView(APIView):
             return response
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-# class LoginView(APIView):
-#     def post(self, request):
-#         serializer = UserLoginSerializer(data=request.data)
-#         if serializer.is_valid():
-#             email = serializer.validated_data['email']
-#             password = serializer.validated_data['password']
-#             try:
-#                 user = CustomUser.objects.get(email=email)
-#             except CustomUser.DoesNotExist:
-#                 return Response({"error": "Invalid credentials"}, status=status.HTTP_401_UNAUTHORIZED)
-
-#             if user.check_password(password):
-#                 refresh = RefreshToken.for_user(user)
-#                 response = Response({
-#                     'refresh': str(refresh),
-#                     'access': str(refresh.access_token),
-#                 }, status=status.HTTP_200_OK)
-#                 response.set_cookie('access_token', str(refresh.access_token), httponly=True)
-#                 return response
-#             return Response({"error": "Invalid credentials"}, status=status.HTTP_401_UNAUTHORIZED)
-#         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
 #Dashboard View
 class DashboardView(APIView):
     permission_classes = [IsAuthenticated]
@@ -85,7 +64,68 @@ class LogoutView(APIView):
         response.delete_cookie('refresh_token')
         return response
 
+'''Facility Crud Operations starts'''
+#FacilityCreate
+class FacilityCreateView(APIView):
+    permission_classes = [IsAuthenticated] 
 
+    def post(self, request):
+        serializer = FacilitySerializer(data=request.data, context={'request': request})
+        if serializer.is_valid():
+            serializer.save()
+            return Response({"message": "Facility added successfully."}, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+#FacilityView or get
+class FacilityView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        user = request.user
+        facility_data = Facility.objects.filter(user=user)
+        facility_serializer = FacilitySerializer(facility_data, many=True)
+        user_data = {
+            'email': user.email,
+            'facility_data': facility_serializer.data
+        }
+        return Response(user_data, status=status.HTTP_200_OK)
+
+        
+#FAcility Update
+class FacilityEditView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def put(self, request, pk):
+        try:
+            facility = Facility.objects.get(pk=pk, user=request.user)
+        except Facility.DoesNotExist:
+            return Response({"error": "Facility not found."}, status=status.HTTP_404_NOT_FOUND)
+
+        serializer = FacilitySerializer(facility, data=request.data, context={'request': request})
+        if serializer.is_valid():
+            serializer.save()
+            return Response({"message": "Facility updated successfully."}, status=status.HTTP_200_OK)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+#FacilityDelete
+class FacilityDeleteView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def delete(self, request, pk):
+        # Check if pk is a positive integer
+        if not isinstance(pk, int) or pk <= 0:
+            return Response({"error": "Invalid ID provided."}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            # Try to get the facility belonging to the user
+            facility = Facility.objects.get(pk=pk, user=request.user)
+            facility.delete()
+            return Response({"message": "Facility deleted successfully."}, status=status.HTTP_200_OK)
+        except Facility.DoesNotExist:
+            return Response({"error": "Facility not found."}, status=status.HTTP_404_NOT_FOUND)
+
+        
+'''Facility Crud Operations Ends'''
 
 
 '''Waste CRUD Operations Starts'''
@@ -316,56 +356,63 @@ class BiodiversityDeleteView(APIView):
 '''Biodiversity CRUD Operations Ends'''
 
 
-class FacilityCreateView(APIView):
-    permission_classes = [IsAuthenticated] 
+'''Logistices CRUD Operations Starts'''
+#Logistices Create Form
+class LogisticesCreateView(APIView):
+    permission_classes = [IsAuthenticated]
 
     def post(self, request):
-        serializer = FacilitySerializer(data=request.data, context={'request': request})
+        serializer = LogisticesSerializer(data=request.data, context={'request': request})
         if serializer.is_valid():
-            serializer.save(user=request.user)  # Associate the facility with the logged-in user
-            return Response({"message": "Facility added successfully."}, status=status.HTTP_201_CREATED)
+            serializer.save(user=request.user)
+            return Response({"message": "Logistices data added successfully."}, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
+#View Logistices
+class LogisticesView(APIView):
+    permission_classes = [IsAuthenticated]
+    
+    def get(self, request):
+        user = request.user
+        logistices_data = Logistices.objects.filter(user=user)
+        logistices_serializer = LogisticesSerializer(logistices_data, many=True)
+        user_data = {
+            'email': user.email,
+            'logistices_data': logistices_serializer.data
+        }
+        return Response(user_data, status=status.HTTP_200_OK)
 
-class UploadDataCreateView(APIView):
-    permission_classes = [IsAuthenticated]  
+#Edit Logistices
+class LogisticesEditView(APIView):
+    permission_classes = [IsAuthenticated]
 
-    def post(self, request):
-        upload_serializer = UploadDataSerializer(data=request.data, context={'request': request})
-        if upload_serializer.is_valid():
-            upload_data = upload_serializer.save()  # Save already associates user through serializer
+    def put(self, request, pk):
+        try:
+            logistices = Logistices.objects.get(pk=pk, user=request.user)
+        except Logistices.DoesNotExist:
+            return Response({"error": "Logistices data not found."}, status=status.HTTP_404_NOT_FOUND)
 
-            category = request.data.get('category')
-            category_data = request.data.get('category_data')
+        serializer = LogisticesSerializer(logistices, data=request.data, context={'request': request})
+        if serializer.is_valid():
+            serializer.save()
+            return Response({"message": "Logistices data updated successfully."}, status=status.HTTP_200_OK)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-            # Handling specific category data
-            if category == 'Waste':
-                waste_serializer = WasteCreateSerializer(data=category_data, context={'request': request})
-                if waste_serializer.is_valid():
-                    waste_serializer.save()  # User is handled in serializer
-                    return Response({"message": "Waste data added successfully."}, status=status.HTTP_201_CREATED)
-                return Response(waste_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+#Delete Logistices
+class LogisticesDeleteView(APIView):
+    permission_classes = [IsAuthenticated]
 
-            elif category == 'Energy':
-                energy_serializer = EnergyCreateSerializer(data=category_data, context={'request': request})
-                if energy_serializer.is_valid():
-                    energy_serializer.save()
-                    return Response({"message": "Energy data added successfully."}, status=status.HTTP_201_CREATED)
-                return Response(energy_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    def delete(self, request, pk):
+        try:
+            logistices = Logistices.objects.get(pk=pk, user=request.user)
+        except Logistices.DoesNotExist:
+            return Response({"error": "Logistices data not found."}, status=status.HTTP_404_NOT_FOUND)
 
-            elif category == 'Water':
-                water_serializer = WaterCreateSerializer(data=category_data, context={'request': request})
-                if water_serializer.is_valid():
-                    water_serializer.save()
-                    return Response({"message": "Water data added successfully."}, status=status.HTTP_201_CREATED)
-                return Response(water_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        logistices.delete()
+        return Response({"message": "Logistices data deleted successfully."}, status=status.HTTP_200_OK)
 
-            elif category == 'Biodiversity':
-                biodiversity_serializer = BiodiversityCreateSerializer(data=category_data, context={'request': request})
-                if biodiversity_serializer.is_valid():
-                    biodiversity_serializer.save()
-                    return Response({"message": "Biodiversity data added successfully."}, status=status.HTTP_201_CREATED)
-                return Response(biodiversity_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+'''Logistices CRUD Operations Ends'''
 
-            return Response({"error": "Invalid category."}, status=status.HTTP_400_BAD_REQUEST)
-        return Response(upload_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+

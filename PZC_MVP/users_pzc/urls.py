@@ -1,7 +1,7 @@
-# myapp/urls.py
+
 
 from django.urls import path
-from .views import RegisterView, LoginView, DashboardView, LogoutView,WasteCreateView,WasteView,WasteEditView,WasteDeleteView,EnergyCreateView,EnergyView,EnergyEditView,EnergyDeleteView,WaterView,WaterCreateView,WaterEditView,WaterDeleteView,BiodiversityCreateView,BiodiversityView,BiodiversityEditView,BiodiversityDeleteView,FacilityCreateView,UploadDataCreateView
+from .views import RegisterView, LoginView, DashboardView, LogoutView,WasteCreateView,WasteView,WasteEditView,WasteDeleteView,EnergyCreateView,EnergyView,EnergyEditView,EnergyDeleteView,WaterView,WaterCreateView,WaterEditView,WaterDeleteView,BiodiversityCreateView,BiodiversityView,BiodiversityEditView,BiodiversityDeleteView,FacilityCreateView,FacilityView,FacilityEditView,FacilityDeleteView,LogisticesCreateView,LogisticesView,LogisticesEditView,LogisticesDeleteView
 
 urlpatterns = [
    #Apis for Registration and Login  starts
@@ -9,8 +9,16 @@ urlpatterns = [
     path('login/', LoginView.as_view(), name='login'),
     path('dashboard/', DashboardView.as_view(), name='dashboard'),
     path('logout/', LogoutView.as_view(), name='logout'),
-    
     #Apis for Registration and Login Ends
+    
+    #Apis for Facility Crud Operations Starts
+    
+    path('add_facility/',FacilityCreateView.as_view(),name='add_facility'),
+    path('view_facility/',FacilityView.as_view(),name='view_facility'),
+    path('update_facility/<int:pk>/update/',FacilityEditView.as_view(),name='update_facility'),
+    path('delete_facility/<int:pk>/',FacilityDeleteView.as_view(),name='delete_facility'),
+    
+    #Apis for Facility Crud Operations Ends
      
    #Apis for Waste Crud Operations starts
     
@@ -47,6 +55,12 @@ urlpatterns = [
     
    #Apis for Biodiversity Crud Operations Ends
     
-    path('add_facility/',FacilityCreateView.as_view(),name='add_facility'),
-    path('add_upload_data/',UploadDataCreateView.as_view(),name='add_upload_data')
+   #Apis for Logistices Crud Operations starts
+   path('add_logistices/',LogisticesCreateView.as_view(),name='add_logistices'),
+   path('view_logistices/',LogisticesView.as_view(),name='add_logistices'),
+   path('update_logistices/<int:pk>/update',LogisticesEditView.as_view(),name='add_logistices'),
+   path('delete_logistices/<int:pk>/',LogisticesDeleteView.as_view(),name='add_logistices'),
+   
+    
+    
 ]

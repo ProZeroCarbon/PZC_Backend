@@ -32,9 +32,19 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
     REQUIRED_FIELDS = []
 
 
+class Facility(models.Model):
+    user = models.ForeignKey(CustomUser,on_delete=models.CASCADE)
+    facility_name = models.CharField(max_length=255)
+    facility_head = models.CharField(max_length=255)
+    location = models.CharField(max_length=255)
+    description = models.TextField()
 
+    def __str__(self):
+        return self.facility_name
+    
 class Waste(models.Model):
     user = models.ForeignKey(CustomUser,on_delete=models.CASCADE)
+    facility = models.ForeignKey(Facility, on_delete=models.CASCADE)
     food_waste = models.FloatField(default=0.0)
     solid_waste = models.FloatField(default=0.0)
     e_waste = models.FloatField(default=0.0)
@@ -51,12 +61,15 @@ class Waste(models.Model):
 
 class Energy(models.Model):
     user = models.ForeignKey(CustomUser,on_delete=models.CASCADE)
+    facility = models.ForeignKey(Facility, on_delete=models.CASCADE)
     hvac=models.FloatField(default=0.0)
     production = models.FloatField(default=0.0)
     stp_etp = models.FloatField(default=0.0)
     admin_block = models.FloatField(default=0.0)
     utilities = models.FloatField(default=0.0)
     others = models.FloatField(default=0.0)
+    # fuel_used_in Operations = models.CharField(max_length=255)
+    fuel_consumption = models.FloatField(default=0.0)
     renewable_energy_solar = models.FloatField(default=0.0)
     renewable_energy_others = models.FloatField(default=0.0)
     def __str__(self):
@@ -64,6 +77,7 @@ class Energy(models.Model):
 
 class Water(models.Model):
     user = models.ForeignKey(CustomUser,on_delete=models.CASCADE)
+    facility = models.ForeignKey(Facility, on_delete=models.CASCADE)
     generated_water = models.FloatField(default=0.0)
     recycled_water = models.FloatField(default=0.0)
     softener_usage = models.FloatField(default=0.0)
@@ -75,37 +89,37 @@ class Water(models.Model):
     
 class Biodiversity(models.Model):
     user = models.ForeignKey(CustomUser,on_delete=models.CASCADE)
-    no_of_trees=models.IntegerField()
+    facility = models.ForeignKey(Facility, on_delete=models.CASCADE)
+    no_of_trees=models.IntegerField(default=0)
     Specie_name = models.CharField(max_length=255)
-    age = models.IntegerField()
+    age = models.IntegerField(default=0)
     height = models.FloatField(default=0.0)
     width = models.FloatField(default=0.0)
+    total_area = models.FloatField(default=0.0)
+    new_trees_planted = models.FloatField(default=0.0)
+    head_count = models.FloatField(default=0.0)
     def __str__(self):
         return f"biodiversity data for {self.user.email}"
     
-
-    
-class Facility(models.Model):
-    user = models.ForeignKey(CustomUser,on_delete=models.CASCADE)
-    facility_name = models.CharField(max_length=255)
-    facility_head = models.CharField(max_length=255)
-    location = models.CharField(max_length=255)
-    description = models.TextField()
-
-    def __str__(self):
-        return self.facility_name
-
-class UploadData(models.Model):
-    CATEGORY_CHOICES = (
-        ('Water', 'Water'),
-        ('Energy', 'Energy'),
-        ('Waste', 'Waste'),
-        ('Biodiversity', 'Biodiversity'),
-        ('Logistics', 'Logistics')
-    )
+class Logistices(models.Model):
     user = models.ForeignKey(CustomUser,on_delete=models.CASCADE)
     facility = models.ForeignKey(Facility, on_delete=models.CASCADE)
-    date = models.DateField()
-    category = models.CharField(max_length=50, choices=CATEGORY_CHOICES)
+    LOGISTICES_TYPE_CHOICES=[
+        ('type','Type'),
+        ('staff_logistices','Staff_Logistices'),
+        ('cargo','Cargo')
+    ]
+    FUEL_TYPE=[
+        ('type','Type'),
+        ('diesel','Disesel'),
+        ('petrol','Petrol'),
+        ('LPG','CNG')
+    ]
+    logistices_types = models.CharField(max_length=255,choices=LOGISTICES_TYPE_CHOICES,default='type')
+    fuel_type = models.CharField(max_length=255,choices=FUEL_TYPE,default='type')
+    no_of_trips = models.IntegerField()
+    fuel_consumption = models.FloatField(max_length=255)
+    no_of_vehicles = models.IntegerField()
+    spends_on_fuel = models.FloatField(max_length=255)
     def __str__(self):
-        return f"{self.facility.facility_name} - {self.category} - {self.date}"
+        return f" data for {self.user.email}"

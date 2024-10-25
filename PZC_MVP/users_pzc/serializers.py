@@ -3,7 +3,7 @@ from rest_framework import serializers
 from django.contrib.auth import authenticate
 from django.core.exceptions import ValidationError
 from django.utils.translation import gettext_lazy as _
-from .models import CustomUser,Waste,Energy,Water,UploadData,Biodiversity,Facility,UploadData
+from .models import CustomUser,Waste,Energy,Water,Biodiversity,Facility,Logistices
 
 class UserRegisterSerializer(serializers.ModelSerializer):
     class Meta:
@@ -56,91 +56,102 @@ class UserLoginSerializer(serializers.Serializer):
         return data
 
 
+class FacilitySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Facility
+        fields = ['facility_name', 'facility_head', 'location', 'description']
+
+    def create(self, validated_data):
+        user = self.context['request'].user
+        facility = Facility.objects.create(user=user, **validated_data)
+        return facility
 class WasteSerializer(serializers.ModelSerializer):
     class Meta:
         model = Waste
-        fields = ['food_waste','solid_waste','e_waste','biomedical_waste','liquid_discharge','others','sent_for_recycle','send_to_landfill','created_at']
+        fields = ['food_waste', 'solid_waste', 'e_waste', 'biomedical_waste', 
+                  'liquid_discharge', 'others', 'sent_for_recycle', 
+                  'send_to_landfill', 'created_at', 'facility']
 
 
 class WasteCreateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Waste
-        fields = ['food_waste', 'solid_waste', 'e_waste', 'biomedical_waste','others']
+        fields = ['food_waste', 'solid_waste', 'e_waste', 'biomedical_waste', 
+                  'liquid_discharge', 'others', 'sent_for_recycle', 
+                  'send_to_landfill', 'facility']
 
     def create(self, validated_data):
         user = self.context['request'].user
         waste = Waste.objects.create(user=user, **validated_data)
         return waste
 
+
+
 class EnergySerializer(serializers.ModelSerializer):
     class Meta:
         model = Energy
-        fields = ['hvac','production','stp_etp','admin_block','utilities','others','renewable_energy_solar','renewable_energy_others']
+        fields = ['hvac', 'production', 'stp_etp', 'admin_block', 
+                  'utilities', 'others', 'renewable_energy_solar', 
+                  'renewable_energy_others', 'facility']
+
 
 class EnergyCreateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Energy
-        fields = ['hvac','production','stp_etp','admin_block','utilities','others','renewable_energy_solar','renewable_energy_others']
-        
-    def create(self,validated_data):
+        fields = ['hvac', 'production', 'stp_etp', 'admin_block', 
+                  'utilities', 'others', 'renewable_energy_solar', 
+                  'renewable_energy_others', 'facility']
+
+    def create(self, validated_data):
         user = self.context['request'].user
-        energy = Energy.objects.create(user=user,**validated_data)
+        energy = Energy.objects.create(user=user, **validated_data)
         return energy
-    
+
 class WaterSerializer(serializers.ModelSerializer):
     class Meta:
         model = Water
-        fields = ['generated_water','recycled_water','softener_usage','boiler_usage','other_usage']
+        fields = ['generated_water', 'recycled_water', 'softener_usage', 
+                  'boiler_usage', 'other_usage', 'facility']
+
 
 class WaterCreateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Water
-        fields = ['generated_water','recycled_water','softener_usage','boiler_usage','other_usage']
-        
-    def create(self,validate_data):
+        fields = ['generated_water', 'recycled_water', 'softener_usage', 
+                  'boiler_usage', 'other_usage', 'facility']
+
+    def create(self, validated_data):
         user = self.context['request'].user
-        water = Water.objects.create(user=user,**validate_data)
+        water = Water.objects.create(user=user, **validated_data)
         return water
-    
+
+
+
 class BiodiversitySerializer(serializers.ModelSerializer):
     class Meta:
         model = Biodiversity
-        fields = ['no_of_trees','Specie_name','age','height','width']
-        
+        fields = ['no_of_trees', 'Specie_name', 'age', 'height', 'width', 'facility']
+
+
 class BiodiversityCreateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Biodiversity
-        fields = ['no_of_trees','Specie_name','age','height','width']
-    
-    def create(self,validate_data):
+        fields = ['no_of_trees', 'Specie_name', 'age', 'height', 'width', 'facility']
+
+    def create(self, validated_data):
         user = self.context['request'].user
-        biodiversity = Biodiversity.objects.create(user=user,**validate_data)
+        biodiversity = Biodiversity.objects.create(user=user, **validated_data)
         return biodiversity
-    
-class FacilitySerializer(serializers.ModelSerializer):
+
+
+
+class LogisticesSerializer(serializers.ModelSerializer):
     class Meta:
-        model = Facility
-        fields = ['facility_name', 'facility_head', 'location', 'description']
+        model = Logistices
+        fields = ['logistices_types','fuel_type','no_of_trips','fuel_consumption','no_of_vehicles','spends_on_fuel','facility']
         
     def create(self, validated_data):
         user = self.context['request'].user
-        validated_data.pop('user', None)
-        facility = Facility.objects.create(user=user, **validated_data)
-        return facility
-
-class UploadDataSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = UploadData
-        fields = ['facility', 'date', 'category']
+        biodiversity = Logistices.objects.create(user=user, **validated_data)
+        return biodiversity
     
-    def create(self, validated_data):
-        user = self.context['request'].user
-        upload_data = UploadData.objects.create(user=user, **validated_data)  # User associated
-        return upload_data
-
-    def validate(self, data):
-        user = self.context['request'].user
-        facility = data.get('facility')
-        if facility and facility.user != user:
-            raise serializers.ValidationError("You do not have permission to upload data for this facility.")
-        return data
