@@ -70,7 +70,7 @@ class WasteSerializer(serializers.ModelSerializer):
         model = Waste
         fields = ['food_waste', 'solid_waste', 'e_waste', 'biomedical_waste', 
                   'liquid_discharge', 'others', 'sent_for_recycle', 
-                  'send_to_landfill', 'created_at', 'facility']
+                  'send_to_landfill', 'facility']
 
 
 class WasteCreateSerializer(serializers.ModelSerializer):
@@ -78,7 +78,7 @@ class WasteCreateSerializer(serializers.ModelSerializer):
         model = Waste
         fields = ['food_waste', 'solid_waste', 'e_waste', 'biomedical_waste', 
                   'liquid_discharge', 'others', 'sent_for_recycle', 
-                  'send_to_landfill', 'facility']
+                  'send_to_landfill','facility']
 
     def create(self, validated_data):
         user = self.context['request'].user
@@ -91,7 +91,7 @@ class EnergySerializer(serializers.ModelSerializer):
     class Meta:
         model = Energy
         fields = ['hvac', 'production', 'stp_etp', 'admin_block', 
-                  'utilities', 'others', 'renewable_energy_solar', 
+                  'utilities', 'others', 'fuel_used_in_Operations','fuel_consumption','renewable_energy_solar', 
                   'renewable_energy_others', 'facility']
 
 
@@ -99,7 +99,7 @@ class EnergyCreateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Energy
         fields = ['hvac', 'production', 'stp_etp', 'admin_block', 
-                  'utilities', 'others', 'renewable_energy_solar', 
+                  'utilities', 'others', 'fuel_used_in_Operations','fuel_consumption', 'renewable_energy_solar', 
                   'renewable_energy_others', 'facility']
 
     def create(self, validated_data):
@@ -111,7 +111,7 @@ class WaterSerializer(serializers.ModelSerializer):
     class Meta:
         model = Water
         fields = ['generated_water', 'recycled_water', 'softener_usage', 
-                  'boiler_usage', 'other_usage', 'facility']
+                  'boiler_usage', 'other_usage','facility']
 
 
 class WaterCreateSerializer(serializers.ModelSerializer):

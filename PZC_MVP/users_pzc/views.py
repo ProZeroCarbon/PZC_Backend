@@ -148,9 +148,13 @@ class WasteView(APIView):
         user = request.user
         waste_data = Waste.objects.filter(user=user)
         waste_serializer = WasteSerializer(waste_data,many=True)
+        overall_total = 0.0
+        for waste in waste_data:
+            overall_total += (waste.food_waste + waste.solid_waste + waste.e_waste + waste.biomedical_waste + waste.others)
         user_data = {
             'email':user.email,
-            'waste_data' : waste_serializer.data
+            'waste_data' : waste_serializer.data,
+            'over_all_Waste_total' : overall_total
         }
         return Response(user_data, status=status.HTTP_200_OK)
 
@@ -205,9 +209,15 @@ class EnergyView(APIView):
         user = request.user
         energy_data = Energy.objects.filter(user=user)
         energy_serializer = EnergySerializer(energy_data,many=True)
+        overall_total = 0.0
+        for energy in energy_data:
+            overall_total +=(energy.hvac + energy.production + energy.stp_etp + energy.admin_block + energy.utilities + energy.others)
+        
         user_data={
             'email' : user.email,
-            'energy_data' : energy_serializer.data
+            'energy_data' : energy_serializer.data,
+            'over_all_Energy_total' : overall_total
+            
         }
         return Response(user_data,status=status.HTTP_200_OK)
     
@@ -260,9 +270,14 @@ class WaterView(APIView):
         user = request.user
         water_data = Water.objects.filter(user=user)
         water_serializer = WaterSerializer(water_data,many=True)
+        overall_total = sum(water.overall_usage for water in water_data)
+        # overall_total = 0.0
+        # for water in water_data:
+        #     overall_total +=(water.generated_water + water.recycled_water + water.softener_usage + water.boiler_usage + water.other_usage)
         user_data={
            ' email' : user.email,
-            'water_data' : water_serializer.data
+            'water_data' : water_serializer.data,
+            'overall_water_usage_total': overall_total
         }
         return Response(user_data,status=status.HTTP_200_OK)
 
@@ -318,9 +333,11 @@ class BiodiversityView(APIView):
         user = request.user
         biodiversity_data = Biodiversity.objects.filter(user=user)
         biodiversity_serializer = BiodiversitySerializer(biodiversity_data,many=True)
+        overall_total = sum(biodiversity.no_of_trees for biodiversity in biodiversity_data) 
         user_data={
             'email' : user.email,
-            'biodiversity_data':biodiversity_serializer.data
+            'biodiversity_data':biodiversity_serializer.data,
+            'biodiversity_total':overall_total
         }
         return Response(user_data,status=status.HTTP_200_OK)
 
@@ -376,6 +393,7 @@ class LogisticesView(APIView):
         user = request.user
         logistices_data = Logistices.objects.filter(user=user)
         logistices_serializer = LogisticesSerializer(logistices_data, many=True)
+        
         user_data = {
             'email': user.email,
             'logistices_data': logistices_serializer.data

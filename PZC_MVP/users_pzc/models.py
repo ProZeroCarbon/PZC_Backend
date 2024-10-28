@@ -53,10 +53,16 @@ class Waste(models.Model):
     others = models.FloatField(default=0.0)
     sent_for_recycle = models.FloatField(default=0.0)
     send_to_landfill = models.FloatField(default=0.0)
-    created_at = models.DateTimeField(auto_now_add=True)
+    overall_usage = models.FloatField(default=0.0, editable=False)
+    
+    # created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
         return f"Waste data for {self.user.email}"
+    
+    def save(self,*args, **kwargs):
+        self.overall_usage = (self.food_waste + self.solid_waste + self.e_waste + self.biomedical_waste + self.others)
+        super(Waste,self).save(*args, **kwargs)
 
 
 class Energy(models.Model):
@@ -68,12 +74,17 @@ class Energy(models.Model):
     admin_block = models.FloatField(default=0.0)
     utilities = models.FloatField(default=0.0)
     others = models.FloatField(default=0.0)
-    # fuel_used_in Operations = models.CharField(max_length=255)
+    fuel_used_in_Operations = models.CharField(max_length=255)
     fuel_consumption = models.FloatField(default=0.0)
     renewable_energy_solar = models.FloatField(default=0.0)
     renewable_energy_others = models.FloatField(default=0.0)
+    overall_usage = models.FloatField(default=0.0, editable=False)
+    
     def __str__(self):
         return f"Energy data for {self.user.email}"
+    def save(self,*args, **kwargs):
+        self.overall_usage = (self.hvac + self.production + self.stp_etp + self.admin_block + self.utilities + self.others)
+        super(Energy,self).save(*args, **kwargs)
 
 class Water(models.Model):
     user = models.ForeignKey(CustomUser,on_delete=models.CASCADE)
@@ -83,9 +94,13 @@ class Water(models.Model):
     softener_usage = models.FloatField(default=0.0)
     boiler_usage = models.FloatField(default=0.0)
     other_usage = models.FloatField(default=0.0)
+    overall_usage = models.FloatField(default=0.0, editable=False)
     
     def __str__(self):
         return f"Water data for {self.user.email}"
+    def save(self, *args, **kwargs):
+        self.overall_usage = (self.generated_water + self.recycled_water + self.softener_usage + self.boiler_usage + self.other_usage)
+        super(Water, self).save(*args, **kwargs)
     
 class Biodiversity(models.Model):
     user = models.ForeignKey(CustomUser,on_delete=models.CASCADE)
@@ -98,8 +113,14 @@ class Biodiversity(models.Model):
     total_area = models.FloatField(default=0.0)
     new_trees_planted = models.FloatField(default=0.0)
     head_count = models.FloatField(default=0.0)
+    overall_Trees = models.FloatField(default=0.0, editable=False)
+    
     def __str__(self):
         return f"biodiversity data for {self.user.email}"
+    def save(self,*args, **kwargs):
+        self.overall_Trees = (self.no_of_trees)
+        super(Biodiversity,self).save(*args, **kwargs)
+        
     
 class Logistices(models.Model):
     user = models.ForeignKey(CustomUser,on_delete=models.CASCADE)
@@ -111,7 +132,7 @@ class Logistices(models.Model):
     ]
     FUEL_TYPE=[
         ('type','Type'),
-        ('diesel','Disesel'),
+        ('diesel','Diesel'),
         ('petrol','Petrol'),
         ('LPG','CNG')
     ]

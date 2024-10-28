@@ -51,7 +51,7 @@ urlpatterns = [
     path('add_biodiversity/',BiodiversityCreateView.as_view(),name='add_biodiversity'),
     path('view_biodiversity/',BiodiversityView.as_view(),name='view_biodiversity'),
     path('biodiversity_update/<int:pk>/update/', BiodiversityEditView.as_view(), name='biodiversity_update'),
-    path('biodiversity/delete<int:pk>/delete/', BiodiversityDeleteView.as_view(), name='biodiversity_delete'),
+    path('biodiversity/<int:pk>/delete/', BiodiversityDeleteView.as_view(), name='biodiversity_delete'),
     
    #Apis for Biodiversity Crud Operations Ends
     
