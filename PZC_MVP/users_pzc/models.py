@@ -1,6 +1,6 @@
 # myapp/models.py
-
 from django.db import models
+from django.utils import timezone 
 from django.contrib.auth.models import AbstractBaseUser, BaseUserManager, PermissionsMixin
 
 class CustomUserManager(BaseUserManager):
@@ -32,6 +32,18 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
     REQUIRED_FIELDS = []
 
 
+class Org_registration(models.Model):
+    user = models.ForeignKey(CustomUser,on_delete=models.CASCADE)
+    name_of_org = models.CharField(max_length=255)
+    name_of_bussiness_exe = models.CharField(max_length=255)
+    location = models.CharField( max_length=255,null=True,blank=True)
+    branch_id = models.CharField(max_length=255)
+    description = models.CharField(max_length=255)
+    
+    def __str__(self):
+        return f"Organization Details for {self.user.email}"
+    
+
 class Facility(models.Model):
     user = models.ForeignKey(CustomUser,on_delete=models.CASCADE)
     facility_name = models.CharField(max_length=255)
@@ -54,7 +66,7 @@ class Waste(models.Model):
     sent_for_recycle = models.FloatField(default=0.0)
     send_to_landfill = models.FloatField(default=0.0)
     overall_usage = models.FloatField(default=0.0, editable=False)
-    
+    created_at = models.DateTimeField(default=timezone.now)
     # created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
@@ -68,17 +80,28 @@ class Waste(models.Model):
 class Energy(models.Model):
     user = models.ForeignKey(CustomUser,on_delete=models.CASCADE)
     facility = models.ForeignKey(Facility, on_delete=models.CASCADE)
+    FUEL_USED_IN_OPERATIONS_CHOICES=[
+        ('Types','Types'),
+        ('Crude oil - Diesel','Crude oil - Diesel'),
+        ('Crude oil - Petrol','Crude oil - Petrol'),
+        ('Coal - Cooking coal','Coal - Cooking coal'),
+        ('Coal - Coke Oven Coal','Coal - Coke Oven Coal'),
+        ('Natural gas','Natural gas'),
+        ('Biomass - wood','Biomass - wood'),
+        ('Biomass - Other solid waste','Biomass - Other solid waste')
+    ]
     hvac=models.FloatField(default=0.0)
     production = models.FloatField(default=0.0)
     stp_etp = models.FloatField(default=0.0)
     admin_block = models.FloatField(default=0.0)
     utilities = models.FloatField(default=0.0)
     others = models.FloatField(default=0.0)
-    fuel_used_in_Operations = models.CharField(max_length=255)
+    fuel_used_in_Operations = models.CharField(max_length=255,choices=FUEL_USED_IN_OPERATIONS_CHOICES,default='Types')
     fuel_consumption = models.FloatField(default=0.0)
     renewable_energy_solar = models.FloatField(default=0.0)
     renewable_energy_others = models.FloatField(default=0.0)
     overall_usage = models.FloatField(default=0.0, editable=False)
+    created_at = models.DateTimeField(default=timezone.now)
     
     def __str__(self):
         return f"Energy data for {self.user.email}"
@@ -95,6 +118,7 @@ class Water(models.Model):
     boiler_usage = models.FloatField(default=0.0)
     other_usage = models.FloatField(default=0.0)
     overall_usage = models.FloatField(default=0.0, editable=False)
+    created_at = models.DateTimeField(default=timezone.now)
     
     def __str__(self):
         return f"Water data for {self.user.email}"
@@ -114,9 +138,11 @@ class Biodiversity(models.Model):
     new_trees_planted = models.FloatField(default=0.0)
     head_count = models.FloatField(default=0.0)
     overall_Trees = models.FloatField(default=0.0, editable=False)
+    created_at = models.DateTimeField(default=timezone.now)
     
     def __str__(self):
         return f"biodiversity data for {self.user.email}"
+    
     def save(self,*args, **kwargs):
         self.overall_Trees = (self.no_of_trees)
         super(Biodiversity,self).save(*args, **kwargs)
@@ -134,7 +160,7 @@ class Logistices(models.Model):
         ('type','Type'),
         ('diesel','Diesel'),
         ('petrol','Petrol'),
-        ('LPG','CNG')
+        ('LPG','LPG')
     ]
     logistices_types = models.CharField(max_length=255,choices=LOGISTICES_TYPE_CHOICES,default='type')
     fuel_type = models.CharField(max_length=255,choices=FUEL_TYPE,default='type')
@@ -142,5 +168,12 @@ class Logistices(models.Model):
     fuel_consumption = models.FloatField(max_length=255)
     no_of_vehicles = models.IntegerField()
     spends_on_fuel = models.FloatField(max_length=255)
+    total_fuelconsumption = models.FloatField(default=0.0, editable=False)
+    created_at = models.DateTimeField(default=timezone.now)
     def __str__(self):
         return f" data for {self.user.email}"
+    
+    def save(self,*args, **kwargs):
+        self.total_fuelconsumption = (self.fuel_consumption)
+        super(Logistices,self).save(*args, **kwargs)
+    

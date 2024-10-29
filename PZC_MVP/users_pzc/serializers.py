@@ -1,9 +1,10 @@
 
+import re
 from rest_framework import serializers
 from django.contrib.auth import authenticate
 from django.core.exceptions import ValidationError
 from django.utils.translation import gettext_lazy as _
-from .models import CustomUser,Waste,Energy,Water,Biodiversity,Facility,Logistices
+from .models import CustomUser,Waste,Energy,Water,Biodiversity,Facility,Logistices,Org_registration
 
 class UserRegisterSerializer(serializers.ModelSerializer):
     class Meta:
@@ -56,21 +57,91 @@ class UserLoginSerializer(serializers.Serializer):
         return data
 
 
+class OrganizationSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Org_registration
+        fields = ['name_of_org', 'name_of_bussiness_exe', 'location', 'branch_id', 'description']
+
+    # Validation for 'name_of_org'
+    def validate_name_of_org(self, value):
+        request = self.context.get('request')
+        
+        if request and request.method in ['PUT', 'PATCH']:
+            organization_id = request.parser_context['kwargs'].get('pk')
+            if Org_registration.objects.exclude(pk=organization_id).filter(name_of_org=value).exists():
+                raise serializers.ValidationError("An organization with this name already exists.")
+        else:
+            if Org_registration.objects.filter(name_of_org=value).exists():
+                raise serializers.ValidationError("An organization with this name already exists.")
+        
+        if len(value) < 3:
+            raise serializers.ValidationError("Organization name must be at least 3 characters long.")
+        
+        if not re.match("^[A-Za-z\s]*$", value):
+            raise serializers.ValidationError("Organization name must contain only letters and spaces.")
+        
+        return value
+
+    def validate_name_of_bussiness_exe(self, value):
+        if not re.match("^[A-Za-z\s]*$", value):
+            raise serializers.ValidationError("Business Executive name must contain only letters and spaces.")
+        return value
+    
+    def validate_location(self, value):
+        if value and not re.match("^[A-Za-z0-9\s,]*$", value):
+            raise serializers.ValidationError("Location can only contain letters, numbers, commas, and spaces.")
+        return value
+    
+    def validate_branch_id(self, value):
+        if not re.match("^[A-Za-z0-9]*$", value):
+            raise serializers.ValidationError("Branch ID must be alphanumeric.")
+        if len(value) < 5 or len(value) > 10:
+            raise serializers.ValidationError("Branch ID must be between 5 and 10 characters long.")
+        return value
+
+    def validate_description(self, value):
+        if len(value) < 10:
+            raise serializers.ValidationError("Description must be at least 10 characters long.")
+        if value.lower() in ['na', 'none', 'not applicable']:
+            raise serializers.ValidationError("Please provide a valid description.")
+        return value
+
+    def create(self, validated_data):
+        user = self.context['request'].user
+        if 'user' in validated_data:
+            validated_data.pop('user')
+        organization = Org_registration.objects.create(user=user, **validated_data)
+        return organization
 class FacilitySerializer(serializers.ModelSerializer):
     class Meta:
         model = Facility
         fields = ['facility_name', 'facility_head', 'location', 'description']
-
+        
+    def validate_facility_name(self, value):
+        request = self.context.get('request')
+        if request and request.method == 'PUT':
+            facility_id = request.parser_context['kwargs'].get('pk')
+            if Facility.objects.exclude(pk=facility_id).filter(facility_name=value).exists():
+                raise serializers.ValidationError("A facility with this name already exists.")
+        else:
+            if Facility.objects.filter(facility_name=value).exists():
+                raise serializers.ValidationError("A facility with this name already exists.")
+        
+        return value
+    
     def create(self, validated_data):
         user = self.context['request'].user
+        if 'user' in validated_data:
+            validated_data.pop('user')
         facility = Facility.objects.create(user=user, **validated_data)
         return facility
+    
 class WasteSerializer(serializers.ModelSerializer):
     class Meta:
         model = Waste
         fields = ['food_waste', 'solid_waste', 'e_waste', 'biomedical_waste', 
                   'liquid_discharge', 'others', 'sent_for_recycle', 
-                  'send_to_landfill', 'facility']
+                  'send_to_landfill', 'facility','created_at']
 
 
 class WasteCreateSerializer(serializers.ModelSerializer):
@@ -78,10 +149,19 @@ class WasteCreateSerializer(serializers.ModelSerializer):
         model = Waste
         fields = ['food_waste', 'solid_waste', 'e_waste', 'biomedical_waste', 
                   'liquid_discharge', 'others', 'sent_for_recycle', 
-                  'send_to_landfill','facility']
+                  'send_to_landfill','facility','created_at']
+    
+    def validate(self, data):
+        if data['food_waste'] < 0 or data['solid_waste'] < 0 or data['e_waste'] < 0 or data['biomedical_waste'] < 0:
+            raise serializers.ValidationError("Waste quantities must be positive.")
+        if not Facility.objects.filter(id=data['facility'].id).exists():
+            raise serializers.ValidationError("The selected facility does not exist.")
+        return data
 
     def create(self, validated_data):
         user = self.context['request'].user
+        if 'user' in validated_data:
+            validated_data.pop('user')
         waste = Waste.objects.create(user=user, **validated_data)
         return waste
 
@@ -92,7 +172,7 @@ class EnergySerializer(serializers.ModelSerializer):
         model = Energy
         fields = ['hvac', 'production', 'stp_etp', 'admin_block', 
                   'utilities', 'others', 'fuel_used_in_Operations','fuel_consumption','renewable_energy_solar', 
-                  'renewable_energy_others', 'facility']
+                  'renewable_energy_others', 'facility','created_at']
 
 
 class EnergyCreateSerializer(serializers.ModelSerializer):
@@ -100,10 +180,17 @@ class EnergyCreateSerializer(serializers.ModelSerializer):
         model = Energy
         fields = ['hvac', 'production', 'stp_etp', 'admin_block', 
                   'utilities', 'others', 'fuel_used_in_Operations','fuel_consumption', 'renewable_energy_solar', 
-                  'renewable_energy_others', 'facility']
+                  'renewable_energy_others', 'facility','created_at']
+    
+    def validate(self, data):
+        if data['hvac'] < 0 or data['production'] < 0 or data['stp_etp'] < 0:
+            raise serializers.ValidationError("Energy usage values must be positive.")
+        return data
 
     def create(self, validated_data):
         user = self.context['request'].user
+        if 'user' in validated_data:
+            validated_data.pop('user')
         energy = Energy.objects.create(user=user, **validated_data)
         return energy
 
@@ -111,17 +198,26 @@ class WaterSerializer(serializers.ModelSerializer):
     class Meta:
         model = Water
         fields = ['generated_water', 'recycled_water', 'softener_usage', 
-                  'boiler_usage', 'other_usage','facility']
+                  'boiler_usage', 'other_usage','facility','created_at']
 
 
 class WaterCreateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Water
         fields = ['generated_water', 'recycled_water', 'softener_usage', 
-                  'boiler_usage', 'other_usage', 'facility']
+                  'boiler_usage', 'other_usage', 'facility','created_at']
 
+    def validate(self, data):
+        if data['generated_water'] < 0 or data['recycled_water'] < 0:
+            raise serializers.ValidationError("Water usage values must be positive.")
+        if not Facility.objects.filter(id=data['facility'].id).exists():
+            raise serializers.ValidationError("The selected facility does not exist.")
+        return data
+    
     def create(self, validated_data):
         user = self.context['request'].user
+        if 'user' in validated_data:
+            validated_data.pop('user')
         water = Water.objects.create(user=user, **validated_data)
         return water
 
@@ -130,16 +226,23 @@ class WaterCreateSerializer(serializers.ModelSerializer):
 class BiodiversitySerializer(serializers.ModelSerializer):
     class Meta:
         model = Biodiversity
-        fields = ['no_of_trees', 'Specie_name', 'age', 'height', 'width', 'facility']
+        fields = ['no_of_trees', 'Specie_name', 'age', 'height', 'width','total_area','new_trees_planted','head_count', 'facility','created_at']
 
 
 class BiodiversityCreateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Biodiversity
-        fields = ['no_of_trees', 'Specie_name', 'age', 'height', 'width', 'facility']
+        fields = ['no_of_trees', 'Specie_name', 'age', 'height', 'width','total_area','new_trees_planted','head_count', 'facility','created_at']
 
+    def validate_no_of_trees(self, value):
+        if value <= 0:
+            raise serializers.ValidationError("Number of trees must be a positive integer.")
+        return value
+    
     def create(self, validated_data):
         user = self.context['request'].user
+        if 'user' in validated_data:
+            validated_data.pop('user')
         biodiversity = Biodiversity.objects.create(user=user, **validated_data)
         return biodiversity
 
@@ -148,10 +251,18 @@ class BiodiversityCreateSerializer(serializers.ModelSerializer):
 class LogisticesSerializer(serializers.ModelSerializer):
     class Meta:
         model = Logistices
-        fields = ['logistices_types','fuel_type','no_of_trips','fuel_consumption','no_of_vehicles','spends_on_fuel','facility']
-        
+        fields = ['logistices_types','fuel_type','no_of_trips','fuel_consumption','no_of_vehicles','spends_on_fuel','facility','created_at']
+    
+    def validate(self, data):
+        if data['no_of_trips'] < 0 or data['fuel_consumption'] < 0 or data['no_of_vehicles'] < 0:
+            raise serializers.ValidationError("Trips, fuel consumption, and vehicles must be positive numbers.")
+        return data
+    
     def create(self, validated_data):
         user = self.context['request'].user
-        biodiversity = Logistices.objects.create(user=user, **validated_data)
-        return biodiversity
+        if 'user' in validated_data:
+            validated_data.pop('user')
+        logistices = Logistices.objects.create(user=user, **validated_data)
+        return logistices
+    
     

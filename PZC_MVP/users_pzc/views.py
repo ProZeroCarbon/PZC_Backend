@@ -6,8 +6,8 @@ from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework_simplejwt.tokens import RefreshToken
-from .serializers import UserRegisterSerializer, UserLoginSerializer,WasteSerializer,WasteCreateSerializer,EnergyCreateSerializer,EnergySerializer,WaterCreateSerializer,WaterSerializer,BiodiversityCreateSerializer,BiodiversitySerializer,FacilitySerializer,LogisticesSerializer
-from .models import CustomUser,Waste,Energy,Water,Biodiversity,Facility,Logistices
+from .serializers import UserRegisterSerializer, UserLoginSerializer,WasteSerializer,WasteCreateSerializer,EnergyCreateSerializer,EnergySerializer,WaterCreateSerializer,WaterSerializer,BiodiversityCreateSerializer,BiodiversitySerializer,FacilitySerializer,LogisticesSerializer,OrganizationSerializer
+from .models import CustomUser,Waste,Energy,Water,Biodiversity,Facility,Logistices,Org_registration
 
 #Register View
 class RegisterView(APIView):
@@ -43,14 +43,10 @@ class DashboardView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        # user = request.user
-        # waste_data = Waste.objects.filter(user=user)
-        # waste_serializer = WasteSerializer(waste_data,many=True)
         user_data = {
             'email': request.user.email,
             'first_name': request.user.first_name,
             'last_name': request.user.last_name,
-            # 'waste_data' : waste_serializer.data
         }
         return Response(user_data, status=status.HTTP_200_OK)
 
@@ -63,6 +59,36 @@ class LogoutView(APIView):
         response.delete_cookie('access_token')
         response.delete_cookie('refresh_token')
         return response
+
+'''Organization Crud Operations Starts'''
+#organizationCreate
+
+# OrganizationCreate view
+class OrganizationCreate(APIView):
+    permission_classes = [IsAuthenticated]
+    
+    def post(self, request):
+        serializer = OrganizationSerializer(data=request.data, context={'request': request})
+        if serializer.is_valid():
+            serializer.save()
+            return Response({"message": "Organization Registration added successfully"}, status=status.HTTP_201_CREATED)
+        
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+# OrganizationView
+class OrganizationView(APIView):
+    permission_classes = [IsAuthenticated]
+    
+    def get(self, request):
+        user = request.user
+        org_reg_data = Org_registration.objects.filter(user=user)
+        organization_serializer = OrganizationSerializer(org_reg_data, many=True)
+        user_data = {
+            'email': user.email,
+            'org_reg_data': organization_serializer.data
+        }
+        return Response(user_data, status=status.HTTP_200_OK)
+'''Oragnization Crud Operations Ends'''
 
 '''Facility Crud Operations starts'''
 #FacilityCreate
@@ -393,10 +419,11 @@ class LogisticesView(APIView):
         user = request.user
         logistices_data = Logistices.objects.filter(user=user)
         logistices_serializer = LogisticesSerializer(logistices_data, many=True)
-        
+        overall_fuelconsumption = sum(logistices_fuel.fuel_consumption for logistices_fuel in logistices_data)
         user_data = {
             'email': user.email,
-            'logistices_data': logistices_serializer.data
+            'logistices_data': logistices_serializer.data,
+            'Fuel_consumption_total':overall_fuelconsumption
         }
         return Response(user_data, status=status.HTTP_200_OK)
 
