@@ -26,10 +26,10 @@ class UserRegisterSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError("Password must be at least 8 characters long.")
         if not any(char.isdigit() for char in value):
             raise serializers.ValidationError("Password must contain at least one digit.")
-        
-        
         if not any(char.isalpha() for char in value):
             raise serializers.ValidationError("Password must contain at least one letter.")
+        if not any(char in "!@#$%^&*()-_+=" for char in value):
+            raise serializers.ValidationError("Password must contain at least one special character (!@#$%^&*()-_+=).")
         return value
 
     def create(self, validated_data):
@@ -38,9 +38,29 @@ class UserRegisterSerializer(serializers.ModelSerializer):
         user.save()
         return user
 
+
 class UserLoginSerializer(serializers.Serializer):
     email = serializers.EmailField()
-    password = serializers.CharField(write_only=True)
+    password = serializers.CharField(write_only=True, min_length=8, max_length=128)
+
+    def validate_email(self, value):
+        if not value:
+            raise serializers.ValidationError("Email field cannot be empty.")
+        # Check if the email matches a standard format
+        if not re.match(r"[^@]+@[^@]+\.[^@]+", value):
+            raise serializers.ValidationError("Invalid email format.")
+        return value
+
+    def validate_password(self, value):
+        if not value:
+            raise serializers.ValidationError("Password field cannot be empty.")
+        if len(value) < 8:
+            raise serializers.ValidationError("Password must be at least 8 characters long.")
+        if not any(char.isdigit() for char in value):
+            raise serializers.ValidationError("Password must contain at least one digit.")
+        if not any(char.isalpha() for char in value):
+            raise serializers.ValidationError("Password must contain at least one letter.")
+        return value
 
     def validate(self, data):
         email = data.get('email')
@@ -60,18 +80,18 @@ class UserLoginSerializer(serializers.Serializer):
 class OrganizationSerializer(serializers.ModelSerializer):
     class Meta:
         model = Org_registration
-        fields = ['name_of_org', 'name_of_bussiness_exe', 'location', 'branch_id', 'description']
+        fields = ['organization_name', 'business_executive_name', 'location', 'branch_id', 'description']
 
-    # Validation for 'name_of_org'
-    def validate_name_of_org(self, value):
+    # Validation for 'organization_name'
+    def validate_organization_name(self, value):
         request = self.context.get('request')
         
         if request and request.method in ['PUT', 'PATCH']:
             organization_id = request.parser_context['kwargs'].get('pk')
-            if Org_registration.objects.exclude(pk=organization_id).filter(name_of_org=value).exists():
+            if Org_registration.objects.exclude(pk=organization_id).filter(organization_name=value).exists():
                 raise serializers.ValidationError("An organization with this name already exists.")
         else:
-            if Org_registration.objects.filter(name_of_org=value).exists():
+            if Org_registration.objects.filter(organization_name=value).exists():
                 raise serializers.ValidationError("An organization with this name already exists.")
         
         if len(value) < 3:
@@ -82,7 +102,7 @@ class OrganizationSerializer(serializers.ModelSerializer):
         
         return value
 
-    def validate_name_of_bussiness_exe(self, value):
+    def validate_business_executive_name(self, value):
         if not re.match("^[A-Za-z\s]*$", value):
             raise serializers.ValidationError("Business Executive name must contain only letters and spaces.")
         return value
@@ -100,6 +120,8 @@ class OrganizationSerializer(serializers.ModelSerializer):
         return value
 
     def validate_description(self, value):
+        if value is None or value.strip() == '':
+            raise serializers.ValidationError("Description cannot be empty.")
         if len(value) < 10:
             raise serializers.ValidationError("Description must be at least 10 characters long.")
         if value.lower() in ['na', 'none', 'not applicable']:
@@ -108,8 +130,6 @@ class OrganizationSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         user = self.context['request'].user
-        if 'user' in validated_data:
-            validated_data.pop('user')
         organization = Org_registration.objects.create(user=user, **validated_data)
         return organization
 class FacilitySerializer(serializers.ModelSerializer):
@@ -210,6 +230,8 @@ class WaterCreateSerializer(serializers.ModelSerializer):
     def validate(self, data):
         if data['generated_water'] < 0 or data['recycled_water'] < 0:
             raise serializers.ValidationError("Water usage values must be positive.")
+        # if data.get('recycled_water', 0) >= data.get('generated_water', 0):
+        #     raise serializers.ValidationError("Recycled water must be less than generated water.")
         if not Facility.objects.filter(id=data['facility'].id).exists():
             raise serializers.ValidationError("The selected facility does not exist.")
         return data

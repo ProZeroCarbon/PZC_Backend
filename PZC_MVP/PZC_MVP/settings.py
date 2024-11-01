@@ -38,6 +38,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'rest_framework',
+    'django_filters',
     'rest_framework_simplejwt.token_blacklist',
     'users_pzc',
 ]
@@ -47,6 +48,7 @@ REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',
     ),
+    'DEFAULT_FILTER_BACKENDS': ['django_filters.rest_framework.DjangoFilterBackend'],
 }
 CORS_ALLOW_ALL_ORIGINS = True 
 
@@ -87,7 +89,7 @@ WSGI_APPLICATION = 'PZC_MVP.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
-        'NAME' : 'pzc',
+        'NAME' : 'PZC_DB',
         'USER' : 'root',
         'PASSWORD' : 'Pro@co2E',
         'HOST' : 'localhost',

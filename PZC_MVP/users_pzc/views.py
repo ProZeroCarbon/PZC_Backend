@@ -8,6 +8,9 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework_simplejwt.tokens import RefreshToken
 from .serializers import UserRegisterSerializer, UserLoginSerializer,WasteSerializer,WasteCreateSerializer,EnergyCreateSerializer,EnergySerializer,WaterCreateSerializer,WaterSerializer,BiodiversityCreateSerializer,BiodiversitySerializer,FacilitySerializer,LogisticesSerializer,OrganizationSerializer
 from .models import CustomUser,Waste,Energy,Water,Biodiversity,Facility,Logistices,Org_registration
+from django.db.models import Q
+from django_filters.rest_framework import DjangoFilterBackend
+from users_pzc.filters import WasteFilter,EnergyFilter,WaterFilter,BiodiversityFilter,LogisticesFilter,FacilityFilter
 
 #Register View
 class RegisterView(APIView):
@@ -47,6 +50,7 @@ class DashboardView(APIView):
             'email': request.user.email,
             'first_name': request.user.first_name,
             'last_name': request.user.last_name,
+            'password':request.user.password
         }
         return Response(user_data, status=status.HTTP_200_OK)
 
@@ -61,9 +65,8 @@ class LogoutView(APIView):
         return response
 
 '''Organization Crud Operations Starts'''
-#organizationCreate
 
-# OrganizationCreate view
+# OrganizationCreate
 class OrganizationCreate(APIView):
     permission_classes = [IsAuthenticated]
     
@@ -105,11 +108,14 @@ class FacilityCreateView(APIView):
 #FacilityView or get
 class FacilityView(APIView):
     permission_classes = [IsAuthenticated]
+    filter_backends = [DjangoFilterBackend]
+    filterset_class = FacilityFilter
 
     def get(self, request):
         user = request.user
         facility_data = Facility.objects.filter(user=user)
-        facility_serializer = FacilitySerializer(facility_data, many=True)
+        filtered_facility_data = FacilityFilter(request.GET,queryset=facility_data).qs
+        facility_serializer = FacilitySerializer(filtered_facility_data, many=True)
         user_data = {
             'email': user.email,
             'facility_data': facility_serializer.data
@@ -166,25 +172,61 @@ class WasteCreateView(APIView):
             return Response({"message": "Waste data added successfully."}, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
-#viewWaste
+# class WasteView(APIView):
+#     permission_classes = [IsAuthenticated]
+    
+#     def get(self, request):
+#         user = request.user
+#         facility_id = request.query_params.get('facility_id', None)
+#         start_year = request.query_params.get('start_year', None)
+#         end_year = request.query_params.get('end_year', None)
+
+#         if facility_id == "All" or facility_id is None:
+#             waste_data = Waste.objects.filter(user=user)
+#         else:
+#             waste_data = Waste.objects.filter(user=user, facility__id=facility_id)
+
+#         if start_year and end_year:
+#             waste_data = waste_data.filter(
+#                 Q(created_at__year__gte=int(start_year)) & Q(created_at__year__lte=int(end_year))
+#             )
+
+#         waste_serializer = WasteSerializer(waste_data, many=True)
+
+#         # Calculate the overall waste total
+#         overall_total = sum(
+#             waste.food_waste + waste.solid_waste + waste.e_waste + waste.biomedical_waste + waste.others
+#             for waste in waste_data
+#         )
+
+#         # Prepare response data
+#         user_data = {
+#             'email': user.email,
+#             'waste_data': waste_serializer.data,
+#             'over_all_Waste_total': overall_total
+#         }
+#         return Response(user_data, status=status.HTTP_200_OK)
+
 class WasteView(APIView):
     permission_classes = [IsAuthenticated]
+    filter_backends = [DjangoFilterBackend]
+    filterset_class = WasteFilter
     
-    def get(self, request):
-        user = request.user
+    def get(self,request):
+        user =request.user
         waste_data = Waste.objects.filter(user=user)
-        waste_serializer = WasteSerializer(waste_data,many=True)
-        overall_total = 0.0
-        for waste in waste_data:
-            overall_total += (waste.food_waste + waste.solid_waste + waste.e_waste + waste.biomedical_waste + waste.others)
-        user_data = {
-            'email':user.email,
-            'waste_data' : waste_serializer.data,
-            'over_all_Waste_total' : overall_total
+        filtered_waste_data = WasteFilter(request.GET, queryset=waste_data).qs
+        waste_serializer = WasteSerializer(filtered_waste_data, many=True)
+        overall_total = sum(
+            waste.food_waste + waste.solid_waste + waste.e_waste + waste.biomedical_waste + waste.others
+            for waste in filtered_waste_data
+        )
+        response_data = {
+            'email': user.email,
+            'waste_data': waste_serializer.data,
+            'overall_waste_total': overall_total
         }
-        return Response(user_data, status=status.HTTP_200_OK)
-
-
+        return Response(response_data, status=status.HTTP_200_OK)
 #EditWaste
 class WasteEditView(APIView):
     permission_classes = [IsAuthenticated]
@@ -200,7 +242,7 @@ class WasteEditView(APIView):
             serializer.save()
             return Response({"message": "Waste data updated successfully."}, status=status.HTTP_200_OK)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-    
+
 #Deletewaste
 class WasteDeleteView(APIView):
     permission_classes = [IsAuthenticated]
@@ -231,10 +273,14 @@ class EnergyCreateView(APIView):
 #Energyview
 class EnergyView(APIView):
     permission_classes = [IsAuthenticated]
+    filter_backends = [DjangoFilterBackend]
+    filterset_class = EnergyFilter
+    
     def get(self, request):
         user = request.user
         energy_data = Energy.objects.filter(user=user)
-        energy_serializer = EnergySerializer(energy_data,many=True)
+        filtered_energy_data =EnergyFilter(request.GET,queryset=energy_data).qs
+        energy_serializer = EnergySerializer(filtered_energy_data,many=True)
         overall_total = 0.0
         for energy in energy_data:
             overall_total +=(energy.hvac + energy.production + energy.stp_etp + energy.admin_block + energy.utilities + energy.others)
@@ -291,11 +337,14 @@ class WaterCreateView(APIView):
 #WaterView 
 class WaterView(APIView):
     permission_classes = [IsAuthenticated]
+    filter_backends = [DjangoFilterBackend]
+    filterset_class = WaterFilter
     
     def get(self,request):
         user = request.user
         water_data = Water.objects.filter(user=user)
-        water_serializer = WaterSerializer(water_data,many=True)
+        filtered_water_data = WaterFilter(request.GET,queryset=water_data).qs
+        water_serializer = WaterSerializer(filtered_water_data,many=True)
         overall_total = sum(water.overall_usage for water in water_data)
         # overall_total = 0.0
         # for water in water_data:
@@ -355,10 +404,13 @@ class BiodiversityCreateView(APIView):
 #biodiversity View
 class BiodiversityView(APIView):
     permission_classes = [IsAuthenticated]
+    filter_backends = [DjangoFilterBackend]
+    filterset_class = BiodiversityFilter
     def get(self,request):
         user = request.user
         biodiversity_data = Biodiversity.objects.filter(user=user)
-        biodiversity_serializer = BiodiversitySerializer(biodiversity_data,many=True)
+        filtered_biodiversity_data = BiodiversityFilter(request.GET,queryset=biodiversity_data).qs
+        biodiversity_serializer = BiodiversitySerializer(filtered_biodiversity_data,many=True)
         overall_total = sum(biodiversity.no_of_trees for biodiversity in biodiversity_data) 
         user_data={
             'email' : user.email,
@@ -414,11 +466,13 @@ class LogisticesCreateView(APIView):
 #View Logistices
 class LogisticesView(APIView):
     permission_classes = [IsAuthenticated]
-    
+    filter_backends = [DjangoFilterBackend]
+    filterset_class = LogisticesFilter    
     def get(self, request):
         user = request.user
         logistices_data = Logistices.objects.filter(user=user)
-        logistices_serializer = LogisticesSerializer(logistices_data, many=True)
+        filtered_logistices_data = LogisticesFilter(request.GET,queryset=logistices_data).qs
+        logistices_serializer = LogisticesSerializer(filtered_logistices_data, many=True)
         overall_fuelconsumption = sum(logistices_fuel.fuel_consumption for logistices_fuel in logistices_data)
         user_data = {
             'email': user.email,

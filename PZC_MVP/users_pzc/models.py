@@ -34,14 +34,14 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
 
 class Org_registration(models.Model):
     user = models.ForeignKey(CustomUser,on_delete=models.CASCADE)
-    name_of_org = models.CharField(max_length=255)
-    name_of_bussiness_exe = models.CharField(max_length=255)
+    organization_name = models.CharField(max_length=255)
+    business_executive_name = models.CharField(max_length=255)
     location = models.CharField( max_length=255,null=True,blank=True)
     branch_id = models.CharField(max_length=255)
     description = models.CharField(max_length=255)
     
     def __str__(self):
-        return f"Organization Details for {self.user.email}"
+        return f"Organization: {self.organization_name} for {self.user.email}"
     
 
 class Facility(models.Model):
@@ -67,7 +67,6 @@ class Waste(models.Model):
     send_to_landfill = models.FloatField(default=0.0)
     overall_usage = models.FloatField(default=0.0, editable=False)
     created_at = models.DateTimeField(default=timezone.now)
-    # created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
         return f"Waste data for {self.user.email}"
@@ -152,22 +151,20 @@ class Logistices(models.Model):
     user = models.ForeignKey(CustomUser,on_delete=models.CASCADE)
     facility = models.ForeignKey(Facility, on_delete=models.CASCADE)
     LOGISTICES_TYPE_CHOICES=[
-        ('type','Type'),
         ('staff_logistices','Staff_Logistices'),
         ('cargo','Cargo')
     ]
-    FUEL_TYPE=[
-        ('type','Type'),
+    FUEL_TYPE_CHOICES=[
         ('diesel','Diesel'),
         ('petrol','Petrol'),
         ('LPG','LPG')
     ]
-    logistices_types = models.CharField(max_length=255,choices=LOGISTICES_TYPE_CHOICES,default='type')
-    fuel_type = models.CharField(max_length=255,choices=FUEL_TYPE,default='type')
+    logistices_types = models.CharField(max_length=255,choices=LOGISTICES_TYPE_CHOICES,default='staff_logistices')
+    fuel_type = models.CharField(max_length=255,choices=FUEL_TYPE_CHOICES,default='diesel')
     no_of_trips = models.IntegerField()
-    fuel_consumption = models.FloatField(max_length=255)
+    fuel_consumption = models.FloatField(default=0.0)
     no_of_vehicles = models.IntegerField()
-    spends_on_fuel = models.FloatField(max_length=255)
+    spends_on_fuel = models.FloatField(default=0.0)
     total_fuelconsumption = models.FloatField(default=0.0, editable=False)
     created_at = models.DateTimeField(default=timezone.now)
     def __str__(self):
