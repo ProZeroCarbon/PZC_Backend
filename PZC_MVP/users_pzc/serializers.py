@@ -281,3 +281,7 @@ class LogisticesSerializer(serializers.ModelSerializer):
         return logistices
     
     
+    
+
+
+

@@ -1,4 +1,7 @@
 
+from datetime import datetime
+from django.db.models import Sum
+from django.utils import timezone
 from django.contrib.auth import authenticate
 from django.shortcuts import get_object_or_404
 from rest_framework.views import APIView
@@ -478,16 +481,6 @@ class LogisticesDeleteView(APIView):
 
 
 #Logout View
-# class LogoutView(APIView):
-#     permission_classes = [IsAuthenticated]
-
-#     def post(self, request):
-#         response = Response({"message": "Logout successful"}, status=status.HTTP_205_RESET_CONTENT)
-#         response.delete_cookie('access_token')
-#         response.delete_cookie('refresh_token')
-#         return response
-
-
 class LogoutView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -515,3 +508,87 @@ class LogoutView(APIView):
         response.delete_cookie('refresh_token')
 
         return response
+    
+    
+'''Waste Overviewgraphs and Individual Line charts and donut charts Starts'''
+class FoodWasteOverviewView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        user = request.user
+        facility_id = request.GET.get('facility_id', None)
+        year = request.GET.get('year', None)
+        # print(f"Received year parameter: {year}")
+
+        if year is None:
+            return Response({'error': 'Year parameter is required.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            year = int(year)
+        except (TypeError, ValueError):
+            return Response({'error': 'Invalid year parameter.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            # Query to get monthly food waste
+            if facility_id and facility_id.lower() != 'all':
+                monthly_food_waste = (
+                    Waste.objects.filter(user=user, facility__id=facility_id, created_at__year=year)
+                    .values('created_at__month')
+                    .annotate(total_food_waste=Sum('food_waste'))
+                    .order_by('created_at__month')
+                )
+            else:
+                monthly_food_waste = (
+                    Waste.objects.filter(user=user, created_at__year=year)
+                    .values('created_at__month')
+                    .annotate(total_food_waste=Sum('food_waste'))
+                    .order_by('created_at__month')
+                )
+
+            line_chart_data = {
+                "months": [],
+                "food_waste": []
+            }
+
+            if monthly_food_waste:
+                for entry in monthly_food_waste:
+                    month = datetime(1900, entry['created_at__month'], 1).strftime('%b')
+                    line_chart_data['months'].append(month)
+                    line_chart_data['food_waste'].append(entry['total_food_waste'])
+
+            # Query for facility-wise food waste
+            if facility_id and facility_id.lower() != 'all':
+                facility_food_waste = (
+                    Waste.objects.filter(user=user, facility__id=facility_id)
+                    .values('facility__facility_name')
+                    .annotate(total_food_waste=Sum('food_waste'))
+                    .order_by('-total_food_waste')
+                )
+            else:
+                facility_food_waste = (
+                    Waste.objects.filter(user=user)
+                    .values('facility__facility_name')
+                    .annotate(total_food_waste=Sum('food_waste'))
+                    .order_by('-total_food_waste')
+                )
+
+            total_food_waste = sum(entry['total_food_waste'] for entry in facility_food_waste)
+            donut_chart_data = [
+                {
+                    "facility_name": entry['facility__facility_name'],
+                    "percentage": (entry['total_food_waste'] / total_food_waste * 100) if total_food_waste else 0,
+                }
+                for entry in facility_food_waste
+            ]
+
+            response_data = {
+                "line_chart_data": line_chart_data,
+                "donut_chart_data": donut_chart_data
+            }
+
+            return Response(response_data, status=status.HTTP_200_OK)
+
+        except Exception as e:
+            return Response({'error': 'An error occurred while processing your request.'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
+'''Waste Overviewgraphs and Individual Line charts and donut charts Ends'''
