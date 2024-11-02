@@ -4,7 +4,7 @@ from django.shortcuts import get_object_or_404
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import IsAuthenticated,AllowAny
 from rest_framework_simplejwt.tokens import RefreshToken
 from .serializers import UserRegisterSerializer, UserLoginSerializer,WasteSerializer,WasteCreateSerializer,EnergyCreateSerializer,EnergySerializer,WaterCreateSerializer,WaterSerializer,BiodiversityCreateSerializer,BiodiversitySerializer,FacilitySerializer,LogisticesSerializer,OrganizationSerializer
 from .models import CustomUser,Waste,Energy,Water,Biodiversity,Facility,Logistices,Org_registration
@@ -14,6 +14,7 @@ from users_pzc.filters import WasteFilter,EnergyFilter,WaterFilter,BiodiversityF
 
 #Register View
 class RegisterView(APIView):
+    permission_classes = [AllowAny]
     def post(self, request):
         serializer = UserRegisterSerializer(data=request.data)
         if serializer.is_valid():
@@ -23,6 +24,9 @@ class RegisterView(APIView):
 
 #LoginView
 class LoginView(APIView):
+    
+    permission_classes = [AllowAny]
+    
     def post(self, request):
         serializer = UserLoginSerializer(data=request.data)
         if serializer.is_valid():
@@ -54,15 +58,7 @@ class DashboardView(APIView):
         }
         return Response(user_data, status=status.HTTP_200_OK)
 
-#Logout View
-class LogoutView(APIView):
-    permission_classes = [IsAuthenticated]
 
-    def post(self, request):
-        response = Response({"message": "Logout successful"}, status=status.HTTP_205_RESET_CONTENT)
-        response.delete_cookie('access_token')
-        response.delete_cookie('refresh_token')
-        return response
 
 '''Organization Crud Operations Starts'''
 
@@ -171,41 +167,7 @@ class WasteCreateView(APIView):
             serializer.save()
             return Response({"message": "Waste data added successfully."}, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-    
-# class WasteView(APIView):
-#     permission_classes = [IsAuthenticated]
-    
-#     def get(self, request):
-#         user = request.user
-#         facility_id = request.query_params.get('facility_id', None)
-#         start_year = request.query_params.get('start_year', None)
-#         end_year = request.query_params.get('end_year', None)
 
-#         if facility_id == "All" or facility_id is None:
-#             waste_data = Waste.objects.filter(user=user)
-#         else:
-#             waste_data = Waste.objects.filter(user=user, facility__id=facility_id)
-
-#         if start_year and end_year:
-#             waste_data = waste_data.filter(
-#                 Q(created_at__year__gte=int(start_year)) & Q(created_at__year__lte=int(end_year))
-#             )
-
-#         waste_serializer = WasteSerializer(waste_data, many=True)
-
-#         # Calculate the overall waste total
-#         overall_total = sum(
-#             waste.food_waste + waste.solid_waste + waste.e_waste + waste.biomedical_waste + waste.others
-#             for waste in waste_data
-#         )
-
-#         # Prepare response data
-#         user_data = {
-#             'email': user.email,
-#             'waste_data': waste_serializer.data,
-#             'over_all_Waste_total': overall_total
-#         }
-#         return Response(user_data, status=status.HTTP_200_OK)
 
 class WasteView(APIView):
     permission_classes = [IsAuthenticated]
@@ -515,3 +477,41 @@ class LogisticesDeleteView(APIView):
 
 
 
+#Logout View
+# class LogoutView(APIView):
+#     permission_classes = [IsAuthenticated]
+
+#     def post(self, request):
+#         response = Response({"message": "Logout successful"}, status=status.HTTP_205_RESET_CONTENT)
+#         response.delete_cookie('access_token')
+#         response.delete_cookie('refresh_token')
+#         return response
+
+
+class LogoutView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        access_token = request.COOKIES.get('access_token')
+        refresh_token = request.COOKIES.get('refresh_token')
+
+        if not access_token or not refresh_token:
+            return Response(
+                {"error": "No active session or tokens found to logout."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        try:
+           
+            token = RefreshToken(refresh_token)
+            token.blacklist() 
+        except Exception as e:
+            return Response(
+                {"error": "Error logging out. Invalid or expired tokens."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        response = Response({"message": "Logout successful"}, status=status.HTTP_205_RESET_CONTENT)
+        response.delete_cookie('access_token')
+        response.delete_cookie('refresh_token')
+
+        return response

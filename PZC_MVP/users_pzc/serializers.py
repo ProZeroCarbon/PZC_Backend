@@ -46,7 +46,6 @@ class UserLoginSerializer(serializers.Serializer):
     def validate_email(self, value):
         if not value:
             raise serializers.ValidationError("Email field cannot be empty.")
-        # Check if the email matches a standard format
         if not re.match(r"[^@]+@[^@]+\.[^@]+", value):
             raise serializers.ValidationError("Invalid email format.")
         return value
@@ -54,12 +53,6 @@ class UserLoginSerializer(serializers.Serializer):
     def validate_password(self, value):
         if not value:
             raise serializers.ValidationError("Password field cannot be empty.")
-        if len(value) < 8:
-            raise serializers.ValidationError("Password must be at least 8 characters long.")
-        if not any(char.isdigit() for char in value):
-            raise serializers.ValidationError("Password must contain at least one digit.")
-        if not any(char.isalpha() for char in value):
-            raise serializers.ValidationError("Password must contain at least one letter.")
         return value
 
     def validate(self, data):
@@ -67,11 +60,11 @@ class UserLoginSerializer(serializers.Serializer):
         password = data.get('password')
 
         if email and password:
-            user = authenticate(email=email, password=password)
+            user = authenticate(request=self.context.get('request'), email=email, password=password)
             if user is None:
-                raise serializers.ValidationError(_("Unable to log in with provided credentials."), code='authorization')
+                raise serializers.ValidationError("Unable to log in with provided credentials.", code='authorization')
         else:
-            raise serializers.ValidationError(_("Must include 'email' and 'password'."), code='authorization')
+            raise serializers.ValidationError("Must include 'email' and 'password'.", code='authorization')
 
         data['user'] = user
         return data

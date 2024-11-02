@@ -10,6 +10,7 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/4.2/ref/settings/
 """
 
+from datetime import timedelta
 from pathlib import Path
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -42,13 +43,25 @@ INSTALLED_APPS = [
     'rest_framework_simplejwt.token_blacklist',
     'users_pzc',
 ]
+
 AUTH_USER_MODEL = 'users_pzc.CustomUser'
 
+SIMPLE_JWT = {
+    'BLACKLIST_AFTER_ROTATION': True,  # Blacklist refresh tokens after rotation
+    'ROTATE_REFRESH_TOKENS': True,     # Rotate tokens after each refresh
+    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=5),  # Customize token lifetime as needed
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=1),
+    'AUTH_HEADER_TYPES': ('Bearer',),
+    'AUTH_TOKEN_CLASSES': ('rest_framework_simplejwt.tokens.AccessToken',),
+}
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',
     ),
     'DEFAULT_FILTER_BACKENDS': ['django_filters.rest_framework.DjangoFilterBackend'],
+    'DEFAULT_PERMISSION_CLASSES': [
+        'rest_framework.permissions.IsAuthenticated',
+    ],
 }
 CORS_ALLOW_ALL_ORIGINS = True 
 
