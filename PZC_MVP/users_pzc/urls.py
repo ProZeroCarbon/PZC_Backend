@@ -1,7 +1,7 @@
 
 
 from django.urls import   path
-from .views import RegisterView, LoginView, DashboardView, LogoutView,WasteCreateView,WasteView,WasteEditView,WasteDeleteView,EnergyCreateView,EnergyView,EnergyEditView,EnergyDeleteView,WaterView,WaterCreateView,WaterEditView,WaterDeleteView,BiodiversityCreateView,BiodiversityView,BiodiversityEditView,BiodiversityDeleteView,FacilityCreateView,FacilityView,FacilityEditView,FacilityDeleteView,LogisticesCreateView,LogisticesView,LogisticesEditView,LogisticesDeleteView,OrganizationCreate,OrganizationView,FoodWasteOverviewView
+from .views import RegisterView, LoginView, DashboardView, LogoutView,WasteCreateView,WasteView,WasteEditView,WasteDeleteView,EnergyCreateView,EnergyView,EnergyEditView,EnergyDeleteView,WaterView,WaterCreateView,WaterEditView,WaterDeleteView,BiodiversityCreateView,BiodiversityView,BiodiversityEditView,BiodiversityDeleteView,FacilityCreateView,FacilityView,FacilityEditView,FacilityDeleteView,LogisticesCreateView,LogisticesView,LogisticesEditView,LogisticesDeleteView,OrganizationCreate,OrganizationView,FoodWasteOverviewView,FoodWasteViewCard,SolidWasteOverviewView,SolidWasteViewCard,E_WasteOverviewView,E_WasteViewCard,Biomedical_WasteOverviewView,Biomedical_WasteViewCard,Liquid_DischargeOverviewView,Liquid_DischargeViewCard,OthersOverviewView,OthersViewCard,Waste_Sent_For_RecycleOverviewView,Sent_For_RecycleViewCard,Waste_Sent_For_LandFillOverviewView,Sent_For_LandFillViewCard,StackedWasteOverviewView
 from rest_framework_simplejwt.views import (
     TokenObtainPairView,
     TokenRefreshView,
@@ -70,9 +70,32 @@ urlpatterns = [
    
    
    #Apis for Waste overviewgraphs starts
-   path('FoodWasteOverviewView/',FoodWasteOverviewView.as_view(),name="FoodWasteOverview")
+   path('FoodWasteOverviewView/',FoodWasteOverviewView.as_view(),name="FoodWasteOverview"),
+   path('FoodWasteViewCard/',FoodWasteViewCard.as_view(),name="FoodWasteViewCard"),
+   
+   path('SolidWasteOverviewView/',SolidWasteOverviewView.as_view(),name="SolidWasteOverviewView"),
+   path('SolidWasteViewCard/',SolidWasteViewCard.as_view(),name="SolidWasteViewCard"),
+   
+   path('E_WasteOverviewView/',E_WasteOverviewView.as_view(),name="E_WasteOverviewView"),
+   path('E_WasteViewCard/',E_WasteViewCard.as_view(),name="E_WasteViewCard"),
+   
+   path('Biomedical_WasteOverviewView/',Biomedical_WasteOverviewView.as_view(),name="Biomedical_WasteOverviewView"),
+   path('Biomedical_WasteViewCard/',Biomedical_WasteViewCard.as_view(),name="Biomedical_WasteViewCard"),
    
    
+   path('Liquid_DischargeOverviewView/',Liquid_DischargeOverviewView.as_view(),name="Liquid_DischargeOverviewView"),
+   path('Liquid_DischargeViewCard/',Liquid_DischargeViewCard.as_view(),name='Liquid_DischargeViewCard'),
+   
+   path('OthersOverviewView/',OthersOverviewView.as_view(),name='OthersOverviewView'),
+   path('OthersViewCard/',OthersViewCard.as_view(),name='OthersViewCard'),
+   
+   path('Waste_Sent_For_RecycleOverviewView/',Waste_Sent_For_RecycleOverviewView.as_view(),name='Waste_Sent_For_RecycleOverviewView'),
+   path('Sent_For_RecycleViewCard/',Sent_For_RecycleViewCard.as_view(),name='Sent_For_RecycleViewCard'),
+   
+   path('Waste_Sent_For_LandFillOverviewView/',Waste_Sent_For_LandFillOverviewView.as_view(),name='Waste_Sent_For_LandFillOverviewView'),
+   path('Sent_For_LandFillViewCard/',Sent_For_LandFillViewCard.as_view(),name='Sent_For_LandFillViewCard'),
+   
+   path('StackedWasteOverviewView/',StackedWasteOverviewView.as_view(),name='StackedWasteOverviewView'),
    
    #Apis for Waste overviewgraphs Ends
    
