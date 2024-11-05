@@ -1,5 +1,6 @@
 
 from datetime import datetime
+from collections import defaultdict
 from django.db.models import Sum, Value, FloatField
 from django.db.models.functions import Coalesce, Cast
 from django.utils import timezone
@@ -547,15 +548,29 @@ class FoodWasteOverviewView(APIView):
                     .order_by('created_at__month')
                 )
 
-            line_chart_data = []
+            # line_chart_data = []
 
-            if monthly_food_waste:
-                for entry in monthly_food_waste:
-                    month_name = datetime(1900, entry['created_at__month'], 1).strftime('%b')
-                    line_chart_data.append({
-                        "month": month_name,
-                        "food_waste": entry['total_food_waste']
-                    })
+            # if monthly_food_waste:
+            #     for entry in monthly_food_waste:
+            #         month_name = datetime(1900, entry['created_at__month'], 1).strftime('%b')
+            #         line_chart_data.append({
+            #             "month": month_name,
+            #             "food_waste": entry['total_food_waste']
+            #         })
+                    
+            line_chart_data = []
+            food_waste = defaultdict(float)
+
+            for entry in monthly_food_waste:
+                month_name = datetime(1900, entry['created_at__month'], 1).strftime('%b')
+                food_waste[entry['created_at__month']] = entry['total_food_waste']
+
+            for month in range(1, 13):
+                month_name = datetime(1900, month, 1).strftime('%b')
+                line_chart_data.append({
+                    "month": month_name,
+                    "food_waste": food_waste.get(month, 0)
+                })
 
             # Query for facility-wise food waste
             if facility_id and facility_id.lower() != 'all':
@@ -683,14 +698,19 @@ class SolidWasteOverviewView(APIView):
                 )
 
             line_chart_data = []
+            solid_waste = defaultdict(float)
 
             for entry in monthly_solid_waste:
                 month_name = datetime(1900, entry['created_at__month'], 1).strftime('%b')
+                solid_waste[entry['created_at__month']] = entry['total_solid_waste']
+
+            for month in range(1, 13):
+                month_name = datetime(1900, month, 1).strftime('%b')
                 line_chart_data.append({
                     "month": month_name,
-                    "solid_waste": entry['total_solid_waste']
+                    "solid_waste": solid_waste.get(month, 0)
                 })
-
+                
             # Query for facility-wise solid waste
             if facility_id and facility_id.lower() != 'all':
                 facility_solid_waste = (
@@ -708,6 +728,7 @@ class SolidWasteOverviewView(APIView):
                 )
 
             total_solid_waste = sum(entry['total_solid_waste'] for entry in facility_solid_waste)
+            
             donut_chart_data = [
                 {
                     "facility_name": entry['facility__facility_name'],
@@ -813,16 +834,20 @@ class E_WasteOverviewView(APIView):
                     .annotate(total_e_waste=Sum('e_waste'))
                     .order_by('created_at__month')
                 )
-
+                
             line_chart_data = []
+            e_waste = defaultdict(float)
 
             for entry in monthly_e_waste:
                 month_name = datetime(1900, entry['created_at__month'], 1).strftime('%b')
+                e_waste[entry['created_at__month']] = entry['total_e_waste']
+
+            for month in range(1, 13):
+                month_name = datetime(1900, month, 1).strftime('%b')
                 line_chart_data.append({
                     "month": month_name,
-                    "e_waste": entry['total_e_waste']
+                    "e_waste": e_waste.get(month, 0)
                 })
-
             # Query for facility-wise e-waste
             if facility_id and facility_id.lower() != 'all':
                 facility_e_waste = (
@@ -946,15 +971,22 @@ class Biomedical_WasteOverviewView(APIView):
                     .order_by('created_at__month')
                 )
 
+            
             line_chart_data = []
+            biomedical_waste = defaultdict(float)
 
             for entry in monthly_biomedical_waste:
                 month_name = datetime(1900, entry['created_at__month'], 1).strftime('%b')
+                biomedical_waste[entry['created_at__month']] = entry['total_biomedical_waste']
+
+            for month in range(1, 13):
+                month_name = datetime(1900, month, 1).strftime('%b')
                 line_chart_data.append({
                     "month": month_name,
-                    "biomedical_waste": entry['total_biomedical_waste']
+                    "biomedical_waste": biomedical_waste.get(month, 0)
                 })
-
+                
+                
             if facility_id and facility_id.lower() != 'all':
                 facility_biomedical_waste = (
                     Waste.objects.filter(user=user, facility__id=facility_id)
@@ -1074,16 +1106,21 @@ class Liquid_DischargeOverviewView(APIView):
                     .annotate(total_liquid_discharge=Sum('liquid_discharge'))
                     .order_by('created_at__month')
                 )
-
+                
             line_chart_data = []
+            liquid_discharge = defaultdict(float)
 
             for entry in monthly_liquid_discharge:
                 month_name = datetime(1900, entry['created_at__month'], 1).strftime('%b')
+                liquid_discharge[entry['created_at__month']] = entry['total_liquid_discharge']
+
+            for month in range(1, 13):
+                month_name = datetime(1900, month, 1).strftime('%b')
                 line_chart_data.append({
                     "month": month_name,
-                    "liquid_discharge": entry['total_liquid_discharge']
+                    "liquid_discharge": liquid_discharge.get(month, 0)
                 })
-
+            
             if facility_id and facility_id.lower() != 'all':
                 facility_liquid_discharge = (
                     Waste.objects.filter(user=user, facility__id=facility_id)
@@ -1205,12 +1242,17 @@ class OthersOverviewView(APIView):
                 )
 
             line_chart_data = []
+            others = defaultdict(float)
 
             for entry in monthly_others:
                 month_name = datetime(1900, entry['created_at__month'], 1).strftime('%b')
+                others[entry['created_at__month']] = entry['total_others']
+
+            for month in range(1, 13):
+                month_name = datetime(1900, month, 1).strftime('%b')
                 line_chart_data.append({
                     "month": month_name,
-                    "others": entry['total_others']
+                    "others": others.get(month, 0)
                 })
 
             if facility_id and facility_id.lower() != 'all':
@@ -1333,14 +1375,19 @@ class Waste_Sent_For_RecycleOverviewView(APIView):
                 )
 
             line_chart_data = []
+            sent_for_recycle = defaultdict(float)
 
             for entry in monthly_sent_for_recycle:
                 month_name = datetime(1900, entry['created_at__month'], 1).strftime('%b')
+                sent_for_recycle[entry['created_at__month']] = entry['total_sent_for_recycle']
+
+            for month in range(1, 13):
+                month_name = datetime(1900, month, 1).strftime('%b')
                 line_chart_data.append({
                     "month": month_name,
-                    "sent_for_recycle": entry['total_sent_for_recycle']
+                    "sent_for_recycle": sent_for_recycle.get(month, 0)
                 })
-
+            
             if facility_id and facility_id.lower() != 'all':
                 facility_sent_for_recycle = (
                     Waste.objects.filter(user=user, facility__id=facility_id)
@@ -1471,6 +1518,20 @@ class Waste_Sent_For_LandFillOverviewView(APIView):
                     
                 })
 
+            line_chart_data = []
+            send_to_landfill = defaultdict(float)
+
+            for entry in monthly_send_to_landfill:
+                month_name = datetime(1900, entry['created_at__month'], 1).strftime('%b')
+                send_to_landfill[entry['created_at__month']] = entry['total_send_to_landfill']
+
+            for month in range(1, 13):
+                month_name = datetime(1900, month, 1).strftime('%b')
+                line_chart_data.append({
+                    "month": month_name,
+                    "send_to_landfill": send_to_landfill.get(month, 0)
+                })
+            
             if facility_id and facility_id.lower() != 'all':
                 facility_send_to_landfill = (
                     Waste.objects.filter(user=user, facility__id=facility_id)
@@ -1622,7 +1683,335 @@ class StackedWasteOverviewView(APIView):
         except Exception as e:
             print(f"Error occurred: {e}") 
             return Response({'error': f'An error occurred: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+  
+  
+#Waste overview Donut Chart
+class WasteOverallDonutChartView(APIView):
+    
+#Sent to LandfillOverview
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        user = request.user
+        year = request.GET.get('year', None)
+        facility_id = request.GET.get('facility_id', None)
+        
+        if year is None:
+            return Response({'error': 'Year parameter is required.'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        try:
+            year = int(year)
+        except (TypeError, ValueError):
+            return Response({'error': 'Invalid year parameter.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            waste_types = [
+                'food_waste', 'solid_waste', 'e_waste', 'biomedical_waste', 'others'
+            ]
+
+            queryset = Waste.objects.filter(user=user, created_at__year=year)
+
+            if facility_id and facility_id.lower() != 'all':
+                queryset = queryset.filter(facility__id=facility_id)
+
+            waste_totals = queryset.aggregate(
+                food_waste_total=Coalesce(Sum(Cast('food_waste', FloatField())), 0.0),
+                solid_waste_total=Coalesce(Sum(Cast('solid_waste', FloatField())), 0.0),
+                e_waste_total=Coalesce(Sum(Cast('e_waste', FloatField())), 0.0),
+                biomedical_waste_total=Coalesce(Sum(Cast('biomedical_waste', FloatField())), 0.0),
+                others_total=Coalesce(Sum(Cast('others', FloatField())), 0.0)
+            )
+
+            overall_total = sum(waste_totals.values())
+
+            if overall_total == 0:
+                return Response({'error': 'No waste data available for the selected year and facility.'}, status=status.HTTP_204_NO_CONTENT)
+
+            # Calculate percentages
+            waste_percentages = {
+                'food_waste': (waste_totals['food_waste_total'] / overall_total) * 100,
+                'solid_waste': (waste_totals['solid_waste_total'] / overall_total) * 100,
+                'e_waste': (waste_totals['e_waste_total'] / overall_total) * 100,
+                'biomedical_waste': (waste_totals['biomedical_waste_total'] / overall_total) * 100,
+                'others': (waste_totals['others_total'] / overall_total) * 100,
+            }
+
+            # Format response data
+            response_data = {
+                "year": year,
+                "facility_id": facility_id,
+                "waste_percentages": waste_percentages
+            }
+
+            return Response(response_data, status=status.HTTP_200_OK)
+
+        except Exception as e:
+            print(f"Error occurred: {e}")
+            return Response({'error': f'An error occurred: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
+ #       
+class SentToLandfillOverviewView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        user = request.user
+        year = request.GET.get('year', None)
+        facility_id = request.GET.get('facility_id', None)
+        
+        if year is None:
+            return Response({'error': 'Year parameter is required.'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        try:
+            year = int(year)
+        except (TypeError, ValueError):
+            return Response({'error': 'Invalid year parameter.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            overall_total_fields = [
+                'food_waste', 'solid_waste', 'e_waste', 'biomedical_waste', 'others'
+            ]
+
+            queryset = Waste.objects.filter(user=user, created_at__year=year)
+
+            if facility_id and facility_id.lower() != 'all':
+                queryset = queryset.filter(facility__id=facility_id)
+
+            sent_to_landfill_total = queryset.aggregate(
+                total=Coalesce(Sum(Cast('send_to_landfill', FloatField())), 0.0)
+            )['total']
+
+            overall_total = sum(
+                queryset.aggregate(
+                    **{f"{waste_type}_total": Coalesce(Sum(Cast(waste_type, FloatField())), 0.0)
+                       for waste_type in overall_total_fields}
+                ).values()
+            )
+
+            remaining_waste_total = overall_total - sent_to_landfill_total
+
+            if overall_total == 0:
+                return Response({'error': 'No waste data available for the selected year and facility.'}, status=status.HTTP_204_NO_CONTENT)
+
+            # Calculate percentages
+            landfill_percentage = (sent_to_landfill_total / overall_total) * 100
+            remaining_percentage = (remaining_waste_total / overall_total) * 100
+
+            # Format response data
+            response_data = {
+                "year": year,
+                "facility_id": facility_id,
+                "landfill_percentage": landfill_percentage,
+                "remaining_percentage": remaining_percentage
+            }
+
+            return Response(response_data, status=status.HTTP_200_OK)
+
+        except Exception as e:
+            print(f"Error occurred: {e}")
+            return Response({'error': f'An error occurred: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
+#Sent to Recycle
+class SentToRecycledOverviewView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        user = request.user
+        year = request.GET.get('year', None)
+        facility_id = request.GET.get('facility_id', None)
+        
+        if year is None:
+            return Response({'error': 'Year parameter is required.'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        try:
+            year = int(year)
+        except (TypeError, ValueError):
+            return Response({'error': 'Invalid year parameter.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            overall_total_fields = [
+                'food_waste', 'solid_waste', 'e_waste', 'biomedical_waste', 'others'
+            ]
+
+            queryset = Waste.objects.filter(user=user, created_at__year=year)
+            
+            if facility_id and facility_id.lower() != 'all':
+                queryset = queryset.filter(facility__id=facility_id)
+
+            # Calculate total for 'sent_for_recycle'
+            sent_for_recycle_total = queryset.aggregate(
+                total=Coalesce(Sum(Cast('sent_for_recycle', FloatField())), 0.0)
+            )['total']
+
+            # Calculate total for other waste fields
+            overall_total = sum(
+                queryset.aggregate(
+                    **{f"{waste_type}_total": Coalesce(Sum(Cast(waste_type, FloatField())), 0.0)
+                       for waste_type in overall_total_fields}
+                ).values()
+            )
+
+            # Calculate remaining waste by excluding 'sent_for_recycle'
+            remaining_waste_total = overall_total - sent_for_recycle_total
+            
+            # overall_total += sent_for_recycle_total
+
+            if overall_total == 0:
+                return Response({'error': 'No waste data available for the selected year and facility.'}, status=status.HTTP_204_NO_CONTENT)
+
+            # Calculate percentages
+            recycle_percentage = (sent_for_recycle_total / overall_total) * 100
+            remaining_percentage = (remaining_waste_total / overall_total) * 100
+
+            # Format response data
+            response_data = {
+                "year": year,
+                "facility_id": facility_id,
+                "recycle_percentage": recycle_percentage,
+                "remaining_percentage": remaining_percentage
+            }
+
+            return Response(response_data, status=status.HTTP_200_OK)
+
+        except Exception as e:
+            print(f"Error occurred: {e}")
+            return Response({'error': f'An error occurred: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         
 '''Waste Overviewgraphs and Individual Line charts and donut charts Ends'''
 
 
+'''Energy  Overview Cards ,Graphs and Individual line charts and donut charts Starts'''
+#HVAC CardOverView
+class HVAC_CardOverview(APIView):
+    permission_classes = [IsAuthenticated]
+    
+    def get(self,request):
+        user = request.user
+        year = request.GET.get('year',None)
+        facility_id = request.GET.get('facility_id',None)
+        
+        if year is None:
+            return Response({'error':'Year Parameter is Required'},status=status.HTTP_400_BAD_REQUEST)
+        
+        try:
+            year = int(year)
+        except(TypeError,ValueError):
+            return Response({'error':'Invalid Year Parameter'},status=status.HTTP_400_BAD_REQUEST)
+        
+        try:
+            HVAC_data = Energy.objects.filter(user=user,created_at__year=year)
+            
+            if facility_id and facility_id.lower() != 'all':
+                HVAC_data = HVAC_data.filter(facility_id = facility_id)
+            
+            facility_HVAC = (
+                HVAC_data
+                .values('facility__facility_name')
+                .annotate(total_hvac=Sum('hvac'))
+                .order_by('-total_hvac')
+            )
+            facility_HVAC_data = [
+                {
+                    "facility_name": entry['facility__facility_name'],
+                    "total_hvac": entry['total_hvac']
+                }
+                for entry in facility_HVAC
+            ]
+            overall_hvac = HVAC_data.aggregate(total=Sum('hvac'))['total'] or 0
+
+            response_data = {
+                'overall_hvac': overall_hvac,
+                'facility_hvac': facility_HVAC_data,
+            }
+            return Response(response_data, status=status.HTTP_200_OK)
+
+        except Exception as e:
+            return Response({'error': 'An error occurred while processing your request.'},status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+#HVAC Line Charts and Donut Chart
+class HVACOverviewView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        user = request.user
+        facility_id = request.GET.get('facility_id', None)
+        year = request.GET.get('year', None)
+        
+        if year is None:
+            return Response({'error': 'Year parameter is required.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            year = int(year)
+        except (TypeError, ValueError):
+            return Response({'error': 'Invalid year parameter.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            # Query to get monthly HVAC data
+            if facility_id and facility_id.lower() != 'all':
+                monthly_hvac = (
+                    Energy.objects.filter(user=user, facility__id=facility_id, created_at__year=year)
+                    .values('created_at__month')
+                    .annotate(total_hvac=Sum('hvac'))
+                    .order_by('created_at__month')
+                )
+            else:
+                monthly_hvac = (
+                    Energy.objects.filter(user=user, created_at__year=year)
+                    .values('created_at__month')
+                    .annotate(total_hvac=Sum('hvac'))
+                    .order_by('created_at__month')
+                )
+
+            line_chart_data = []
+            hvac_data = defaultdict(float)
+
+            for entry in monthly_hvac:
+                month_name = datetime(1900, entry['created_at__month'], 1).strftime('%b')
+                hvac_data[entry['created_at__month']] = entry['total_hvac']
+
+            for month in range(1, 13):
+                month_name = datetime(1900, month, 1).strftime('%b')
+                line_chart_data.append({
+                    "month": month_name,
+                    "hvac": hvac_data.get(month, 0)
+                })
+
+            # Query for facility-wise HVAC data
+            if facility_id and facility_id.lower() != 'all':
+                facility_hvac = (
+                    Energy.objects.filter(user=user, facility__id=facility_id)
+                    .values('facility__facility_name')
+                    .annotate(total_hvac=Sum('hvac'))
+                    .order_by('-total_hvac')
+                )
+            else:
+                facility_hvac = (
+                    Energy.objects.filter(user=user)
+                    .values('facility__facility_name')
+                    .annotate(total_hvac=Sum('hvac'))
+                    .order_by('-total_hvac')
+                )
+
+            total_hvac = sum(entry['total_hvac'] for entry in facility_hvac) or 0
+            
+            donut_chart_data = [
+                {
+                    "facility_name": entry['facility__facility_name'],
+                    "percentage": (entry['total_hvac'] / total_hvac * 100) if total_hvac else 0,
+                }
+                for entry in facility_hvac
+            ]
+
+            response_data = {
+                "line_chart_data": line_chart_data,
+                "donut_chart_data": donut_chart_data
+            }
+
+            return Response(response_data, status=status.HTTP_200_OK)
+
+        except Exception as e:
+            return Response({'error': 'An error occurred while processing your request.'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)    
+  
+  
+
+'''Energy  Overview Cards ,Graphs and Individual line charts and donut charts Ends'''
