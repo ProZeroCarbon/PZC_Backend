@@ -73,18 +73,18 @@ class UserLoginSerializer(serializers.Serializer):
 class OrganizationSerializer(serializers.ModelSerializer):
     class Meta:
         model = Org_registration
-        fields = ['organization_name', 'business_executive_name', 'location', 'branch_id', 'description']
+        fields = ['Organization_Name', 'Business_executive_Name', 'Location', 'Branch_ID', 'description']
 
     # Validation for 'organization_name'
-    def validate_organization_name(self, value):
+    def validate_Organization_Name(self, value):
         request = self.context.get('request')
         
         if request and request.method in ['PUT', 'PATCH']:
             organization_id = request.parser_context['kwargs'].get('pk')
-            if Org_registration.objects.exclude(pk=organization_id).filter(organization_name=value).exists():
+            if Org_registration.objects.exclude(pk=organization_id).filter(Organization_Name=value).exists():
                 raise serializers.ValidationError("An organization with this name already exists.")
         else:
-            if Org_registration.objects.filter(organization_name=value).exists():
+            if Org_registration.objects.filter(Organization_Name=value).exists():
                 raise serializers.ValidationError("An organization with this name already exists.")
         
         if len(value) < 3:
@@ -182,20 +182,20 @@ class WasteCreateSerializer(serializers.ModelSerializer):
 class EnergySerializer(serializers.ModelSerializer):
     class Meta:
         model = Energy
-        fields = ['hvac', 'production', 'stp_etp', 'admin_block', 
-                  'utilities', 'others', 'fuel_used_in_Operations','fuel_consumption','renewable_energy_solar', 
-                  'renewable_energy_others', 'facility']
+        fields = ['category','DatePicker','hvac', 'production', 'stp', 'admin_block', 
+                  'utilities', 'others', 'fuel_used_in_Operations','fuel_consumption','renewable_solar', 
+                  'renewable_other', 'facility']
 
 
 class EnergyCreateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Energy
-        fields = ['hvac', 'production', 'stp_etp', 'admin_block', 
-                  'utilities', 'others', 'fuel_used_in_Operations','fuel_consumption', 'renewable_energy_solar', 
-                  'renewable_energy_others', 'facility']
+        fields = ['category','DatePicker','hvac', 'production', 'stp', 'admin_block', 
+                  'utilities', 'others', 'fuel_used_in_Operations','fuel_consumption', 'renewable_solar', 
+                  'renewable_other', 'facility']
     
     def validate(self, data):
-        if data['hvac'] < 0 or data['production'] < 0 or data['stp_etp'] < 0:
+        if data['hvac'] < 0 or data['production'] < 0 or data['stp'] < 0:
             raise serializers.ValidationError("Energy usage values must be positive.")
         return data
 
@@ -209,18 +209,18 @@ class EnergyCreateSerializer(serializers.ModelSerializer):
 class WaterSerializer(serializers.ModelSerializer):
     class Meta:
         model = Water
-        fields = ['generated_water', 'recycled_water', 'softener_usage', 
-                  'boiler_usage', 'other_usage','facility']
+        fields = ['DatePicker','category','Generated_Water', 'Recycled_Water', 'Softener_usage', 
+                  'Boiler_usage', 'otherUsage', 'facility']
 
 
 class WaterCreateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Water
-        fields = ['generated_water', 'recycled_water', 'softener_usage', 
-                  'boiler_usage', 'other_usage', 'facility']
+        fields = ['DatePicker','category','Generated_Water', 'Recycled_Water', 'Softener_usage', 
+                  'Boiler_usage', 'otherUsage', 'facility']
 
     def validate(self, data):
-        if data['generated_water'] < 0 or data['recycled_water'] < 0:
+        if data['Generated_Water'] < 0 or data['Recycled_Water'] < 0:
             raise serializers.ValidationError("Water usage values must be positive.")
         # if data.get('recycled_water', 0) >= data.get('generated_water', 0):
         #     raise serializers.ValidationError("Recycled water must be less than generated water.")
@@ -240,15 +240,15 @@ class WaterCreateSerializer(serializers.ModelSerializer):
 class BiodiversitySerializer(serializers.ModelSerializer):
     class Meta:
         model = Biodiversity
-        fields = ['no_of_trees', 'Specie_name', 'age', 'height', 'width','total_area','new_trees_planted','head_count', 'facility']
+        fields = ['DatePicker','category','no_trees', 'species', 'age', 'height', 'width','totalArea','new_trees_planted','head_count', 'facility']
 
 
 class BiodiversityCreateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Biodiversity
-        fields = ['no_of_trees', 'Specie_name', 'age', 'height', 'width','total_area','new_trees_planted','head_count', 'facility']
+        fields = ['DatePicker','category','no_trees', 'species', 'age', 'height', 'width','totalArea','new_trees_planted','head_count', 'facility']
 
-    def validate_no_of_trees(self, value):
+    def validate_no_trees(self, value):
         if value <= 0:
             raise serializers.ValidationError("Number of trees must be a positive integer.")
         return value
@@ -265,10 +265,10 @@ class BiodiversityCreateSerializer(serializers.ModelSerializer):
 class LogisticesSerializer(serializers.ModelSerializer):
     class Meta:
         model = Logistices
-        fields = ['logistices_types','fuel_type','no_of_trips','fuel_consumption','no_of_vehicles','spends_on_fuel','facility']
+        fields = ['DatePicker','category','logistices_types','Typeof_fuel','km_travelled','No_Trips','fuel_consumption','No_Vehicles','Spends_on_fuel','facility']
     
     def validate(self, data):
-        if data['no_of_trips'] < 0 or data['fuel_consumption'] < 0 or data['no_of_vehicles'] < 0:
+        if data['No_Trips'] < 0 or data['fuel_consumption'] < 0 or data['No_Vehicles'] < 0:
             raise serializers.ValidationError("Trips, fuel consumption, and vehicles must be positive numbers.")
         return data
     

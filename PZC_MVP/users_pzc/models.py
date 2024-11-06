@@ -43,10 +43,10 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
 
 class Org_registration(models.Model):
     user = models.ForeignKey(CustomUser,on_delete=models.CASCADE)
-    organization_name = models.CharField(max_length=255)
-    business_executive_name = models.CharField(max_length=255)
-    location = models.CharField( max_length=255,null=True,blank=True)
-    branch_id = models.CharField(max_length=255)
+    Organization_Name = models.CharField(max_length=255)
+    Business_executive_Name = models.CharField(max_length=255)
+    Location = models.CharField( max_length=255,null=True,blank=True)
+    Branch_ID = models.CharField(max_length=255)
     description = models.CharField(max_length=255)
     
     def __str__(self):
@@ -99,49 +99,55 @@ class Energy(models.Model):
         ('Biomass - wood','Biomass - wood'),
         ('Biomass - Other solid waste','Biomass - Other solid waste')
     ]
+    category = models.CharField(max_length=255)
+    DatePicker = models.DateField(null=True,blank=True)
     hvac=models.FloatField(default=0.0)
     production = models.FloatField(default=0.0)
-    stp_etp = models.FloatField(default=0.0)
+    stp = models.FloatField(default=0.0)
     admin_block = models.FloatField(default=0.0)
     utilities = models.FloatField(default=0.0)
     others = models.FloatField(default=0.0)
     fuel_used_in_Operations = models.CharField(max_length=255,choices=FUEL_USED_IN_OPERATIONS_CHOICES,default='Types')
     fuel_consumption = models.FloatField(default=0.0)
-    renewable_energy_solar = models.FloatField(default=0.0)
-    renewable_energy_others = models.FloatField(default=0.0)
+    renewable_solar = models.FloatField(default=0.0)
+    renewable_other = models.FloatField(default=0.0)
     overall_usage = models.FloatField(default=0.0, editable=False)
     
     def __str__(self):
         return f"Energy data for {self.user.email}"
     def save(self,*args, **kwargs):
-        self.overall_usage = (self.hvac + self.production + self.stp_etp + self.admin_block + self.utilities + self.others)
+        self.overall_usage = (self.hvac + self.production + self.stp + self.admin_block + self.utilities + self.others)
         super(Energy,self).save(*args, **kwargs)
 
 class Water(models.Model):
     user = models.ForeignKey(CustomUser,on_delete=models.CASCADE)
     facility = models.ForeignKey(Facility, on_delete=models.CASCADE)
-    generated_water = models.FloatField(default=0.0)
-    recycled_water = models.FloatField(default=0.0)
-    softener_usage = models.FloatField(default=0.0)
-    boiler_usage = models.FloatField(default=0.0)
-    other_usage = models.FloatField(default=0.0)
+    category = models.CharField(max_length=255)
+    DatePicker = models.DateField(null=True,blank=True)
+    Generated_Water = models.FloatField(default=0.0)
+    Recycled_Water = models.FloatField(default=0.0)
+    Softener_usage = models.FloatField(default=0.0)
+    Boiler_usage = models.FloatField(default=0.0)
+    otherUsage = models.FloatField(default=0.0)
     overall_usage = models.FloatField(default=0.0, editable=False)
     
     def __str__(self):
         return f"Water data for {self.user.email}"
     def save(self, *args, **kwargs):
-        self.overall_usage = (self.generated_water + self.recycled_water + self.softener_usage + self.boiler_usage + self.other_usage)
+        self.overall_usage = (self.Generated_Water + self.Recycled_Water + self.Softener_usage + self.Boiler_usage + self.otherUsage)
         super(Water, self).save(*args, **kwargs)
     
 class Biodiversity(models.Model):
     user = models.ForeignKey(CustomUser,on_delete=models.CASCADE)
     facility = models.ForeignKey(Facility, on_delete=models.CASCADE)
-    no_of_trees=models.IntegerField(default=0)
-    Specie_name = models.CharField(max_length=255)
+    category = models.CharField(max_length=255)
+    DatePicker = models.DateField(null=True,blank=True)
+    no_trees=models.IntegerField(default=0)
+    species = models.CharField(max_length=255)
     age = models.IntegerField(default=0)
     height = models.FloatField(default=0.0)
     width = models.FloatField(default=0.0)
-    total_area = models.FloatField(default=0.0)
+    totalArea = models.FloatField(default=0.0)
     new_trees_planted = models.FloatField(default=0.0)
     head_count = models.FloatField(default=0.0)
     overall_Trees = models.FloatField(default=0.0, editable=False)
@@ -167,12 +173,15 @@ class Logistices(models.Model):
         ('petrol','Petrol'),
         ('LPG','LPG')
     ]
+    category = models.CharField(max_length=255)
+    DatePicker = models.DateField(null=True,blank=True)
     logistices_types = models.CharField(max_length=255,choices=LOGISTICES_TYPE_CHOICES,default='staff_logistices')
-    fuel_type = models.CharField(max_length=255,choices=FUEL_TYPE_CHOICES,default='diesel')
-    no_of_trips = models.IntegerField()
+    Typeof_fuel = models.CharField(max_length=255,choices=FUEL_TYPE_CHOICES,default='diesel')
+    km_travelled =models.FloatField(default=0.0)
+    No_Trips = models.IntegerField()
     fuel_consumption = models.FloatField(default=0.0)
-    no_of_vehicles = models.IntegerField()
-    spends_on_fuel = models.FloatField(default=0.0)
+    No_Vehicles = models.IntegerField()
+    Spends_on_fuel = models.FloatField(default=0.0)
     total_fuelconsumption = models.FloatField(default=0.0, editable=False)
     def __str__(self):
         return f" data for {self.user.email}"

@@ -5,19 +5,22 @@ from users_pzc.models import Waste, Energy, Water, Biodiversity, Logistices, Fac
 
 class FacilityFilter(filters.FilterSet):
     search = filters.CharFilter(field_name='facility_name', lookup_expr='icontains')
+    facility_id = filters.NumberFilter(field_name="id")
+    facility_location = filters.CharFilter(field_name="facility_location", lookup_expr='icontains')
 
     class Meta:
         model = Facility
-        fields = ['facility_name']
+        fields = ['facility_name','facility_id', 'facility_location']
 
 
 class FacilityDateFilterBase(filters.FilterSet):
     facility_id = filters.NumberFilter(field_name="facility__id")
+    facility_location = filters.CharFilter(field_name="facility__facility_location", lookup_expr='icontains')
     start_year = filters.NumberFilter(field_name="DatePicker", lookup_expr="year__gte")
     end_year = filters.NumberFilter(field_name="DatePicker", lookup_expr="year__lte")
 
     class Meta:
-        fields = ['facility_id', 'start_year', 'end_year']
+        fields = ['facility_id','facility_location', 'start_year', 'end_year']
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
