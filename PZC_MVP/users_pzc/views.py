@@ -535,17 +535,17 @@ class FoodWasteOverviewView(APIView):
             # Query to get monthly food waste
             if facility_id and facility_id.lower() != 'all':
                 monthly_food_waste = (
-                    Waste.objects.filter(user=user, facility__id=facility_id, date__year=year)
-                    .values('date__month')
+                    Waste.objects.filter(user=user, facility__id=facility_id, DatePicker__year=year)
+                    .values('DatePicker__month')
                     .annotate(total_food_waste=Sum('food_waste'))
-                    .order_by('date__month')
+                    .order_by('DatePicker__month')
                 )
             else:
                 monthly_food_waste = (
-                    Waste.objects.filter(user=user, date__year=year)
-                    .values('date__month')
+                    Waste.objects.filter(user=user, DatePicker__year=year)
+                    .values('DatePicker__month')
                     .annotate(total_food_waste=Sum('food_waste'))
-                    .order_by('date__month')
+                    .order_by('DatePicker__month')
                 )
 
           
@@ -553,8 +553,8 @@ class FoodWasteOverviewView(APIView):
             food_waste = defaultdict(float)
 
             for entry in monthly_food_waste:
-                month_name = datetime(1900, entry['date__month'], 1).strftime('%b')
-                food_waste[entry['date__month']] = entry['total_food_waste']
+                month_name = datetime(1900, entry['DatePicker__month'], 1).strftime('%b')
+                food_waste[entry['DatePicker__month']] = entry['total_food_waste']
 
             for month in range(1, 13):
                 month_name = datetime(1900, month, 1).strftime('%b')
@@ -618,7 +618,7 @@ class FoodWasteViewCard(APIView):
 
         try:
             # Filter waste data based on user, facility, and year
-            food_waste_data = Waste.objects.filter(user=user, data__year=year)
+            food_waste_data = Waste.objects.filter(user=user, DatePicker__year=year)
             
             if facility_id and facility_id.lower() != 'all':
                 food_waste_data = food_waste_data.filter(facility__id=facility_id)
@@ -674,58 +674,58 @@ class SolidWasteOverviewView(APIView):
         try:
             # Query to get monthly solid waste
             if facility_id and facility_id.lower() != 'all':
-                monthly_solid_waste = (
+                monthly_solid_Waste = (
                     Waste.objects.filter(user=user, facility__id=facility_id, DatePicker__year=year)
                     .values('DatePicker__month')
-                    .annotate(total_solid_waste=Sum('solid_waste'))
+                    .annotate(total_solid_Waste=Sum('solid_Waste'))
                     .order_by('DatePicker__month')
                 )
             else:
-                monthly_solid_waste = (
+                monthly_solid_Waste = (
                     Waste.objects.filter(user=user, data__year=year)
                     .values('DatePicker__month')
-                    .annotate(total_solid_waste=Sum('solid_waste'))
+                    .annotate(total_solid_Waste=Sum('solid_Waste'))
                     .order_by('DatePicker__month')
                 )
 
             line_chart_data = []
-            solid_waste = defaultdict(float)
+            solid_Waste = defaultdict(float)
 
-            for entry in monthly_solid_waste:
+            for entry in monthly_solid_Waste:
                 month_name = datetime(1900, entry['DatePicker__month'], 1).strftime('%b')
-                solid_waste[entry['DatePicker__month']] = entry['total_solid_waste']
+                solid_Waste[entry['DatePicker__month']] = entry['total_solid_Waste']
 
             for month in range(1, 13):
                 month_name = datetime(1900, month, 1).strftime('%b')
                 line_chart_data.append({
                     "month": month_name,
-                    "solid_waste": solid_waste.get(month, 0)
+                    "solid_Waste": solid_Waste.get(month, 0)
                 })
                 
             # Query for facility-wise solid waste
             if facility_id and facility_id.lower() != 'all':
-                facility_solid_waste = (
+                facility_solid_Waste = (
                     Waste.objects.filter(user=user, facility__id=facility_id)
                     .values('facility__facility_name')
-                    .annotate(total_solid_waste=Sum('solid_waste'))
-                    .order_by('-total_solid_waste')
+                    .annotate(total_solid_Waste=Sum('solid_Waste'))
+                    .order_by('-total_solid_Waste')
                 )
             else:
-                facility_solid_waste = (
+                facility_solid_Waste = (
                     Waste.objects.filter(user=user)
                     .values('facility__facility_name')
-                    .annotate(total_solid_waste=Sum('solid_waste'))
-                    .order_by('-total_solid_waste')
+                    .annotate(total_solid_Waste=Sum('solid_Waste'))
+                    .order_by('-total_solid_Waste')
                 )
 
-            total_solid_waste = sum(entry['total_solid_waste'] for entry in facility_solid_waste)
+            total_solid_Waste = sum(entry['total_solid_Waste'] for entry in facility_solid_Waste)
             
             donut_chart_data = [
                 {
                     "facility_name": entry['facility__facility_name'],
-                    "percentage": (entry['total_solid_waste'] / total_solid_waste * 100) if total_solid_waste else 0,
+                    "percentage": (entry['total_solid_Waste'] / total_solid_Waste * 100) if total_solid_Waste else 0,
                 }
-                for entry in facility_solid_waste
+                for entry in facility_solid_Waste
             ]
 
             response_data = {
@@ -757,33 +757,33 @@ class SolidWasteViewCard(APIView):
 
         try:
             # Filter waste data based on user, facility, and year
-            solid_waste_data = Waste.objects.filter(user=user, DatePicker__year=year)
+            solid_Waste_data = Waste.objects.filter(user=user, DatePicker__year=year)
             
             if facility_id and facility_id.lower() != 'all':
-                solid_waste_data = solid_waste_data.filter(facility__id=facility_id)
+                solid_Waste_data = solid_Waste_data.filter(facility__id=facility_id)
 
             # Calculate the total food waste for each facility for the specified year
-            facility_solid_waste = (
-                solid_waste_data
+            facility_solid_Waste = (
+                solid_Waste_data
                 .values('facility__facility_name')
-                .annotate(total_solid_waste=Sum('solid_waste'))
-                .order_by('-total_solid_waste')
+                .annotate(total_solid_Waste=Sum('solid_Waste'))
+                .order_by('-total_solid_Waste')
             )
 
-            facility_solid_waste_data = [
+            facility_solid_Waste_data = [
                 {
                     "facility_name": entry['facility__facility_name'],
-                    "total_solid_waste": entry['total_solid_waste']
+                    "total_solid_Waste": entry['total_solid_Waste']
                 }
-                for entry in facility_solid_waste
+                for entry in facility_solid_Waste
             ]
 
             # Overall food waste for the year across all facilities (if applicable)
-            overall_solid_waste = solid_waste_data.aggregate(total=Sum('solid_waste'))['total'] or 0
+            overall_solid_Waste = solid_Waste_data.aggregate(total=Sum('solid_Waste'))['total'] or 0
 
             response_data = {
-                'overall_solid_waste': overall_solid_waste,
-                'facility_solid_waste': facility_solid_waste_data,
+                'overall_solid_Waste': overall_solid_Waste,
+                'facility_solid_Waste': facility_solid_Waste_data,
             }
 
             return Response(response_data, status=status.HTTP_200_OK)
@@ -812,56 +812,56 @@ class E_WasteOverviewView(APIView):
         try:
             # Query to get monthly e-waste
             if facility_id and facility_id.lower() != 'all':
-                monthly_e_waste = (
-                    Waste.objects.filter(user=user, facility__id=facility_id, created_at__year=year)
-                    .values('created_at__month')
-                    .annotate(total_e_waste=Sum('e_waste'))
-                    .order_by('created_at__month')
+                monthly_E_Waste = (
+                    Waste.objects.filter(user=user, facility__id=facility_id, DatePicker__year=year)
+                    .values('DatePicker__month')
+                    .annotate(total_E_Waste=Sum('E_Waste'))
+                    .order_by('DatePicker__month')
                 )
             else:
-                monthly_e_waste = (
-                    Waste.objects.filter(user=user, created_at__year=year)
-                    .values('created_at__month')
-                    .annotate(total_e_waste=Sum('e_waste'))
-                    .order_by('created_at__month')
+                monthly_E_Waste = (
+                    Waste.objects.filter(user=user, DatePicker__year=year)
+                    .values('DatePicker__month')
+                    .annotate(total_E_Waste=Sum('E_Waste'))
+                    .order_by('DatePicker__month')
                 )
                 
             line_chart_data = []
-            e_waste = defaultdict(float)
+            E_Waste = defaultdict(float)
 
-            for entry in monthly_e_waste:
-                month_name = datetime(1900, entry['created_at__month'], 1).strftime('%b')
-                e_waste[entry['created_at__month']] = entry['total_e_waste']
+            for entry in monthly_E_Waste:
+                month_name = datetime(1900, entry['DatePicker__month'], 1).strftime('%b')
+                E_Waste[entry['DatePicker__month']] = entry['total_E_Waste']
 
             for month in range(1, 13):
                 month_name = datetime(1900, month, 1).strftime('%b')
                 line_chart_data.append({
                     "month": month_name,
-                    "e_waste": e_waste.get(month, 0)
+                    "E_Waste": E_Waste.get(month, 0)
                 })
             # Query for facility-wise e-waste
             if facility_id and facility_id.lower() != 'all':
-                facility_e_waste = (
+                facility_E_Waste = (
                     Waste.objects.filter(user=user, facility__id=facility_id)
                     .values('facility__facility_name')
-                    .annotate(total_e_waste=Sum('e_waste'))
-                    .order_by('-total_e_waste')
+                    .annotate(total_E_Waste=Sum('E_Waste'))
+                    .order_by('-total_E_Waste')
                 )
             else:
-                facility_e_waste = (
+                facility_E_Waste = (
                     Waste.objects.filter(user=user)
                     .values('facility__facility_name')
-                    .annotate(total_e_waste=Sum('e_waste'))
-                    .order_by('-total_e_waste')
+                    .annotate(total_E_Waste=Sum('E_Waste'))
+                    .order_by('-total_E_Waste')
                 )
 
-            total_e_waste = sum(entry['total_e_waste'] for entry in facility_e_waste)
+            total_E_Waste = sum(entry['total_E_Waste'] for entry in facility_E_Waste)
             donut_chart_data = [
                 {
                     "facility_name": entry['facility__facility_name'],
-                    "percentage": (entry['total_e_waste'] / total_e_waste * 100) if total_e_waste else 0,
+                    "percentage": (entry['total_E_Waste'] / total_E_Waste * 100) if total_E_Waste else 0,
                 }
-                for entry in facility_e_waste
+                for entry in facility_E_Waste
             ]
 
             response_data = {
@@ -893,33 +893,33 @@ class E_WasteViewCard(APIView):
 
         try:
             # Filter waste data based on user, facility, and year
-            e_waste_data = Waste.objects.filter(user=user, created_at__year=year)
+            E_Waste_data = Waste.objects.filter(user=user, DatePicker__year=year)
             
             if facility_id and facility_id.lower() != 'all':
-                e_waste_data = e_waste_data.filter(facility__id=facility_id)
+                E_Waste_data = E_Waste_data.filter(facility__id=facility_id)
 
             # Calculate the total food waste for each facility for the specified year
-            facility_e_waste = (
-                e_waste_data
+            facility_E_Waste = (
+                E_Waste_data
                 .values('facility__facility_name')
-                .annotate(total_e_waste=Sum('e_waste'))
-                .order_by('-total_e_waste')
+                .annotate(total_E_Waste=Sum('E_Waste'))
+                .order_by('-total_E_Waste')
             )
 
-            facility_e_waste_data = [
+            facility_E_Waste_data = [
                 {
                     "facility_name": entry['facility__facility_name'],
-                    "total_e_waste": entry['total_e_waste']
+                    "total_E_Waste": entry['total_E_Waste']
                 }
-                for entry in facility_e_waste
+                for entry in facility_E_Waste
             ]
 
             # Overall food waste for the year across all facilities (if applicable)
-            overall_e_waste = e_waste_data.aggregate(total=Sum('e_waste'))['total'] or 0
+            overall_E_Waste = E_Waste_data.aggregate(total=Sum('E_Waste'))['total'] or 0
 
             response_data = {
-                'overall_e_waste': overall_e_waste,
-                'facility_e_waste': facility_e_waste_data,
+                'overall_E_Waste': overall_E_Waste,
+                'facility_E_Waste': facility_E_Waste_data,
             }
 
             return Response(response_data, status=status.HTTP_200_OK)
@@ -948,58 +948,58 @@ class Biomedical_WasteOverviewView(APIView):
 
         try:
             if facility_id and facility_id.lower() != 'all':
-                monthly_biomedical_waste = (
-                    Waste.objects.filter(user=user, facility__id=facility_id, created_at__year=year)
-                    .values('created_at__month')
-                    .annotate(total_biomedical_waste=Sum('biomedical_waste'))
-                    .order_by('created_at__month')
+                monthly_Biomedical_waste = (
+                    Waste.objects.filter(user=user, facility__id=facility_id, DatePicker__year=year)
+                    .values('DatePicker__month')
+                    .annotate(total_Biomedical_waste=Sum('Biomedical_waste'))
+                    .order_by('DatePicker__month')
                 )
             else:
-                monthly_biomedical_waste = (
-                    Waste.objects.filter(user=user, created_at__year=year)
-                    .values('created_at__month')
-                    .annotate(total_biomedical_waste=Sum('biomedical_waste'))
-                    .order_by('created_at__month')
+                monthly_Biomedical_waste = (
+                    Waste.objects.filter(user=user, DatePicker__year=year)
+                    .values('DatePicker__month')
+                    .annotate(total_Biomedical_waste=Sum('Biomedical_waste'))
+                    .order_by('DatePicker__month')
                 )
 
             
             line_chart_data = []
-            biomedical_waste = defaultdict(float)
+            Biomedical_waste = defaultdict(float)
 
-            for entry in monthly_biomedical_waste:
-                month_name = datetime(1900, entry['created_at__month'], 1).strftime('%b')
-                biomedical_waste[entry['created_at__month']] = entry['total_biomedical_waste']
+            for entry in monthly_Biomedical_waste:
+                month_name = datetime(1900, entry['DatePicker__month'], 1).strftime('%b')
+                Biomedical_waste[entry['DatePicker__month']] = entry['total_Biomedical_waste']
 
             for month in range(1, 13):
                 month_name = datetime(1900, month, 1).strftime('%b')
                 line_chart_data.append({
                     "month": month_name,
-                    "biomedical_waste": biomedical_waste.get(month, 0)
+                    "Biomedical_waste": Biomedical_waste.get(month, 0)
                 })
                 
                 
             if facility_id and facility_id.lower() != 'all':
-                facility_biomedical_waste = (
+                facility_Biomedical_waste = (
                     Waste.objects.filter(user=user, facility__id=facility_id)
                     .values('facility__facility_name')
-                    .annotate(total_biomedical_waste=Sum('biomedical_waste'))
-                    .order_by('-total_biomedical_waste')
+                    .annotate(total_Biomedical_waste=Sum('Biomedical_waste'))
+                    .order_by('-total_Biomedical_waste')
                 )
             else:
-                facility_biomedical_waste = (
+                facility_Biomedical_waste = (
                     Waste.objects.filter(user=user)
                     .values('facility__facility_name')
-                    .annotate(total_biomedical_waste=Sum('biomedical_waste'))
-                    .order_by('-total_biomedical_waste')
+                    .annotate(total_Biomedical_waste=Sum('Biomedical_waste'))
+                    .order_by('-total_Biomedical_waste')
                 )
 
-            total_biomedical_waste = sum(entry['total_biomedical_waste'] for entry in facility_biomedical_waste)
+            total_Biomedical_waste = sum(entry['total_Biomedical_waste'] for entry in facility_Biomedical_waste)
             donut_chart_data = [
                 {
                     "facility_name": entry['facility__facility_name'],
-                    "percentage": (entry['total_biomedical_waste'] / total_biomedical_waste * 100) if total_biomedical_waste else 0,
+                    "percentage": (entry['total_Biomedical_waste'] / total_Biomedical_waste * 100) if total_Biomedical_waste else 0,
                 }
-                for entry in facility_biomedical_waste
+                for entry in facility_Biomedical_waste
             ]
 
             response_data = {
@@ -1031,31 +1031,31 @@ class Biomedical_WasteViewCard(APIView):
 
         try:
            
-            biomedical_waste_data = Waste.objects.filter(user=user, created_at__year=year)
+            Biomedical_waste_data = Waste.objects.filter(user=user, DatePicker__year=year)
             
             if facility_id and facility_id.lower() != 'all':
-                biomedical_waste_data = biomedical_waste_data.filter(facility__id=facility_id)
+                Biomedical_waste_data = Biomedical_waste_data.filter(facility__id=facility_id)
 
-            facility_biomedical_waste = (
-                biomedical_waste_data
+            facility_Biomedical_waste = (
+                Biomedical_waste_data
                 .values('facility__facility_name')
-                .annotate(total_biomedical_waste=Sum('biomedical_waste'))
-                .order_by('-total_biomedical_waste')
+                .annotate(total_Biomedical_waste=Sum('Biomedical_waste'))
+                .order_by('-total_Biomedical_waste')
             )
 
-            facility_biomedical_waste_data = [
+            facility_Biomedical_waste_data = [
                 {
                     "facility_name": entry['facility__facility_name'],
-                    "total_biomedical_waste": entry['total_biomedical_waste']
+                    "total_Biomedical_waste": entry['total_Biomedical_waste']
                 }
-                for entry in facility_biomedical_waste
+                for entry in facility_Biomedical_waste
             ]
 
-            overall_biomedical_waste = biomedical_waste_data.aggregate(total=Sum('biomedical_waste'))['total'] or 0
+            overall_Biomedical_waste = Biomedical_waste_data.aggregate(total=Sum('Biomedical_waste'))['total'] or 0
 
             response_data = {
-                'overall_biomedical_waste': overall_biomedical_waste,
-                'facility_biomedical_waste': facility_biomedical_waste_data,
+                'overall_Biomedical_waste': overall_Biomedical_waste,
+                'facility_Biomedical_waste': facility_Biomedical_waste_data,
             }
 
             return Response(response_data, status=status.HTTP_200_OK)
@@ -1085,25 +1085,25 @@ class Liquid_DischargeOverviewView(APIView):
         try:
             if facility_id and facility_id.lower() != 'all':
                 monthly_liquid_discharge = (
-                    Waste.objects.filter(user=user, facility__id=facility_id, created_at__year=year)
-                    .values('created_at__month')
+                    Waste.objects.filter(user=user, facility__id=facility_id, DatePicker__year=year)
+                    .values('DatePicker__month')
                     .annotate(total_liquid_discharge=Sum('liquid_discharge'))
-                    .order_by('created_at__month')
+                    .order_by('DatePicker__month')
                 )
             else:
                 monthly_liquid_discharge = (
-                    Waste.objects.filter(user=user, created_at__year=year)
-                    .values('created_at__month')
+                    Waste.objects.filter(user=user, DatePicker__year=year)
+                    .values('DatePicker__month')
                     .annotate(total_liquid_discharge=Sum('liquid_discharge'))
-                    .order_by('created_at__month')
+                    .order_by('DatePicker__month')
                 )
                 
             line_chart_data = []
             liquid_discharge = defaultdict(float)
 
             for entry in monthly_liquid_discharge:
-                month_name = datetime(1900, entry['created_at__month'], 1).strftime('%b')
-                liquid_discharge[entry['created_at__month']] = entry['total_liquid_discharge']
+                month_name = datetime(1900, entry['DatePicker__month'], 1).strftime('%b')
+                liquid_discharge[entry['DatePicker__month']] = entry['total_liquid_discharge']
 
             for month in range(1, 13):
                 month_name = datetime(1900, month, 1).strftime('%b')
@@ -1167,7 +1167,7 @@ class Liquid_DischargeViewCard(APIView):
 
         try:
            
-            liquid_discharge_data = Waste.objects.filter(user=user, created_at__year=year)
+            liquid_discharge_data = Waste.objects.filter(user=user, DatePicker__year=year)
             
             if facility_id and facility_id.lower() != 'all':
                 liquid_discharge_data = liquid_discharge_data.filter(facility__id=facility_id)
@@ -1218,56 +1218,56 @@ class OthersOverviewView(APIView):
 
         try:
             if facility_id and facility_id.lower() != 'all':
-                monthly_others = (
-                    Waste.objects.filter(user=user, facility__id=facility_id, date__year=year)
-                    .values('date__month')
-                    .annotate(total_others=Sum('others'))
-                    .order_by('date__month')
+                monthly_other_waste = (
+                    Waste.objects.filter(user=user, facility__id=facility_id, DatePicker__year=year)
+                    .values('DatePicker__month')
+                    .annotate(total_other_waste=Sum('other_waste'))
+                    .order_by('DatePicker__month')
                 )
             else:
-                monthly_others = (
-                    Waste.objects.filter(user=user, date__year=year)
-                    .values('date__month')
-                    .annotate(total_others=Sum('others'))
-                    .order_by('date__month')
+                monthly_other_waste = (
+                    Waste.objects.filter(user=user, DatePicker__year=year)
+                    .values('DatePicker__month')
+                    .annotate(total_other_waste=Sum('other_waste'))
+                    .order_by('DatePicker__month')
                 )
 
             line_chart_data = []
-            others = defaultdict(float)
+            other_waste = defaultdict(float)
 
-            for entry in monthly_others:
-                month_name = datetime(1900, entry['date__month'], 1).strftime('%b')
-                others[entry['date__month']] = entry['total_others']
+            for entry in monthly_other_waste:
+                month_name = datetime(1900, entry['DatePicker__month'], 1).strftime('%b')
+                other_waste[entry['DatePicker__month']] = entry['total_other_waste']
 
             for month in range(1, 13):
                 month_name = datetime(1900, month, 1).strftime('%b')
                 line_chart_data.append({
                     "month": month_name,
-                    "others": others.get(month, 0)
+                    "other_waste": other_waste.get(month, 0)
                 })
 
             if facility_id and facility_id.lower() != 'all':
-                facility_others = (
+                facility_other_waste = (
                     Waste.objects.filter(user=user, facility__id=facility_id)
                     .values('facility__facility_name')
-                    .annotate(total_others=Sum('others'))
-                    .order_by('-total_others')
+                    .annotate(total_other_waste=Sum('other_waste'))
+                    .order_by('-total_other_waste')
                 )
             else:
-                facility_others = (
+                facility_other_waste = (
                     Waste.objects.filter(user=user)
                     .values('facility__facility_name')
-                    .annotate(total_others=Sum('others'))
-                    .order_by('-total_others')
+                    .annotate(total_other_waste=Sum('other_waste'))
+                    .order_by('-total_other_waste')
                 )
 
-            total_others = sum(entry['total_others'] for entry in facility_others)
+            total_other_waste = sum(entry['total_other_waste'] for entry in facility_other_waste)
             donut_chart_data = [
                 {
                     "facility_name": entry['facility__facility_name'],
-                    "percentage": (entry['total_others'] / total_others * 100) if total_others else 0,
+                    "percentage": (entry['total_other_waste'] / total_other_waste * 100) if total_other_waste else 0,
                 }
-                for entry in facility_others
+                for entry in facility_other_waste
             ]
 
             response_data = {
@@ -1299,31 +1299,31 @@ class OthersViewCard(APIView):
 
         try:
            
-            others_data = Waste.objects.filter(user=user, created_at__year=year)
+            other_waste_data = Waste.objects.filter(user=user, DatePicker__year=year)
             
             if facility_id and facility_id.lower() != 'all':
-                others_data = others_data.filter(facility__id=facility_id)
+                other_waste_data = other_waste_data.filter(facility__id=facility_id)
 
-            facility_others = (
-                others_data
+            facility_other_waste = (
+                other_waste_data
                 .values('facility__facility_name')
-                .annotate(total_others=Sum('others'))
-                .order_by('-total_others')
+                .annotate(total_other_waste=Sum('other_waste'))
+                .order_by('-total_other_waste')
             )
 
-            facility_others_data = [
+            facility_other_waste_data = [
                 {
                     "facility_name": entry['facility__facility_name'],
-                    "total_others": entry['total_others']
+                    "total_other_waste": entry['total_other_waste']
                 }
-                for entry in facility_others
+                for entry in facility_other_waste
             ]
 
-            overall_others = others_data.aggregate(total=Sum('others'))['total'] or 0
+            overall_other_waste = other_waste_data.aggregate(total=Sum('other_waste'))['total'] or 0
 
             response_data = {
-                'overall_others': overall_others,
-                'facility_others': facility_others_data,
+                'overall_other_waste': overall_other_waste,
+                'facility_other_waste': facility_other_waste_data,
             }
 
             return Response(response_data, status=status.HTTP_200_OK)
@@ -1351,56 +1351,56 @@ class Waste_Sent_For_RecycleOverviewView(APIView):
 
         try:
             if facility_id and facility_id.lower() != 'all':
-                monthly_sent_for_recycle = (
-                    Waste.objects.filter(user=user, facility__id=facility_id, created_at__year=year)
-                    .values('created_at__month')
-                    .annotate(total_sent_for_recycle=Sum('sent_for_recycle'))
-                    .order_by('created_at__month')
+                monthly_Recycle_waste = (
+                    Waste.objects.filter(user=user, facility__id=facility_id, DatePicker__year=year)
+                    .values('DatePicker__month')
+                    .annotate(total_Recycle_waste=Sum('Recycle_waste'))
+                    .order_by('DatePicker__month')
                 )
             else:
-                monthly_sent_for_recycle = (
-                    Waste.objects.filter(user=user, created_at__year=year)
-                    .values('created_at__month')
-                    .annotate(total_sent_for_recycle=Sum('sent_for_recycle'))
-                    .order_by('created_at__month')
+                monthly_Recycle_waste = (
+                    Waste.objects.filter(user=user, DatePicker__year=year)
+                    .values('DatePicker__month')
+                    .annotate(total_Recycle_waste=Sum('Recycle_waste'))
+                    .order_by('DatePicker__month')
                 )
 
             line_chart_data = []
-            sent_for_recycle = defaultdict(float)
+            Recycle_waste = defaultdict(float)
 
-            for entry in monthly_sent_for_recycle:
-                month_name = datetime(1900, entry['created_at__month'], 1).strftime('%b')
-                sent_for_recycle[entry['created_at__month']] = entry['total_sent_for_recycle']
+            for entry in monthly_Recycle_waste:
+                month_name = datetime(1900, entry['DatePicker__month'], 1).strftime('%b')
+                Recycle_waste[entry['DatePicker__month']] = entry['total_Recycle_waste']
 
             for month in range(1, 13):
                 month_name = datetime(1900, month, 1).strftime('%b')
                 line_chart_data.append({
                     "month": month_name,
-                    "sent_for_recycle": sent_for_recycle.get(month, 0)
+                    "Recycle_waste": Recycle_waste.get(month, 0)
                 })
             
             if facility_id and facility_id.lower() != 'all':
-                facility_sent_for_recycle = (
+                facility_Recycle_waste = (
                     Waste.objects.filter(user=user, facility__id=facility_id)
                     .values('facility__facility_name')
-                    .annotate(total_sent_for_recycle=Sum('sent_for_recycle'))
-                    .order_by('-total_sent_for_recycle')
+                    .annotate(total_Recycle_waste=Sum('Recycle_waste'))
+                    .order_by('-total_Recycle_waste')
                 )
             else:
-                facility_sent_for_recycle = (
+                facility_Recycle_waste = (
                     Waste.objects.filter(user=user)
                     .values('facility__facility_name')
-                    .annotate(total_sent_for_recycle=Sum('sent_for_recycle'))
-                    .order_by('-total_sent_for_recycle')
+                    .annotate(total_Recycle_waste=Sum('Recycle_waste'))
+                    .order_by('-total_Recycle_waste')
                 )
 
-            total_sent_for_recycle = sum(entry['total_sent_for_recycle'] for entry in facility_sent_for_recycle)
+            total_Recycle_waste = sum(entry['total_Recycle_waste'] for entry in facility_Recycle_waste)
             donut_chart_data = [
                 {
                     "facility_name": entry['facility__facility_name'],
-                    "percentage": (entry['total_sent_for_recycle'] / total_sent_for_recycle * 100) if total_sent_for_recycle else 0,
+                    "percentage": (entry['total_Recycle_waste'] / total_Recycle_waste * 100) if total_Recycle_waste else 0,
                 }
-                for entry in facility_sent_for_recycle
+                for entry in facility_Recycle_waste
             ]
 
             response_data = {
@@ -1433,31 +1433,31 @@ class Sent_For_RecycleViewCard(APIView):
 
         try:
            
-            sent_for_recycle_data = Waste.objects.filter(user=user, created_at__year=year)
+            Recycle_waste_data = Waste.objects.filter(user=user, DatePicker__year=year)
             
             if facility_id and facility_id.lower() != 'all':
-                sent_for_recycle_data = sent_for_recycle_data.filter(facility__id=facility_id)
+                Recycle_waste_data = Recycle_waste_data.filter(facility__id=facility_id)
 
-            facility_sent_for_recycle = (
-                sent_for_recycle_data
+            facility_Recycle_waste = (
+                Recycle_waste_data
                 .values('facility__facility_name')
-                .annotate(total_sent_for_recycle=Sum('sent_for_recycle'))
-                .order_by('-total_sent_for_recycle')
+                .annotate(total_Recycle_waste=Sum('Recycle_waste'))
+                .order_by('-total_Recycle_waste')
             )
 
-            facility_sent_for_recycle_data = [
+            facility_Recycle_waste_data = [
                 {
                     "facility_name": entry['facility__facility_name'],
-                    "total_sent_for_recycle": entry['total_sent_for_recycle']
+                    "total_Recycle_waste": entry['total_Recycle_waste']
                 }
-                for entry in facility_sent_for_recycle
+                for entry in facility_Recycle_waste
             ]
 
-            overall_sent_for_recycle = sent_for_recycle_data.aggregate(total=Sum('sent_for_recycle'))['total'] or 0
+            overall_Recycle_waste = Recycle_waste_data.aggregate(total=Sum('Recycle_waste'))['total'] or 0
 
             response_data = {
-                'overall_sent_for_recycle': overall_sent_for_recycle,
-                'facility_sent_for_recycle': facility_sent_for_recycle_data,
+                'overall_Recycle_waste': overall_Recycle_waste,
+                'facility_Recycle_waste': facility_Recycle_waste_data,
             }
 
             return Response(response_data, status=status.HTTP_200_OK)
@@ -1485,66 +1485,66 @@ class Waste_Sent_For_LandFillOverviewView(APIView):
 
         try:
             if facility_id and facility_id.lower() != 'all':
-                monthly_send_to_landfill = (
-                    Waste.objects.filter(user=user, facility__id=facility_id, created_at__year=year)
-                    .values('created_at__month')
-                    .annotate(total_send_to_landfill=Sum('send_to_landfill'))
-                    .order_by('created_at__month')
+                monthly_Landfill_waste = (
+                    Waste.objects.filter(user=user, facility__id=facility_id, DatePicker__year=year)
+                    .values('DatePicker__month')
+                    .annotate(total_Landfill_waste=Sum('Landfill_waste'))
+                    .order_by('DatePicker__month')
                 )
             else:
-                monthly_send_to_landfill = (
-                    Waste.objects.filter(user=user, created_at__year=year)
-                    .values('created_at__month')
-                    .annotate(total_send_to_landfill=Sum('send_to_landfill'))
-                    .order_by('created_at__month')
+                monthly_Landfill_waste = (
+                    Waste.objects.filter(user=user, DatePicker__year=year)
+                    .values('DatePicker__month')
+                    .annotate(total_Landfill_waste=Sum('Landfill_waste'))
+                    .order_by('DatePicker__month')
                 )
 
             line_chart_data = []
 
-            for entry in monthly_send_to_landfill:
-                month_name = datetime(1900, entry['created_at__month'], 1).strftime('%b')
+            for entry in monthly_Landfill_waste:
+                month_name = datetime(1900, entry['DatePicker__month'], 1).strftime('%b')
                 line_chart_data.append({
                     "month": month_name,
-                    "send_to_landfill": entry['total_send_to_landfill']
+                    "Landfill_waste": entry['total_Landfill_waste']
                     
                 })
 
             line_chart_data = []
-            send_to_landfill = defaultdict(float)
+            Landfill_waste = defaultdict(float)
 
-            for entry in monthly_send_to_landfill:
-                month_name = datetime(1900, entry['created_at__month'], 1).strftime('%b')
-                send_to_landfill[entry['created_at__month']] = entry['total_send_to_landfill']
+            for entry in monthly_Landfill_waste:
+                month_name = datetime(1900, entry['DatePicker__month'], 1).strftime('%b')
+                Landfill_waste[entry['DatePicker__month']] = entry['total_Landfill_waste']
 
             for month in range(1, 13):
                 month_name = datetime(1900, month, 1).strftime('%b')
                 line_chart_data.append({
                     "month": month_name,
-                    "send_to_landfill": send_to_landfill.get(month, 0)
+                    "Landfill_waste": Landfill_waste.get(month, 0)
                 })
             
             if facility_id and facility_id.lower() != 'all':
-                facility_send_to_landfill = (
+                facility_Landfill_waste = (
                     Waste.objects.filter(user=user, facility__id=facility_id)
                     .values('facility__facility_name')
-                    .annotate(total_send_to_landfill=Sum('send_to_landfill'))
-                    .order_by('-total_send_to_landfill')
+                    .annotate(total_Landfill_waste=Sum('Landfill_waste'))
+                    .order_by('-total_Landfill_waste')
                 )
             else:
-                facility_send_to_landfill = (
+                facility_Landfill_waste = (
                     Waste.objects.filter(user=user)
                     .values('facility__facility_name')
-                    .annotate(total_send_to_landfill=Sum('send_to_landfill'))
-                    .order_by('-total_send_to_landfill')
+                    .annotate(total_Landfill_waste=Sum('Landfill_waste'))
+                    .order_by('-total_Landfill_waste')
                 )
 
-            total_send_to_landfill = sum(entry['total_send_to_landfill'] for entry in facility_send_to_landfill)
+            total_Landfill_waste = sum(entry['total_Landfill_waste'] for entry in facility_Landfill_waste)
             donut_chart_data = [
                 {
                     "facility_name": entry['facility__facility_name'],
-                    "percentage": (entry['total_send_to_landfill'] / total_send_to_landfill * 100) if total_send_to_landfill else 0,
+                    "percentage": (entry['total_Landfill_waste'] / total_Landfill_waste * 100) if total_Landfill_waste else 0,
                 }
-                for entry in facility_send_to_landfill
+                for entry in facility_Landfill_waste
             ]
 
             response_data = {
@@ -1578,19 +1578,19 @@ class Sent_For_LandFillViewCard(APIView):
 
         try:
            
-            send_to_landfill_data = Waste.objects.filter(user=user, created_at__year=year)
+            Landfill_waste = Waste.objects.filter(user=user, DatePicker__year=year)
             
             if facility_id and facility_id.lower() != 'all':
-                send_to_landfill_data = send_to_landfill_data.filter(facility__id=facility_id)
+                Landfill_waste = Landfill_waste.filter(facility__id=facility_id)
 
             facility_send_to_landfill = (
-                send_to_landfill_data
+                Landfill_waste
                 .values('facility__facility_name')
                 .annotate(total_send_to_landfill=Sum('send_to_landfill'))
                 .order_by('-total_send_to_landfill')
             )
 
-            facility_send_to_landfill_data = [
+            facility_Landfill_waste = [
                 {
                     "facility_name": entry['facility__facility_name'],
                     "total_send_to_landfill": entry['total_send_to_landfill']
@@ -1598,11 +1598,11 @@ class Sent_For_LandFillViewCard(APIView):
                 for entry in facility_send_to_landfill
             ]
 
-            overall_send_to_landfill = send_to_landfill_data.aggregate(total=Sum('send_to_landfill'))['total'] or 0
+            overall_send_to_landfill = Landfill_waste.aggregate(total=Sum('send_to_landfill'))['total'] or 0
 
             response_data = {
                 'overall_send_to_landfill': overall_send_to_landfill,
-                'facility_send_to_landfill': facility_send_to_landfill_data,
+                'facility_send_to_landfill': facility_Landfill_waste,
             }
 
             return Response(response_data, status=status.HTTP_200_OK)
@@ -1612,7 +1612,7 @@ class Sent_For_LandFillViewCard(APIView):
             return Response({'error': 'An error occurred while processing your request.'},status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         
         
-#WasteStackedOverview
+#WasteStackedOverviewGraph
 
 class StackedWasteOverviewView(APIView):
     permission_classes = [IsAuthenticated]
@@ -1632,29 +1632,29 @@ class StackedWasteOverviewView(APIView):
 
         try:
             waste_types = [
-                'food_waste', 'solid_waste', 'e_waste', 'biomedical_waste',
-                'liquid_discharge', 'others', 'sent_for_recycle', 'send_to_landfill'
+                'food_waste', 'solid_Waste', 'E_Waste', 'Biomedical_waste',
+                'liquid_discharge', 'other_waste', 'Recycle_waste', 'Landfill_waste'
             ]
             monthly_data = {month: {waste_type: 0 for waste_type in waste_types} for month in range(1, 13)}
 
             for waste_type in waste_types:
                 if facility_id and facility_id.lower() != 'all':
                     monthly_waste = (
-                        Waste.objects.filter(user=user, facility__id=facility_id, created_at__year=year)
-                        .values('created_at__month')
+                        Waste.objects.filter(user=user, facility__id=facility_id, DatePicker__year=year)
+                        .values('DatePicker__month')
                         .annotate(total=Coalesce(Sum(waste_type, output_field=FloatField()), Value(0, output_field=FloatField())))
-                        .order_by('created_at__month')
+                        .order_by('DatePicker__month')
                     )
                 else:
                     monthly_waste = (
-                        Waste.objects.filter(user=user, created_at__year=year)
-                        .values('created_at__month')
+                        Waste.objects.filter(user=user, DatePicker__year=year)
+                        .values('DatePicker__month')
                         .annotate(total=Coalesce(Sum(waste_type, output_field=FloatField()), Value(0, output_field=FloatField())))
-                        .order_by('created_at__month')
+                        .order_by('DatePicker__month')
                     )
 
                 for entry in monthly_waste:
-                    month = entry['created_at__month']
+                    month = entry['DatePicker__month']
                     monthly_data[month][waste_type] = entry['total']
 
             stacked_bar_data = []
@@ -1700,7 +1700,7 @@ class WasteOverallDonutChartView(APIView):
                 'food_waste', 'solid_waste', 'e_waste', 'biomedical_waste', 'others'
             ]
 
-            queryset = Waste.objects.filter(user=user, created_at__year=year)
+            queryset = Waste.objects.filter(user=user, DatePicker__year=year)
 
             if facility_id and facility_id.lower() != 'all':
                 queryset = queryset.filter(facility__id=facility_id)
@@ -1762,7 +1762,7 @@ class SentToLandfillOverviewView(APIView):
                 'food_waste', 'solid_waste', 'e_waste', 'biomedical_waste', 'others'
             ]
 
-            queryset = Waste.objects.filter(user=user, created_at__year=year)
+            queryset = Waste.objects.filter(user=user, DatePicker__year=year)
 
             if facility_id and facility_id.lower() != 'all':
                 queryset = queryset.filter(facility__id=facility_id)
@@ -1823,7 +1823,7 @@ class SentToRecycledOverviewView(APIView):
                 'food_waste', 'solid_waste', 'e_waste', 'biomedical_waste', 'others'
             ]
 
-            queryset = Waste.objects.filter(user=user, created_at__year=year)
+            queryset = Waste.objects.filter(user=user, DatePicker__year=year)
             
             if facility_id and facility_id.lower() != 'all':
                 queryset = queryset.filter(facility__id=facility_id)
@@ -1889,7 +1889,7 @@ class HVAC_CardOverview(APIView):
             return Response({'error':'Invalid Year Parameter'},status=status.HTTP_400_BAD_REQUEST)
         
         try:
-            HVAC_data = Energy.objects.filter(user=user,created_at__year=year)
+            HVAC_data = Energy.objects.filter(user=user,DatePicker__year=year)
             
             if facility_id and facility_id.lower() != 'all':
                 HVAC_data = HVAC_data.filter(facility_id = facility_id)
@@ -1940,25 +1940,25 @@ class HVACOverviewView(APIView):
             # Query to get monthly HVAC data
             if facility_id and facility_id.lower() != 'all':
                 monthly_hvac = (
-                    Energy.objects.filter(user=user, facility__id=facility_id, created_at__year=year)
-                    .values('created_at__month')
+                    Energy.objects.filter(user=user, facility__id=facility_id, DatePicker__year=year)
+                    .values('DatePicker__month')
                     .annotate(total_hvac=Sum('hvac'))
-                    .order_by('created_at__month')
+                    .order_by('DatePicker__month')
                 )
             else:
                 monthly_hvac = (
-                    Energy.objects.filter(user=user, created_at__year=year)
-                    .values('created_at__month')
+                    Energy.objects.filter(user=user, DatePicker__year=year)
+                    .values('DatePicker__month')
                     .annotate(total_hvac=Sum('hvac'))
-                    .order_by('created_at__month')
+                    .order_by('DatePicker__month')
                 )
 
             line_chart_data = []
             hvac_data = defaultdict(float)
 
             for entry in monthly_hvac:
-                month_name = datetime(1900, entry['created_at__month'], 1).strftime('%b')
-                hvac_data[entry['created_at__month']] = entry['total_hvac']
+                month_name = datetime(1900, entry['DatePicker__month'], 1).strftime('%b')
+                hvac_data[entry['DatePicker__month']] = entry['total_hvac']
 
             for month in range(1, 13):
                 month_name = datetime(1900, month, 1).strftime('%b')

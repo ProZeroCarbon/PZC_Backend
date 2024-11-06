@@ -102,7 +102,7 @@ WSGI_APPLICATION = 'PZC_MVP.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
-        'NAME' : 'PZC',
+        'NAME' : 'procarbon',
         'USER' : 'root',
         'PASSWORD' : 'Pro@co2E',
         'HOST' : 'localhost',

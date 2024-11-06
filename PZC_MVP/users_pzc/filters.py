@@ -13,8 +13,8 @@ class FacilityFilter(filters.FilterSet):
 
 class FacilityDateFilterBase(filters.FilterSet):
     facility_id = filters.NumberFilter(field_name="facility__id")
-    start_year = filters.NumberFilter(field_name="created_at", lookup_expr="year__gte")
-    end_year = filters.NumberFilter(field_name="created_at", lookup_expr="year__lte")
+    start_year = filters.NumberFilter(field_name="DatePicker", lookup_expr="year__gte")
+    end_year = filters.NumberFilter(field_name="DatePicker", lookup_expr="year__lte")
 
     class Meta:
         fields = ['facility_id', 'start_year', 'end_year']
