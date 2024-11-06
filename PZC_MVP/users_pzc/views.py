@@ -185,7 +185,7 @@ class WasteView(APIView):
         filtered_waste_data = WasteFilter(request.GET, queryset=waste_data).qs
         waste_serializer = WasteSerializer(filtered_waste_data, many=True)
         overall_total = sum(
-            waste.food_waste + waste.solid_waste + waste.e_waste + waste.biomedical_waste + waste.others
+            waste.food_waste + waste.solid_Waste + waste.E_Waste + waste.Biomedical_waste + waste.other_waste
             for waste in filtered_waste_data
         )
         response_data = {
@@ -535,35 +535,26 @@ class FoodWasteOverviewView(APIView):
             # Query to get monthly food waste
             if facility_id and facility_id.lower() != 'all':
                 monthly_food_waste = (
-                    Waste.objects.filter(user=user, facility__id=facility_id, created_at__year=year)
-                    .values('created_at__month')
+                    Waste.objects.filter(user=user, facility__id=facility_id, date__year=year)
+                    .values('date__month')
                     .annotate(total_food_waste=Sum('food_waste'))
-                    .order_by('created_at__month')
+                    .order_by('date__month')
                 )
             else:
                 monthly_food_waste = (
-                    Waste.objects.filter(user=user, created_at__year=year)
-                    .values('created_at__month')
+                    Waste.objects.filter(user=user, date__year=year)
+                    .values('date__month')
                     .annotate(total_food_waste=Sum('food_waste'))
-                    .order_by('created_at__month')
+                    .order_by('date__month')
                 )
 
-            # line_chart_data = []
-
-            # if monthly_food_waste:
-            #     for entry in monthly_food_waste:
-            #         month_name = datetime(1900, entry['created_at__month'], 1).strftime('%b')
-            #         line_chart_data.append({
-            #             "month": month_name,
-            #             "food_waste": entry['total_food_waste']
-            #         })
-                    
+          
             line_chart_data = []
             food_waste = defaultdict(float)
 
             for entry in monthly_food_waste:
-                month_name = datetime(1900, entry['created_at__month'], 1).strftime('%b')
-                food_waste[entry['created_at__month']] = entry['total_food_waste']
+                month_name = datetime(1900, entry['date__month'], 1).strftime('%b')
+                food_waste[entry['date__month']] = entry['total_food_waste']
 
             for month in range(1, 13):
                 month_name = datetime(1900, month, 1).strftime('%b')
@@ -627,7 +618,7 @@ class FoodWasteViewCard(APIView):
 
         try:
             # Filter waste data based on user, facility, and year
-            food_waste_data = Waste.objects.filter(user=user, created_at__year=year)
+            food_waste_data = Waste.objects.filter(user=user, data__year=year)
             
             if facility_id and facility_id.lower() != 'all':
                 food_waste_data = food_waste_data.filter(facility__id=facility_id)
@@ -684,25 +675,25 @@ class SolidWasteOverviewView(APIView):
             # Query to get monthly solid waste
             if facility_id and facility_id.lower() != 'all':
                 monthly_solid_waste = (
-                    Waste.objects.filter(user=user, facility__id=facility_id, created_at__year=year)
-                    .values('created_at__month')
+                    Waste.objects.filter(user=user, facility__id=facility_id, DatePicker__year=year)
+                    .values('DatePicker__month')
                     .annotate(total_solid_waste=Sum('solid_waste'))
-                    .order_by('created_at__month')
+                    .order_by('DatePicker__month')
                 )
             else:
                 monthly_solid_waste = (
-                    Waste.objects.filter(user=user, created_at__year=year)
-                    .values('created_at__month')
+                    Waste.objects.filter(user=user, data__year=year)
+                    .values('DatePicker__month')
                     .annotate(total_solid_waste=Sum('solid_waste'))
-                    .order_by('created_at__month')
+                    .order_by('DatePicker__month')
                 )
 
             line_chart_data = []
             solid_waste = defaultdict(float)
 
             for entry in monthly_solid_waste:
-                month_name = datetime(1900, entry['created_at__month'], 1).strftime('%b')
-                solid_waste[entry['created_at__month']] = entry['total_solid_waste']
+                month_name = datetime(1900, entry['DatePicker__month'], 1).strftime('%b')
+                solid_waste[entry['DatePicker__month']] = entry['total_solid_waste']
 
             for month in range(1, 13):
                 month_name = datetime(1900, month, 1).strftime('%b')
@@ -766,7 +757,7 @@ class SolidWasteViewCard(APIView):
 
         try:
             # Filter waste data based on user, facility, and year
-            solid_waste_data = Waste.objects.filter(user=user, created_at__year=year)
+            solid_waste_data = Waste.objects.filter(user=user, DatePicker__year=year)
             
             if facility_id and facility_id.lower() != 'all':
                 solid_waste_data = solid_waste_data.filter(facility__id=facility_id)
@@ -1228,25 +1219,25 @@ class OthersOverviewView(APIView):
         try:
             if facility_id and facility_id.lower() != 'all':
                 monthly_others = (
-                    Waste.objects.filter(user=user, facility__id=facility_id, created_at__year=year)
-                    .values('created_at__month')
+                    Waste.objects.filter(user=user, facility__id=facility_id, date__year=year)
+                    .values('date__month')
                     .annotate(total_others=Sum('others'))
-                    .order_by('created_at__month')
+                    .order_by('date__month')
                 )
             else:
                 monthly_others = (
-                    Waste.objects.filter(user=user, created_at__year=year)
-                    .values('created_at__month')
+                    Waste.objects.filter(user=user, date__year=year)
+                    .values('date__month')
                     .annotate(total_others=Sum('others'))
-                    .order_by('created_at__month')
+                    .order_by('date__month')
                 )
 
             line_chart_data = []
             others = defaultdict(float)
 
             for entry in monthly_others:
-                month_name = datetime(1900, entry['created_at__month'], 1).strftime('%b')
-                others[entry['created_at__month']] = entry['total_others']
+                month_name = datetime(1900, entry['date__month'], 1).strftime('%b')
+                others[entry['date__month']] = entry['total_others']
 
             for month in range(1, 13):
                 month_name = datetime(1900, month, 1).strftime('%b')

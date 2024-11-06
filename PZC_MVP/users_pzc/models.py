@@ -57,8 +57,8 @@ class Facility(models.Model):
     user = models.ForeignKey(CustomUser,on_delete=models.CASCADE)
     facility_name = models.CharField(max_length=255)
     facility_head = models.CharField(max_length=255)
-    location = models.CharField(max_length=255)
-    description = models.TextField()
+    facility_location = models.CharField(max_length=255)
+    facility_description = models.TextField()
 
     def __str__(self):
         return self.facility_name
@@ -66,22 +66,23 @@ class Facility(models.Model):
 class Waste(models.Model):
     user = models.ForeignKey(CustomUser,on_delete=models.CASCADE)
     facility = models.ForeignKey(Facility, on_delete=models.CASCADE)
+    category = models.CharField(max_length=255)
+    DatePicker = models.DateField(null=True,blank=True)
     food_waste = models.FloatField(default=0.0)
-    solid_waste = models.FloatField(default=0.0)
-    e_waste = models.FloatField(default=0.0)
-    biomedical_waste = models.FloatField(default=0.0)
+    solid_Waste = models.FloatField(default=0.0)
+    E_Waste = models.FloatField(default=0.0)
+    Biomedical_waste = models.FloatField(default=0.0)
     liquid_discharge = models.FloatField(default=0.0)
-    others = models.FloatField(default=0.0)
-    sent_for_recycle = models.FloatField(default=0.0)
-    send_to_landfill = models.FloatField(default=0.0)
+    other_waste = models.FloatField(default=0.0)
+    Recycle_waste = models.FloatField(default=0.0)
+    Landfill_waste = models.FloatField(default=0.0)
     overall_usage = models.FloatField(default=0.0, editable=False)
-    created_at = models.DateTimeField(default=timezone.now)
 
     def __str__(self):
         return f"Waste data for {self.user.email}"
     
     def save(self,*args, **kwargs):
-        self.overall_usage = (self.food_waste + self.solid_waste + self.e_waste + self.biomedical_waste + self.others)
+        self.overall_usage = (self.food_waste + self.solid_Waste + self.E_Waste + self.Biomedical_waste + self.other_waste)
         super(Waste,self).save(*args, **kwargs)
 
 
@@ -109,7 +110,6 @@ class Energy(models.Model):
     renewable_energy_solar = models.FloatField(default=0.0)
     renewable_energy_others = models.FloatField(default=0.0)
     overall_usage = models.FloatField(default=0.0, editable=False)
-    created_at = models.DateTimeField(default=timezone.now)
     
     def __str__(self):
         return f"Energy data for {self.user.email}"
@@ -126,7 +126,6 @@ class Water(models.Model):
     boiler_usage = models.FloatField(default=0.0)
     other_usage = models.FloatField(default=0.0)
     overall_usage = models.FloatField(default=0.0, editable=False)
-    created_at = models.DateTimeField(default=timezone.now)
     
     def __str__(self):
         return f"Water data for {self.user.email}"
@@ -146,7 +145,7 @@ class Biodiversity(models.Model):
     new_trees_planted = models.FloatField(default=0.0)
     head_count = models.FloatField(default=0.0)
     overall_Trees = models.FloatField(default=0.0, editable=False)
-    created_at = models.DateTimeField(default=timezone.now)
+
     
     def __str__(self):
         return f"biodiversity data for {self.user.email}"
@@ -175,7 +174,6 @@ class Logistices(models.Model):
     no_of_vehicles = models.IntegerField()
     spends_on_fuel = models.FloatField(default=0.0)
     total_fuelconsumption = models.FloatField(default=0.0, editable=False)
-    created_at = models.DateTimeField(default=timezone.now)
     def __str__(self):
         return f" data for {self.user.email}"
     
