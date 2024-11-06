@@ -1583,26 +1583,26 @@ class Sent_For_LandFillViewCard(APIView):
             if facility_id and facility_id.lower() != 'all':
                 Landfill_waste = Landfill_waste.filter(facility__id=facility_id)
 
-            facility_send_to_landfill = (
+            facility_Landfill_waste = (
                 Landfill_waste
                 .values('facility__facility_name')
-                .annotate(total_send_to_landfill=Sum('send_to_landfill'))
-                .order_by('-total_send_to_landfill')
+                .annotate(total_Landfill_waste=Sum('Landfill_waste'))
+                .order_by('-total_Landfill_waste')
             )
 
             facility_Landfill_waste = [
                 {
                     "facility_name": entry['facility__facility_name'],
-                    "total_send_to_landfill": entry['total_send_to_landfill']
+                    "total_Landfill_waste": entry['total_Landfill_waste']
                 }
-                for entry in facility_send_to_landfill
+                for entry in facility_Landfill_waste
             ]
 
-            overall_send_to_landfill = Landfill_waste.aggregate(total=Sum('send_to_landfill'))['total'] or 0
+            overall_Landfill_waste = Landfill_waste.aggregate(total=Sum('Landfill_waste'))['total'] or 0
 
             response_data = {
-                'overall_send_to_landfill': overall_send_to_landfill,
-                'facility_send_to_landfill': facility_Landfill_waste,
+                'overall_Landfill_waste': overall_Landfill_waste,
+                'facility_Landfill_waste': facility_Landfill_waste,
             }
 
             return Response(response_data, status=status.HTTP_200_OK)
@@ -1697,7 +1697,7 @@ class WasteOverallDonutChartView(APIView):
 
         try:
             waste_types = [
-                'food_waste', 'solid_waste', 'e_waste', 'biomedical_waste', 'others'
+                'food_waste', 'solid_Waste', 'E_Waste', 'Biomedical_waste', 'other_waste'
             ]
 
             queryset = Waste.objects.filter(user=user, DatePicker__year=year)
@@ -1707,10 +1707,10 @@ class WasteOverallDonutChartView(APIView):
 
             waste_totals = queryset.aggregate(
                 food_waste_total=Coalesce(Sum(Cast('food_waste', FloatField())), 0.0),
-                solid_waste_total=Coalesce(Sum(Cast('solid_waste', FloatField())), 0.0),
-                e_waste_total=Coalesce(Sum(Cast('e_waste', FloatField())), 0.0),
-                biomedical_waste_total=Coalesce(Sum(Cast('biomedical_waste', FloatField())), 0.0),
-                others_total=Coalesce(Sum(Cast('others', FloatField())), 0.0)
+                solid_Waste_total=Coalesce(Sum(Cast('solid_Waste', FloatField())), 0.0),
+                E_Waste_total=Coalesce(Sum(Cast('E_Waste', FloatField())), 0.0),
+                Biomedical_waste_total=Coalesce(Sum(Cast('Biomedical_waste', FloatField())), 0.0),
+                other_waste_total=Coalesce(Sum(Cast('other_waste', FloatField())), 0.0)
             )
 
             overall_total = sum(waste_totals.values())
@@ -1721,10 +1721,10 @@ class WasteOverallDonutChartView(APIView):
             # Calculate percentages
             waste_percentages = {
                 'food_waste': (waste_totals['food_waste_total'] / overall_total) * 100,
-                'solid_waste': (waste_totals['solid_waste_total'] / overall_total) * 100,
-                'e_waste': (waste_totals['e_waste_total'] / overall_total) * 100,
-                'biomedical_waste': (waste_totals['biomedical_waste_total'] / overall_total) * 100,
-                'others': (waste_totals['others_total'] / overall_total) * 100,
+                'solid_Waste': (waste_totals['solid_Waste_total'] / overall_total) * 100,
+                'E_Waste': (waste_totals['E_Waste_total'] / overall_total) * 100,
+                'Biomedical_waste': (waste_totals['Biomedical_waste_total'] / overall_total) * 100,
+                'other_waste': (waste_totals['other_waste_total'] / overall_total) * 100,
             }
 
             # Format response data
@@ -1759,7 +1759,7 @@ class SentToLandfillOverviewView(APIView):
 
         try:
             overall_total_fields = [
-                'food_waste', 'solid_waste', 'e_waste', 'biomedical_waste', 'others'
+                'food_waste', 'solid_Waste', 'E_Waste', 'Biomedical_waste', 'other_waste'
             ]
 
             queryset = Waste.objects.filter(user=user, DatePicker__year=year)
@@ -1767,8 +1767,8 @@ class SentToLandfillOverviewView(APIView):
             if facility_id and facility_id.lower() != 'all':
                 queryset = queryset.filter(facility__id=facility_id)
 
-            sent_to_landfill_total = queryset.aggregate(
-                total=Coalesce(Sum(Cast('send_to_landfill', FloatField())), 0.0)
+            Landfill_waste_total = queryset.aggregate(
+                total=Coalesce(Sum(Cast('Landfill_waste', FloatField())), 0.0)
             )['total']
 
             overall_total = sum(
@@ -1778,13 +1778,13 @@ class SentToLandfillOverviewView(APIView):
                 ).values()
             )
 
-            remaining_waste_total = overall_total - sent_to_landfill_total
+            remaining_waste_total = overall_total - Landfill_waste_total
 
             if overall_total == 0:
                 return Response({'error': 'No waste data available for the selected year and facility.'}, status=status.HTTP_204_NO_CONTENT)
 
             # Calculate percentages
-            landfill_percentage = (sent_to_landfill_total / overall_total) * 100
+            landfill_percentage = (Landfill_waste_total / overall_total) * 100
             remaining_percentage = (remaining_waste_total / overall_total) * 100
 
             # Format response data
@@ -1820,7 +1820,7 @@ class SentToRecycledOverviewView(APIView):
 
         try:
             overall_total_fields = [
-                'food_waste', 'solid_waste', 'e_waste', 'biomedical_waste', 'others'
+                'food_waste', 'solid_Waste', 'E_Waste', 'Biomedical_waste', 'other_waste'
             ]
 
             queryset = Waste.objects.filter(user=user, DatePicker__year=year)
@@ -1829,8 +1829,8 @@ class SentToRecycledOverviewView(APIView):
                 queryset = queryset.filter(facility__id=facility_id)
 
             # Calculate total for 'sent_for_recycle'
-            sent_for_recycle_total = queryset.aggregate(
-                total=Coalesce(Sum(Cast('sent_for_recycle', FloatField())), 0.0)
+            Recycle_waste_total = queryset.aggregate(
+                total=Coalesce(Sum(Cast('Recycle_waste', FloatField())), 0.0)
             )['total']
 
             # Calculate total for other waste fields
@@ -1842,7 +1842,7 @@ class SentToRecycledOverviewView(APIView):
             )
 
             # Calculate remaining waste by excluding 'sent_for_recycle'
-            remaining_waste_total = overall_total - sent_for_recycle_total
+            remaining_waste_total = overall_total - Recycle_waste_total
             
             # overall_total += sent_for_recycle_total
 
@@ -1850,7 +1850,7 @@ class SentToRecycledOverviewView(APIView):
                 return Response({'error': 'No waste data available for the selected year and facility.'}, status=status.HTTP_204_NO_CONTENT)
 
             # Calculate percentages
-            recycle_percentage = (sent_for_recycle_total / overall_total) * 100
+            recycle_percentage = (Recycle_waste_total / overall_total) * 100
             remaining_percentage = (remaining_waste_total / overall_total) * 100
 
             # Format response data

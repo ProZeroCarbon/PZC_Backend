@@ -100,10 +100,9 @@ urlpatterns = [
    path('WasteOverallDonutChartView/',WasteOverallDonutChartView.as_view(),name='WasteOverallDonutChartView'),
    path('Sent_To_Landfill_OverviewView/',SentToLandfillOverviewView.as_view(),name='Sent_To_Landfill_OverviewView'),
    path('SentToRecycledOverviewView/',SentToRecycledOverviewView.as_view(),name='SentToRecycledOverviewView'),
-   
    #Apis for Waste overviewgraphs Ends
    
-   
+
    #Apis For Energy overview
    path('HVAC_CardOverview/',HVAC_CardOverview.as_view(),name='HVAC_CardOverview'),
    path('HVACOverviewView/',HVACOverviewView.as_view(),name='HVACOverviewView'),
