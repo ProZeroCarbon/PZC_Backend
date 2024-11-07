@@ -1,7 +1,7 @@
 
 
 from django.urls import   path
-from .views import RegisterView, LoginView, DashboardView, LogoutView,WasteCreateView,WasteView,WasteEditView,WasteDeleteView,EnergyCreateView,EnergyView,EnergyEditView,EnergyDeleteView,WaterView,WaterCreateView,WaterEditView,WaterDeleteView,BiodiversityCreateView,BiodiversityView,BiodiversityEditView,BiodiversityDeleteView,FacilityCreateView,FacilityView,FacilityEditView,FacilityDeleteView,LogisticesCreateView,LogisticesView,LogisticesEditView,LogisticesDeleteView,OrganizationCreate,OrganizationView,FoodWasteOverviewView,FoodWasteViewCard,SolidWasteOverviewView,SolidWasteViewCard,E_WasteOverviewView,E_WasteViewCard,Biomedical_WasteOverviewView,Biomedical_WasteViewCard,Liquid_DischargeOverviewView,Liquid_DischargeViewCard,OthersOverviewView,OthersViewCard,Waste_Sent_For_RecycleOverviewView,Sent_For_RecycleViewCard,Waste_Sent_For_LandFillOverviewView,Sent_For_LandFillViewCard,StackedWasteOverviewView,WasteOverallDonutChartView,SentToLandfillOverviewView,SentToRecycledOverviewView,HVAC_CardOverview,HVACOverviewView
+from .views import RegisterView, LoginView, DashboardView, LogoutView,WasteCreateView,WasteView,WasteEditView,WasteDeleteView,EnergyCreateView,EnergyView,EnergyEditView,EnergyDeleteView,WaterView,WaterCreateView,WaterEditView,WaterDeleteView,BiodiversityCreateView,BiodiversityView,BiodiversityEditView,BiodiversityDeleteView,FacilityCreateView,FacilityView,FacilityEditView,FacilityDeleteView,LogisticesCreateView,LogisticesView,LogisticesEditView,LogisticesDeleteView,OrganizationCreate,OrganizationView,FoodWasteOverviewView,FoodWasteViewCard,SolidWasteOverviewView,SolidWasteViewCard,E_WasteOverviewView,E_WasteViewCard,Biomedical_WasteOverviewView,Biomedical_WasteViewCard,Liquid_DischargeOverviewView,Liquid_DischargeViewCard,OthersOverviewView,OthersViewCard,Waste_Sent_For_RecycleOverviewView,Sent_For_RecycleViewCard,Waste_Sent_For_LandFillOverviewView,Sent_For_LandFillViewCard,StackedWasteOverviewView,WasteOverallDonutChartView,SentToLandfillOverviewView,SentToRecycledOverviewView,HVAC_CardOverview,HVACOverviewView,ProductionOverViewCard,ProductionOverviewView,StpOverViewCard,StpOverviewView,Admin_BlockOverViewCard,Admin_BlockOverviewView
 from rest_framework_simplejwt.views import (
     TokenObtainPairView,
     TokenRefreshView,
@@ -106,6 +106,16 @@ urlpatterns = [
    #Apis For Energy overview
    path('HVAC_CardOverview/',HVAC_CardOverview.as_view(),name='HVAC_CardOverview'),
    path('HVACOverviewView/',HVACOverviewView.as_view(),name='HVACOverviewView'),
+   
+   path('ProductionOverViewCard/',ProductionOverViewCard.as_view(),name='ProductionOverViewCard'),
+   path('ProductionOverviewView/',ProductionOverviewView.as_view(),name='ProductionOverviewView'),
+   
+   path('StpOverViewCard/',StpOverViewCard.as_view(),name='StpOverViewCard'),
+   path('StpOverviewView/',StpOverviewView.as_view(),name='StpOverviewView'),
+   
+   path('Admin_BlockOverViewCard/',Admin_BlockOverViewCard.as_view(),name='Admin_BlockOverViewCard'),
+   path('Admin_BlockOverviewView/',Admin_BlockOverviewView.as_view(),name='Admin_BlockOverviewView'),
+   
    
    
    

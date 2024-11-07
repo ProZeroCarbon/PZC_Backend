@@ -1,4 +1,5 @@
 # myapp/models.py
+import uuid
 from django.db import models
 from django.utils import timezone 
 from django.contrib.auth.models import AbstractBaseUser, BaseUserManager, PermissionsMixin
@@ -54,7 +55,8 @@ class Org_registration(models.Model):
     
 
 class Facility(models.Model):
-    user = models.ForeignKey(CustomUser,on_delete=models.CASCADE)
+    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
+    facility_id = models.CharField(max_length=20, unique=True, editable=False)  # Unique and non-editable
     facility_name = models.CharField(max_length=255)
     facility_head = models.CharField(max_length=255)
     facility_location = models.CharField(max_length=255)
@@ -62,6 +64,12 @@ class Facility(models.Model):
 
     def __str__(self):
         return self.facility_name
+
+    def save(self, *args, **kwargs):
+        if not self.facility_id:
+            # Generate a unique facility_id using a UUID truncated to 8 characters
+            self.facility_id = uuid.uuid4().hex[:8].upper()
+        super().save(*args, **kwargs)
     
 class Waste(models.Model):
     user = models.ForeignKey(CustomUser,on_delete=models.CASCADE)

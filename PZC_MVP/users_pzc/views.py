@@ -119,7 +119,7 @@ class FacilityView(APIView):
         facility_serializer = FacilitySerializer(filtered_facility_data, many=True)
         user_data = {
             'email': user.email,
-            'facility_data': facility_serializer.data
+            'facility_data': facility_serializer.data,
         }
         return Response(user_data, status=status.HTTP_200_OK)
 
@@ -2150,6 +2150,433 @@ class HVACOverviewView(APIView):
         except Exception as e:
             return Response({'error': 'An error occurred while processing your request.'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)    
   
-  
+#Production overviewCard
+
+class ProductionOverViewCard(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        user = request.user
+        facility_id = request.GET.get('facility_id', None)
+        facility_location = request.GET.get('facility_location', None)
+        year = request.GET.get('year', None)
+
+        if year is None:
+            return Response({'error': 'Year parameter is required.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            year = int(year)
+        except (TypeError, ValueError):
+            return Response({'error': 'Invalid year parameter.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            production_data = Energy.objects.filter(user=user, DatePicker__year=year)
+
+            if facility_id and facility_id.lower() != 'all':
+                if not Facility.objects.filter(id=facility_id).exists():
+                    return Response({'error': 'Invalid facility ID.'}, status=status.HTTP_400_BAD_REQUEST)
+                production_data = production_data.filter(facility__id=facility_id)
+
+            if facility_location:
+                production_data = production_data.filter(facility__facility_location__icontains=facility_location)
+
+            facility_production = (
+                production_data
+                .values('facility__facility_name')
+                .annotate(total_production=Sum('production'))
+                .order_by('-total_production')
+            )
+
+            facility_production_data = [
+                {
+                    "facility_name": entry['facility__facility_name'],
+                    "total_production": entry['total_production']
+                }
+                for entry in facility_production
+            ]
+
+            overall_production = production_data.aggregate(total=Sum('production'))['total'] or 0
+
+            response_data = {
+                'overall_production': overall_production,
+                'facility_production': facility_production_data,
+            }
+
+            return Response(response_data, status=status.HTTP_200_OK)
+
+        except Exception as e:
+            print(f"An error occurred: {e}")
+            return Response({'error': 'An error occurred while processing your request.'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+#ProductionLine Charts and Donut charts
+class ProductionOverviewView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        user = request.user
+        facility_id = request.GET.get('facility_id', None)
+        facility_location = request.GET.get('facility_location', None)
+        year = request.GET.get('year', None)
+        
+        if year is None:
+            return Response({'error': 'Year parameter is required.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            year = int(year)
+        except (TypeError, ValueError):
+            return Response({'error': 'Invalid year parameter.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            # Query to get monthly food waste
+            if facility_id and facility_id.lower() != 'all':
+                monthly_production = (
+                    Energy.objects.filter(user=user, facility__id=facility_id, DatePicker__year=year,facility__facility_location__icontains=facility_location)
+                    .values('DatePicker__month')
+                    .annotate(total_production=Sum('production'))
+                    .order_by('DatePicker__month')
+                )
+            else:
+                monthly_production = (
+                    Energy.objects.filter(user=user, DatePicker__year=year,facility__facility_location__icontains=facility_location)
+                    .values('DatePicker__month')
+                    .annotate(total_production=Sum('production'))
+                    .order_by('DatePicker__month')
+                )
+
+          
+            line_chart_data = []
+            production = defaultdict(float)
+
+            for entry in monthly_production:
+                month_name = datetime(1900, entry['DatePicker__month'], 1).strftime('%b')
+                production[entry['DatePicker__month']] = entry['total_production']
+
+            for month in range(1, 13):
+                month_name = datetime(1900, month, 1).strftime('%b')
+                line_chart_data.append({
+                    "month": month_name,
+                    "production": production.get(month, 0)
+                })
+
+            # Query for facility-wise food waste
+            if facility_id and facility_id.lower() != 'all':
+                facility_production = (
+                    Energy.objects.filter(user=user, facility__id=facility_id)
+                    .values('facility__facility_name')
+                    .annotate(total_production=Sum('production'))
+                    .order_by('-total_production')
+                )
+            else:
+                facility_production = (
+                    Energy.objects.filter(user=user)
+                    .values('facility__facility_name')
+                    .annotate(total_production=Sum('production'))
+                    .order_by('-total_production')
+                )
+
+            total_production = sum(entry['total_production'] for entry in facility_production)
+            donut_chart_data = [
+                {
+                    "facility_name": entry['facility__facility_name'],
+                    "percentage": (entry['total_production'] / total_production * 100) if total_production else 0,
+                }
+                for entry in facility_production
+            ]
+
+            response_data = {
+                "line_chart_data": line_chart_data,
+                "donut_chart_data": donut_chart_data
+            }
+
+            return Response(response_data, status=status.HTTP_200_OK)
+
+        except Exception as e:
+            return Response({'error': 'An error occurred while processing your request.'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
+#stp overviewcard
+class StpOverViewCard(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        user = request.user
+        facility_id = request.GET.get('facility_id', None)
+        facility_location = request.GET.get('facility_location', None)
+        year = request.GET.get('year', None)
+
+        if year is None:
+            return Response({'error': 'Year parameter is required.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            year = int(year)
+        except (TypeError, ValueError):
+            return Response({'error': 'Invalid year parameter.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            stp_data = Energy.objects.filter(user=user, DatePicker__year=year)
+
+            if facility_id and facility_id.lower() != 'all':
+                if not Facility.objects.filter(id=facility_id).exists():
+                    return Response({'error': 'Invalid facility ID.'}, status=status.HTTP_400_BAD_REQUEST)
+                stp_data = stp_data.filter(facility__id=facility_id)
+
+            if facility_location:
+                stp_data = stp_data.filter(facility__facility_location__icontains=facility_location)
+
+            facility_stp = (
+                stp_data
+                .values('facility__facility_name')
+                .annotate(total_stp=Sum('stp'))
+                .order_by('-total_stp')
+            )
+
+            facility_stp_data = [
+                {
+                    "facility_name": entry['facility__facility_name'],
+                    "total_stp": entry['total_stp']
+                }
+                for entry in facility_stp
+            ]
+
+            overall_stp = stp_data.aggregate(total=Sum('stp'))['total'] or 0
+
+            response_data = {
+                'overall_stp': overall_stp,
+                'facility_stp': facility_stp_data,
+            }
+
+            return Response(response_data, status=status.HTTP_200_OK)
+
+        except Exception as e:
+            print(f"An error occurred: {e}")
+            return Response({'error': 'An error occurred while processing your request.'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+#STP Overview line charts and donut charts
+class StpOverviewView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        user = request.user
+        facility_id = request.GET.get('facility_id', None)
+        facility_location = request.GET.get('facility_location', None)
+        year = request.GET.get('year', None)
+        
+        if year is None:
+            return Response({'error': 'Year parameter is required.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            year = int(year)
+        except (TypeError, ValueError):
+            return Response({'error': 'Invalid year parameter.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            # Query to get monthly food waste
+            if facility_id and facility_id.lower() != 'all':
+                monthly_stp = (
+                    Energy.objects.filter(user=user, facility__id=facility_id, DatePicker__year=year,facility__facility_location__icontains=facility_location)
+                    .values('DatePicker__month')
+                    .annotate(total_stp=Sum('stp'))
+                    .order_by('DatePicker__month')
+                )
+            else:
+                monthly_stp = (
+                    Energy.objects.filter(user=user, DatePicker__year=year,facility__facility_location__icontains=facility_location)
+                    .values('DatePicker__month')
+                    .annotate(total_stp=Sum('stp'))
+                    .order_by('DatePicker__month')
+                )
+
+          
+            line_chart_data = []
+            stp = defaultdict(float)
+
+            for entry in monthly_stp:
+                month_name = datetime(1900, entry['DatePicker__month'], 1).strftime('%b')
+                stp[entry['DatePicker__month']] = entry['total_stp']
+
+            for month in range(1, 13):
+                month_name = datetime(1900, month, 1).strftime('%b')
+                line_chart_data.append({
+                    "month": month_name,
+                    "stp": stp.get(month, 0)
+                })
+
+            # Query for facility-wise food waste
+            if facility_id and facility_id.lower() != 'all':
+                facility_stp = (
+                    Energy.objects.filter(user=user, facility__id=facility_id)
+                    .values('facility__facility_name')
+                    .annotate(total_stp=Sum('stp'))
+                    .order_by('-total_stp')
+                )
+            else:
+                facility_stp = (
+                    Energy.objects.filter(user=user)
+                    .values('facility__facility_name')
+                    .annotate(total_stp=Sum('stp'))
+                    .order_by('-total_stp')
+                )
+
+            total_stp = sum(entry['total_stp'] for entry in facility_stp)
+            donut_chart_data = [
+                {
+                    "facility_name": entry['facility__facility_name'],
+                    "percentage": (entry['total_stp'] / total_stp * 100) if total_stp else 0,
+                }
+                for entry in facility_stp
+            ]
+
+            response_data = {
+                "line_chart_data": line_chart_data,
+                "donut_chart_data": donut_chart_data
+            }
+
+            return Response(response_data, status=status.HTTP_200_OK)
+
+        except Exception as e:
+            return Response({'error': 'An error occurred while processing your request.'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+#Admin_block CardOverview
+class Admin_BlockOverViewCard(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        user = request.user
+        facility_id = request.GET.get('facility_id', None)
+        facility_location = request.GET.get('facility_location', None)
+        year = request.GET.get('year', None)
+
+        if year is None:
+            return Response({'error': 'Year parameter is required.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            year = int(year)
+        except (TypeError, ValueError):
+            return Response({'error': 'Invalid year parameter.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            admin_block_data = Energy.objects.filter(user=user, DatePicker__year=year)
+
+            if facility_id and facility_id.lower() != 'all':
+                if not Facility.objects.filter(id=facility_id).exists():
+                    return Response({'error': 'Invalid facility ID.'}, status=status.HTTP_400_BAD_REQUEST)
+                admin_block_data = admin_block_data.filter(facility__id=facility_id)
+
+            if facility_location:
+                admin_block_data = admin_block_data.filter(facility__facility_location__icontains=facility_location)
+
+            facility_admin_block = (
+                admin_block_data
+                .values('facility__facility_name')
+                .annotate(total_admin_block=Sum('admin_block'))
+                .order_by('-total_admin_block')
+            )
+
+            facility_admin_block_data = [
+                {
+                    "facility_name": entry['facility__facility_name'],
+                    "total_admin_block": entry['total_admin_block']
+                }
+                for entry in facility_admin_block
+            ]
+
+            overall_admin_block = admin_block_data.aggregate(total=Sum('admin_block'))['total'] or 0
+
+            response_data = {
+                'overall_admin_block': overall_admin_block,
+                'facility_admin_block': facility_admin_block_data,
+            }
+
+            return Response(response_data, status=status.HTTP_200_OK)
+
+        except Exception as e:
+            print(f"An error occurred: {e}")
+            return Response({'error': 'An error occurred while processing your request.'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+#Admin_block Overview Linecharts and donut charts
+class Admin_BlockOverviewView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        user = request.user
+        facility_id = request.GET.get('facility_id', None)
+        facility_location = request.GET.get('facility_location', None)
+        year = request.GET.get('year', None)
+        
+        if year is None:
+            return Response({'error': 'Year parameter is required.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            year = int(year)
+        except (TypeError, ValueError):
+            return Response({'error': 'Invalid year parameter.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            # Query to get monthly food waste
+            if facility_id and facility_id.lower() != 'all':
+                monthly_admin_block = (
+                    Energy.objects.filter(user=user, facility__id=facility_id, DatePicker__year=year,facility__facility_location__icontains=facility_location)
+                    .values('DatePicker__month')
+                    .annotate(total_admin_block=Sum('admin_block'))
+                    .order_by('DatePicker__month')
+                )
+            else:
+                monthly_admin_block = (
+                    Energy.objects.filter(user=user, DatePicker__year=year,facility__facility_location__icontains=facility_location)
+                    .values('DatePicker__month')
+                    .annotate(total_admin_block=Sum('admin_block'))
+                    .order_by('DatePicker__month')
+                )
+
+          
+            line_chart_data = []
+            admin_block = defaultdict(float)
+
+            for entry in monthly_admin_block:
+                month_name = datetime(1900, entry['DatePicker__month'], 1).strftime('%b')
+                admin_block[entry['DatePicker__month']] = entry['total_admin_block']
+
+            for month in range(1, 13):
+                month_name = datetime(1900, month, 1).strftime('%b')
+                line_chart_data.append({
+                    "month": month_name,
+                    "admin_block": admin_block.get(month, 0)
+                })
+
+            # Query for facility-wise food waste
+            if facility_id and facility_id.lower() != 'all':
+                facility_admin_block = (
+                    Energy.objects.filter(user=user, facility__id=facility_id)
+                    .values('facility__facility_name')
+                    .annotate(total_admin_block=Sum('admin_block'))
+                    .order_by('-total_admin_block')
+                )
+            else:
+                facility_admin_block = (
+                    Energy.objects.filter(user=user)
+                    .values('facility__facility_name')
+                    .annotate(total_admin_block=Sum('admin_block'))
+                    .order_by('-total_admin_block')
+                )
+
+            total_admin_block = sum(entry['total_admin_block'] for entry in facility_admin_block)
+            donut_chart_data = [
+                {
+                    "facility_name": entry['facility__facility_name'],
+                    "percentage": (entry['total_admin_block'] / total_admin_block * 100) if total_admin_block else 0,
+                }
+                for entry in facility_admin_block
+            ]
+
+            response_data = {
+                "line_chart_data": line_chart_data,
+                "donut_chart_data": donut_chart_data
+            }
+
+            return Response(response_data, status=status.HTTP_200_OK)
+
+        except Exception as e:
+            return Response({'error': 'An error occurred while processing your request.'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
 
 '''Energy  Overview Cards ,Graphs and Individual line charts and donut charts Ends'''
