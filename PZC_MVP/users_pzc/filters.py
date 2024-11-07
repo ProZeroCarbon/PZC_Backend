@@ -5,16 +5,15 @@ from users_pzc.models import Waste, Energy, Water, Biodiversity, Logistices, Fac
 
 class FacilityFilter(filters.FilterSet):
     search = filters.CharFilter(field_name='facility_name', lookup_expr='icontains')
-    facility_id = filters.NumberFilter(field_name="id")
+    facility_id = filters.CharFilter(field_name="facility_id")
     facility_location = filters.CharFilter(field_name="facility_location", lookup_expr='icontains')
 
     class Meta:
         model = Facility
-        fields = ['facility_name','facility_id', 'facility_location']
-
-
+        fields = ['facility_name', 'facility_id', 'facility_location']
+        
 class FacilityDateFilterBase(filters.FilterSet):
-    facility_id = filters.NumberFilter(field_name="facility__id")
+    facility_id = filters.NumberFilter(field_name="facility__facility_id")
     facility_location = filters.CharFilter(field_name="facility__facility_location", lookup_expr='icontains')
     start_year = filters.NumberFilter(field_name="DatePicker", lookup_expr="year__gte")
     end_year = filters.NumberFilter(field_name="DatePicker", lookup_expr="year__lte")
@@ -38,13 +37,11 @@ class FacilityDateFilterBase(filters.FilterSet):
                 raise ValidationError("Start year and end year must be valid numbers.")
 
     def filter_queryset(self, queryset):
-        # Ensure facility_id exists if provided
         facility_id = self.data.get('facility_id')
-        if facility_id and not Facility.objects.filter(id=facility_id).exists():
+        if facility_id and not Facility.objects.filter(facility_id=facility_id).exists():
             raise ValidationError("Facility with the specified ID does not exist.")
         
         return super().filter_queryset(queryset)
-
 
 class WasteFilter(FacilityDateFilterBase):
     class Meta(FacilityDateFilterBase.Meta):

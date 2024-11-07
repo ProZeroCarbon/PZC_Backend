@@ -123,14 +123,13 @@ class FacilityView(APIView):
         }
         return Response(user_data, status=status.HTTP_200_OK)
 
-        
-#FAcility Update
+
 class FacilityEditView(APIView):
     permission_classes = [IsAuthenticated]
 
-    def put(self, request, pk):
+    def put(self, request, facility_id):
         try:
-            facility = Facility.objects.get(pk=pk, user=request.user)
+            facility = Facility.objects.get(facility_id=facility_id, user=request.user)
         except Facility.DoesNotExist:
             return Response({"error": "Facility not found."}, status=status.HTTP_404_NOT_FOUND)
 
@@ -144,14 +143,13 @@ class FacilityEditView(APIView):
 class FacilityDeleteView(APIView):
     permission_classes = [IsAuthenticated]
 
-    def delete(self, request, pk):
-        # Check if pk is a positive integer
-        if not isinstance(pk, int) or pk <= 0:
-            return Response({"error": "Invalid ID provided."}, status=status.HTTP_400_BAD_REQUEST)
+    def delete(self, request, facility_id):
+        if not isinstance(facility_id, str) or len(facility_id) != 8:
+            return Response({"error": "Invalid facility ID provided."}, status=status.HTTP_400_BAD_REQUEST)
 
         try:
-            # Try to get the facility belonging to the user
-            facility = Facility.objects.get(pk=pk, user=request.user)
+            # Try to get the facility using facility_id
+            facility = Facility.objects.get(facility_id=facility_id, user=request.user)
             facility.delete()
             return Response({"message": "Facility deleted successfully."}, status=status.HTTP_200_OK)
         except Facility.DoesNotExist:
@@ -194,16 +192,17 @@ class WasteView(APIView):
             'overall_waste_total': overall_total
         }
         return Response(response_data, status=status.HTTP_200_OK)
-#EditWaste
 class WasteEditView(APIView):
     permission_classes = [IsAuthenticated]
 
-    def put(self, request, pk):
+    def put(self, request, facility_id):
         try:
-            waste = Waste.objects.get(pk=pk, user=request.user)
+            # Lookup Waste by related Facility's facility_id and the authenticated user
+            waste = Waste.objects.get(facility__facility_id=facility_id, user=request.user)
         except Waste.DoesNotExist:
             return Response({"error": "Waste data not found."}, status=status.HTTP_404_NOT_FOUND)
 
+        # Update the waste data
         serializer = WasteCreateSerializer(waste, data=request.data, context={'request': request})
         if serializer.is_valid():
             serializer.save()
@@ -214,9 +213,9 @@ class WasteEditView(APIView):
 class WasteDeleteView(APIView):
     permission_classes = [IsAuthenticated]
 
-    def delete(self, request, pk):
+    def delete(self, request, facility_id):
         try:
-            waste = Waste.objects.get(pk=pk, user=request.user)
+           waste = Waste.objects.get(facility__facility_id=facility_id, user=request.user)
         except Waste.DoesNotExist:
             return Response({"error": "Waste data not found."}, status=status.HTTP_404_NOT_FOUND)
 

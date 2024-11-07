@@ -28,22 +28,22 @@ urlpatterns = [
    #Apis for Facility Crud Operations Starts
    path('add_facility/',FacilityCreateView.as_view(),name='add_facility'),
    path('view_facility/',FacilityView.as_view(),name='view_facility'),
-   path('update_facility/<int:pk>/update/',FacilityEditView.as_view(),name='update_facility'),
-   path('delete_facility/<int:pk>/',FacilityDeleteView.as_view(),name='delete_facility'),
+   path('update_facility/<str:facility_id>/',FacilityEditView.as_view(),name='update_facility'),
+   path('delete_facility/<str:facility_id>/',FacilityDeleteView.as_view(),name='delete_facility'),
    #Apis for Facility Crud Operations Ends
      
    #Apis for Waste Crud Operations starts
    path('add_waste/', WasteCreateView.as_view(), name='add_waste'),
    path('view_waste/',WasteView.as_view(),name='view_waste'),
-   path('waste_update/<int:pk>/update/', WasteEditView.as_view(), name='waste_update'),
-   path('waste_delete/<int:pk>/delete/', WasteDeleteView.as_view(), name='waste_delete'),
+   path('waste_update/<str:facility_id>/', WasteEditView.as_view(), name='waste_update'),
+   path('waste_delete/<str:facility_id>/', WasteDeleteView.as_view(), name='waste_delete'),
    #Apis for Waste Crud Operations Ends
    
    #Apis for Energy Crud Operations starts
    path('add_energy/',EnergyCreateView.as_view(),name='add_energy'),
    path('view_energy/',EnergyView.as_view(),name="view_energy"),
-   path('energy_update/<int:pk>/update/', EnergyEditView.as_view(), name='energy_update'),
-   path('energy_delete/<int:pk>/delete/', EnergyDeleteView.as_view(), name='energy_delete'),
+   path('energy_update/<int:pk>', EnergyEditView.as_view(), name='energy_update'),
+   path('energy_delete/<int:pk>', EnergyDeleteView.as_view(), name='energy_delete'),
    #Apis for Energy Crud Operations Ends
     
    #Apis for Water Crud Operations starts

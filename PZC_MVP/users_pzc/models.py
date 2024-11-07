@@ -67,12 +67,12 @@ class Facility(models.Model):
 
     def save(self, *args, **kwargs):
         if not self.facility_id:
-            # Generate a unique facility_id using a UUID truncated to 8 characters
             self.facility_id = uuid.uuid4().hex[:8].upper()
         super().save(*args, **kwargs)
     
 class Waste(models.Model):
     user = models.ForeignKey(CustomUser,on_delete=models.CASCADE)
+    waste_id =  models.CharField(max_length=20, unique=True, editable=False)
     facility = models.ForeignKey(Facility, on_delete=models.CASCADE)
     category = models.CharField(max_length=255)
     DatePicker = models.DateField(null=True,blank=True)
@@ -89,14 +89,19 @@ class Waste(models.Model):
     def __str__(self):
         return f"Waste data for {self.user.email}"
     
-    def save(self,*args, **kwargs):
-        self.overall_usage = (self.food_waste + self.solid_Waste + self.E_Waste + self.Biomedical_waste + self.other_waste)
-        super(Waste,self).save(*args, **kwargs)
+    def save(self, *args, **kwargs):
+        if not self.waste_id:
+            self.waste_id = uuid.uuid4().hex[:8].upper()
+        self.overall_usage = (self.food_waste + self.solid_Waste + self.E_Waste +
+                              self.Biomedical_waste + self.other_waste)
+        
+        super().save(*args, **kwargs)
 
 
 class Energy(models.Model):
     user = models.ForeignKey(CustomUser,on_delete=models.CASCADE)
     facility = models.ForeignKey(Facility, on_delete=models.CASCADE)
+    energy_id =  models.CharField(max_length=20, unique=True, editable=False)
     FUEL_USED_IN_OPERATIONS_CHOICES=[
         ('Types','Types'),
         ('Crude oil - Diesel','Crude oil - Diesel'),
@@ -124,6 +129,8 @@ class Energy(models.Model):
     def __str__(self):
         return f"Energy data for {self.user.email}"
     def save(self,*args, **kwargs):
+        if not self.energy_id:
+            self.energy_id = uuid.uuid4().hex[:8].upper()
         self.overall_usage = (self.hvac + self.production + self.stp + self.admin_block + self.utilities + self.others)
         super(Energy,self).save(*args, **kwargs)
 
@@ -131,6 +138,7 @@ class Water(models.Model):
     user = models.ForeignKey(CustomUser,on_delete=models.CASCADE)
     facility = models.ForeignKey(Facility, on_delete=models.CASCADE)
     category = models.CharField(max_length=255)
+    water_id =  models.CharField(max_length=20, unique=True, editable=False)
     DatePicker = models.DateField(null=True,blank=True)
     Generated_Water = models.FloatField(default=0.0)
     Recycled_Water = models.FloatField(default=0.0)
@@ -142,6 +150,8 @@ class Water(models.Model):
     def __str__(self):
         return f"Water data for {self.user.email}"
     def save(self, *args, **kwargs):
+        if not self.water_id:
+            self.water_id = uuid.uuid4().hex[:8].upper()
         self.overall_usage = (self.Generated_Water + self.Recycled_Water + self.Softener_usage + self.Boiler_usage + self.otherUsage)
         super(Water, self).save(*args, **kwargs)
     
@@ -149,6 +159,7 @@ class Biodiversity(models.Model):
     user = models.ForeignKey(CustomUser,on_delete=models.CASCADE)
     facility = models.ForeignKey(Facility, on_delete=models.CASCADE)
     category = models.CharField(max_length=255)
+    biodiversity_id =  models.CharField(max_length=20, unique=True, editable=False)
     DatePicker = models.DateField(null=True,blank=True)
     no_trees=models.IntegerField(default=0)
     species = models.CharField(max_length=255)
@@ -165,6 +176,8 @@ class Biodiversity(models.Model):
         return f"biodiversity data for {self.user.email}"
     
     def save(self,*args, **kwargs):
+        if not self.biodiversity_id:
+            self.biodiversity_id = uuid.uuid4().hex[:8].upper()
         self.overall_Trees = (self.no_of_trees)
         super(Biodiversity,self).save(*args, **kwargs)
         
@@ -183,6 +196,7 @@ class Logistices(models.Model):
     ]
     category = models.CharField(max_length=255)
     DatePicker = models.DateField(null=True,blank=True)
+    logistices_id =  models.CharField(max_length=20, unique=True, editable=False)
     logistices_types = models.CharField(max_length=255,choices=LOGISTICES_TYPE_CHOICES,default='staff_logistices')
     Typeof_fuel = models.CharField(max_length=255,choices=FUEL_TYPE_CHOICES,default='diesel')
     km_travelled =models.FloatField(default=0.0)
@@ -195,6 +209,8 @@ class Logistices(models.Model):
         return f" data for {self.user.email}"
     
     def save(self,*args, **kwargs):
+        if not self.logistices_id:
+            self.logistices_id = uuid.uuid4().hex[:8].upper()
         self.total_fuelconsumption = (self.fuel_consumption)
         super(Logistices,self).save(*args, **kwargs)
     

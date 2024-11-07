@@ -49,7 +49,7 @@ AUTH_USER_MODEL = 'users_pzc.CustomUser'
 SIMPLE_JWT = {
     'BLACKLIST_AFTER_ROTATION': True,  # Blacklist refresh tokens after rotation
     'ROTATE_REFRESH_TOKENS': True,     # Rotate tokens after each refresh
-    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=5),  # Customize token lifetime as needed
+    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=60),  # Customize token lifetime as needed
     'REFRESH_TOKEN_LIFETIME': timedelta(days=1),
     'AUTH_HEADER_TYPES': ('Bearer',),
     'AUTH_TOKEN_CLASSES': ('rest_framework_simplejwt.tokens.AccessToken',),
