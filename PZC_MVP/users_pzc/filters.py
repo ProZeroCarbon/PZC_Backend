@@ -2,7 +2,6 @@ from django_filters import rest_framework as filters
 from django.core.exceptions import ValidationError
 from users_pzc.models import Waste, Energy, Water, Biodiversity, Logistices, Facility
 
-
 class FacilityFilter(filters.FilterSet):
     search = filters.CharFilter(field_name='facility_name', lookup_expr='icontains')
     facility_id = filters.CharFilter(field_name="facility_id")
@@ -38,7 +37,7 @@ class FacilityDateFilterBase(filters.FilterSet):
 
     def filter_queryset(self, queryset):
         facility_id = self.data.get('facility_id')
-        if facility_id and not Facility.objects.filter(facility_id=facility_id).exists():
+        if facility_id and facility_id.lower() != 'all' and not Facility.objects.filter(facility_id=facility_id).exists():
             raise ValidationError("Facility with the specified ID does not exist.")
         
         return super().filter_queryset(queryset)
@@ -46,7 +45,6 @@ class FacilityDateFilterBase(filters.FilterSet):
 class WasteFilter(FacilityDateFilterBase):
     class Meta(FacilityDateFilterBase.Meta):
         model = Waste
-
 
 class EnergyFilter(FacilityDateFilterBase):
     class Meta(FacilityDateFilterBase.Meta):

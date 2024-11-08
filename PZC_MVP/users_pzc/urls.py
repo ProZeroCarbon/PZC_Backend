@@ -49,6 +49,7 @@ urlpatterns = [
    #Apis for Water Crud Operations starts
    path('add_water/',WaterCreateView.as_view(),name='add_water'),
    path('view_water/',WaterView.as_view(),name='View_water'),
+   
    path('water_update/<int:pk>/', WaterEditView.as_view(), name='water_update'),
    path('water_delete/<int:pk>/delete/', WaterDeleteView.as_view(), name='water_delete'),
    #Apis for Water Crud Operations Ends
