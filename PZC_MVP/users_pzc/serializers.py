@@ -158,8 +158,92 @@ class WasteSerializer(serializers.ModelSerializer):
         fields = ['user_id','facility_id','category', 'DatePicker', 'food_waste', 'solid_Waste', 
                   'E_Waste', 'Biomedical_waste', 'liquid_discharge', 
                   'other_waste', 'Recycle_waste','Landfill_waste','waste_id']
+# class WasteCreateSerializer(serializers.ModelSerializer):
+#     facility_id = serializers.CharField(write_only=True)  # This is for input only
+
+#     class Meta:
+#         model = Waste
+#         fields = [
+#             'facility_id', 'category', 'DatePicker', 'food_waste', 'solid_Waste',
+#             'E_Waste', 'Biomedical_waste', 'liquid_discharge', 'other_waste',
+#             'Recycle_waste', 'Landfill_waste', 'waste_id'
+#         ]
+#         extra_kwargs = {'facility': {'read_only': True}}  # The 'facility' field is automatically set
+
+#     def validate(self, data):
+#         facility_id = data.get('facility_id')
+#         try:
+#             facility = Facility.objects.get(facility_id=facility_id)
+#             data['facility'] = facility  # Associate the found facility with the waste
+#         except Facility.DoesNotExist:
+#             raise serializers.ValidationError({"facility_id": "The selected facility does not exist."})
+#         waste_fields = [
+#             'food_waste', 'solid_Waste', 'E_Waste', 'Biomedical_waste',
+#             'liquid_discharge', 'other_waste', 'Recycle_waste', 'Landfill_waste'
+#         ]
+#         for field in waste_fields:
+#             if data.get(field, 0) < 0:
+#                 raise serializers.ValidationError({field: f"{field.replace('_', ' ').title()} must be a positive number."})
+
+#         return data
+
+#     def create(self, validated_data):
+#         user = self.context['request'].user
+#         validated_data['user'] = user
+#         validated_data.pop('facility_id', None)
+#         waste = Waste.objects.create(**validated_data)
+#         return waste
+
+#     def to_representation(self, instance):
+#         """Override to_representation to return the facility_id instead of the full facility object."""
+#         representation = super().to_representation(instance)
+#         representation['facility_id'] = instance.facility.facility_id
+#         representation.pop('facility', None)
+#         return representation
 class WasteCreateSerializer(serializers.ModelSerializer):
-    facility_id = serializers.CharField(write_only=True)  # This is for input only
+    facility_id = serializers.CharField(write_only=True, required=True, error_messages={
+        'required': 'Facility ID is required.',
+        'null': 'Facility ID cannot be null.'
+    })
+    DatePicker = serializers.DateField(required=True, error_messages={
+        'required': 'Date is required.',
+        'invalid': 'Invalid date format. Please use YYYY-MM-DD.'
+    })
+    category = serializers.CharField(required=True, error_messages={
+        'required': 'Category is required.'
+    })
+    food_waste = serializers.FloatField(required=True, min_value=0, error_messages={
+        'required': 'Food waste is required.',
+        'min_value': 'Food waste must be a positive number.'
+    })
+    solid_Waste = serializers.FloatField(required=True, min_value=0, error_messages={
+        'required': 'Solid waste is required.',
+        'min_value': 'Solid waste must be a positive number.'
+    })
+    E_Waste = serializers.FloatField(required=True, min_value=0, error_messages={
+        'required': 'E-waste is required.',
+        'min_value': 'E-waste must be a positive number.'
+    })
+    Biomedical_waste = serializers.FloatField(required=True, min_value=0, error_messages={
+        'required': 'Biomedical waste is required.',
+        'min_value': 'Biomedical waste must be a positive number.'
+    })
+    liquid_discharge = serializers.FloatField(required=True, min_value=0, error_messages={
+        'required': 'Liquid discharge is required.',
+        'min_value': 'Liquid discharge must be a positive number.'
+    })
+    other_waste = serializers.FloatField(required=True, min_value=0, error_messages={
+        'required': 'Other waste is required.',
+        'min_value': 'Other waste must be a positive number.'
+    })
+    Recycle_waste = serializers.FloatField(required=True, min_value=0, error_messages={
+        'required': 'Recycle waste is required.',
+        'min_value': 'Recycle waste must be a positive number.'
+    })
+    Landfill_waste = serializers.FloatField(required=True, min_value=0, error_messages={
+        'required': 'Landfill waste is required.',
+        'min_value': 'Landfill waste must be a positive number.'
+    })
 
     class Meta:
         model = Waste
@@ -168,19 +252,24 @@ class WasteCreateSerializer(serializers.ModelSerializer):
             'E_Waste', 'Biomedical_waste', 'liquid_discharge', 'other_waste',
             'Recycle_waste', 'Landfill_waste', 'waste_id'
         ]
-        extra_kwargs = {'facility': {'read_only': True}}  # The 'facility' field is automatically set
+        extra_kwargs = {
+            'facility': {'read_only': True},  # The 'facility' field is automatically set
+            'waste_id': {'read_only': True}   # Make 'waste_id' read-only
+        }
 
     def validate(self, data):
-        # Get the facility_id from the request
+        # Validate facility_id and ensure the facility exists
         facility_id = data.get('facility_id')
+        if not facility_id:
+            raise serializers.ValidationError({"facility_id": "Facility ID is required."})
+
         try:
-            # Find the Facility object using the provided facility_id
             facility = Facility.objects.get(facility_id=facility_id)
             data['facility'] = facility  # Associate the found facility with the waste
         except Facility.DoesNotExist:
             raise serializers.ValidationError({"facility_id": "The selected facility does not exist."})
 
-        # Validate waste fields to be positive numbers
+        # Validate that the required waste fields are non-negative
         waste_fields = [
             'food_waste', 'solid_Waste', 'E_Waste', 'Biomedical_waste',
             'liquid_discharge', 'other_waste', 'Recycle_waste', 'Landfill_waste'
@@ -192,48 +281,150 @@ class WasteCreateSerializer(serializers.ModelSerializer):
         return data
 
     def create(self, validated_data):
-        # Automatically associate the current user
+        # Associate the current user with the waste entry
         user = self.context['request'].user
         validated_data['user'] = user
-        validated_data.pop('facility_id', None)  # Remove facility_id after associating it
-        waste = Waste.objects.create(**validated_data)  # Create and return the Waste object
+        validated_data.pop('facility_id', None)  # Remove the facility_id as it's already set
+
+        # Create and return the waste object
+        waste = Waste.objects.create(**validated_data)
         return waste
 
-    def to_representation(self, instance):
-        """Override to_representation to return the facility_id instead of the full facility object."""
-        representation = super().to_representation(instance)
-        # Add the 'facility_id' from the associated Facility
-        representation['facility_id'] = instance.facility.facility_id
-        # Remove 'facility' from the output response
-        representation.pop('facility', None)
-        return representation
+
+# class WasteCreateSerializer(serializers.ModelSerializer):
+#     facility_id = serializers.CharField(write_only=True, required=True, error_messages={
+#         'required': 'Facility ID is required.',
+#         'null': 'Facility ID cannot be null.'
+#     })
+#     DatePicker = serializers.DateField(required=True, error_messages={
+#         'required': 'Date is required.',
+#         'invalid': 'Invalid date format. Please use YYYY-MM-DD.'
+#     })
+#     category = serializers.CharField(required=True, error_messages={
+#         'required': 'Category is required.'
+#     })
+#     food_waste = serializers.FloatField(required=True, min_value=0, error_messages={
+#         'required': 'Food waste is required.',
+#         'min_value': 'Food waste must be a positive number.'
+#     })
+#     solid_Waste = serializers.FloatField(required=True, min_value=0, error_messages={
+#         'required': 'Solid waste is required.',
+#         'min_value': 'Solid waste must be a positive number.'
+#     })
+#     E_Waste = serializers.FloatField(required=True, min_value=0, error_messages={
+#         'required': 'E-waste is required.',
+#         'min_value': 'E-waste must be a positive number.'
+#     })
+#     Biomedical_waste = serializers.FloatField(required=True, min_value=0, error_messages={
+#         'required': 'Biomedical waste is required.',
+#         'min_value': 'Biomedical waste must be a positive number.'
+#     })
+#     liquid_discharge = serializers.FloatField(required=True, min_value=0, error_messages={
+#         'required': 'Liquid discharge is required.',
+#         'min_value': 'Liquid discharge must be a positive number.'
+#     })
+#     other_waste = serializers.FloatField(required=True, min_value=0, error_messages={
+#         'required': 'Other waste is required.',
+#         'min_value': 'Other waste must be a positive number.'
+#     })
+#     Recycle_waste = serializers.FloatField(required=True, min_value=0, error_messages={
+#         'required': 'Recycle waste is required.',
+#         'min_value': 'Recycle waste must be a positive number.'
+#     })
+#     Landfill_waste = serializers.FloatField(required=True, min_value=0, error_messages={
+#         'required': 'Landfill waste is required.',
+#         'min_value': 'Landfill waste must be a positive number.'
+#     })
+
+#     class Meta:
+#         model = Waste
+#         fields = [
+#             'facility_id', 'category', 'DatePicker', 'food_waste', 'solid_Waste',
+#             'E_Waste', 'Biomedical_waste', 'liquid_discharge', 'other_waste',
+#             'Recycle_waste', 'Landfill_waste', 'waste_id'
+#         ]
+#         extra_kwargs = {'facility': {'read_only': True}}  # The 'facility' field is automatically set
+
+#     def validate(self, data):
+#         # Validate facility ID
+#         facility_id = data.get('facility_id')
+#         try:
+#             facility = Facility.objects.get(facility_id=facility_id)
+#             data['facility'] = facility  # Associate the found facility with the waste
+#         except Facility.DoesNotExist:
+#             raise serializers.ValidationError({"facility_id": "The selected facility does not exist."})
+
+#         # If any required field is missing or empty, raise validation errors
+#         missing_fields = [field for field in self.fields if field not in data or data[field] is None]
+#         if missing_fields:
+#             raise serializers.ValidationError({field: f"{field.replace('_', ' ').title()} is required." for field in missing_fields})
+
+#         return data
+
+#     def create(self, validated_data):
+#         user = self.context['request'].user
+#         validated_data['user'] = user
+#         validated_data.pop('facility_id', None)
+
+#         waste = Waste.objects.create(**validated_data)
+#         return waste
+#     def to_representation(self, instance):
+#         """Override to_representation to return the facility_id instead of the full facility object."""
+#         representation = super().to_representation(instance)
+#         representation['facility_id'] = instance.facility.facility_id
+#         representation.pop('facility', None)
+#         return representation
 class EnergySerializer(serializers.ModelSerializer):
     class Meta:
         model = Energy
-        fields = ['category','DatePicker','hvac', 'production', 'stp', 'admin_block', 
-                  'utilities', 'others', 'fuel_used_in_Operations','fuel_consumption','renewable_solar', 
-                  'renewable_other', 'facility','energy_id']
-
+        fields = [
+            'user_id', 'facility_id', 'category', 'DatePicker', 'hvac', 'production', 'stp', 
+            'admin_block', 'utilities', 'others', 'fuel_used_in_Operations', 'fuel_consumption', 
+            'renewable_solar', 'renewable_other', 'overall_usage', 'energy_id'
+        ]
 
 class EnergyCreateSerializer(serializers.ModelSerializer):
+    facility_id = serializers.CharField(write_only=True) 
+
     class Meta:
         model = Energy
-        fields = ['category','DatePicker','hvac', 'production', 'stp', 'admin_block', 
-                  'utilities', 'others', 'fuel_used_in_Operations','fuel_consumption', 'renewable_solar', 
-                  'renewable_other', 'facility','energy_id']
-    
+        fields = [
+            'facility_id', 'category', 'DatePicker', 'hvac', 'production', 'stp', 
+            'admin_block', 'utilities', 'others', 'fuel_used_in_Operations', 
+            'fuel_consumption', 'renewable_solar', 'renewable_other', 'energy_id'
+        ]
+        extra_kwargs = {'facility': {'read_only': True}}
+
     def validate(self, data):
-        if data['hvac'] < 0 or data['production'] < 0 or data['stp'] < 0:
-            raise serializers.ValidationError("Energy usage values must be positive.")
+        facility_id = data.get('facility_id')
+        try:
+            facility = Facility.objects.get(facility_id=facility_id)
+            data['facility'] = facility
+        except Facility.DoesNotExist:
+            raise serializers.ValidationError({"facility_id": "The selected facility does not exist."})
+
+        energy_fields = [
+            'hvac', 'production', 'stp', 'admin_block', 'utilities', 
+            'others', 'fuel_consumption', 'renewable_solar', 'renewable_other'
+        ]
+        for field in energy_fields:
+            if data.get(field, 0) < 0:
+                raise serializers.ValidationError({field: f"{field.replace('_', ' ').title()} must be a positive number."})
+
         return data
 
     def create(self, validated_data):
         user = self.context['request'].user
-        if 'user' in validated_data:
-            validated_data.pop('user')
-        energy = Energy.objects.create(user=user, **validated_data)
+        validated_data['user'] = user
+        validated_data.pop('facility_id', None)
+        energy = Energy.objects.create(**validated_data)
         return energy
 
+    def to_representation(self, instance):
+        representation = super().to_representation(instance)
+        representation['facility_id'] = instance.facility.facility_id
+        representation.pop('facility', None)
+        return representation
 class WaterSerializer(serializers.ModelSerializer):
     class Meta:
         model = Water

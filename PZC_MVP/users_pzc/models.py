@@ -101,7 +101,7 @@ class Waste(models.Model):
 class Energy(models.Model):
     user = models.ForeignKey(CustomUser,on_delete=models.CASCADE)
     facility = models.ForeignKey(Facility, on_delete=models.CASCADE)
-    energy_id =  models.CharField(max_length=20, unique=True, editable=False)
+    energy_id =  models.CharField(max_length=255, primary_key=True, editable=False)
     FUEL_USED_IN_OPERATIONS_CHOICES=[
         ('Types','Types'),
         ('Crude oil - Diesel','Crude oil - Diesel'),

@@ -42,8 +42,8 @@ urlpatterns = [
    #Apis for Energy Crud Operations starts
    path('add_energy/',EnergyCreateView.as_view(),name='add_energy'),
    path('view_energy/',EnergyView.as_view(),name="view_energy"),
-   path('energy_update/<int:pk>', EnergyEditView.as_view(), name='energy_update'),
-   path('energy_delete/<int:pk>', EnergyDeleteView.as_view(), name='energy_delete'),
+   path('energy_update/<str:facility_id>', EnergyEditView.as_view(), name='energy_update'),
+   path('energy_delete/<str:facility_id>', EnergyDeleteView.as_view(), name='energy_delete'),
    #Apis for Energy Crud Operations Ends
     
    #Apis for Water Crud Operations starts
@@ -104,7 +104,7 @@ urlpatterns = [
    #Apis for Waste overviewgraphs Ends
    
 
-   #Apis For Energy overview
+   #Apis For Energy overviewView
    path('HVAC_CardOverview/',HVAC_CardOverview.as_view(),name='HVAC_CardOverview'),
    path('HVACOverviewView/',HVACOverviewView.as_view(),name='HVACOverviewView'),
    
