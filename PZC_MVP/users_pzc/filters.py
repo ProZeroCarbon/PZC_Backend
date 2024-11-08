@@ -12,7 +12,7 @@ class FacilityFilter(filters.FilterSet):
         fields = ['facility_name', 'facility_id', 'facility_location']
         
 class FacilityDateFilterBase(filters.FilterSet):
-    facility_id = filters.NumberFilter(field_name="facility__facility_id")
+    facility_id = filters.CharFilter(field_name="facility__facility_id")
     facility_location = filters.CharFilter(field_name="facility__facility_location", lookup_expr='icontains')
     start_year = filters.NumberFilter(field_name="DatePicker", lookup_expr="year__gte")
     end_year = filters.NumberFilter(field_name="DatePicker", lookup_expr="year__lte")
