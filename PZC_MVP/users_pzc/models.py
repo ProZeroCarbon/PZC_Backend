@@ -56,7 +56,7 @@ class Org_registration(models.Model):
 
 class Facility(models.Model):
     user = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
-    facility_id = models.CharField(max_length=20, unique=True, editable=False)  # Unique and non-editable
+    facility_id = models.CharField(max_length=255, primary_key=True, editable=False)
     facility_name = models.CharField(max_length=255)
     facility_head = models.CharField(max_length=255)
     facility_location = models.CharField(max_length=255)
@@ -72,7 +72,7 @@ class Facility(models.Model):
     
 class Waste(models.Model):
     user = models.ForeignKey(CustomUser,on_delete=models.CASCADE)
-    waste_id =  models.CharField(max_length=20, unique=True, editable=False)
+    waste_id =  models.CharField(max_length=255,primary_key=True, editable=False)
     facility = models.ForeignKey(Facility, on_delete=models.CASCADE)
     category = models.CharField(max_length=255)
     DatePicker = models.DateField(null=True,blank=True)

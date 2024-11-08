@@ -158,38 +158,6 @@ class WasteSerializer(serializers.ModelSerializer):
         fields = ['user_id','facility_id','category', 'DatePicker', 'food_waste', 'solid_Waste', 
                   'E_Waste', 'Biomedical_waste', 'liquid_discharge', 
                   'other_waste', 'Recycle_waste','Landfill_waste','waste_id']
-# class WasteCreateSerializer(serializers.ModelSerializer):
-#     facility_id = serializers.CharField(write_only=True)
-
-#     class Meta:
-#         model = Waste
-#         fields = ['user_id','facility_id','category', 'DatePicker', 'food_waste', 'solid_Waste', 
-#                   'E_Waste', 'Biomedical_waste', 'liquid_discharge', 
-#                   'other_waste', 'Recycle_waste','Landfill_waste','waste_id']
-
-#     def validate(self, data):
-#         facility_id = data.get('facility_id')
-#         try:
-#             facility = Facility.objects.get(facility_id=facility_id)
-#             data['facility'] = facility
-#         except Facility.DoesNotExist:
-#             raise serializers.ValidationError({"facility_id": "The selected facility does not exist."})
-
-#         waste_fields = [
-#             'food_waste', 'solid_Waste', 'E_Waste', 'Biomedical_waste',
-#             'liquid_discharge', 'other_waste', 'Recycle_waste', 'Landfill_waste'
-#         ]
-#         for field in waste_fields:
-#             if data.get(field, 0) < 0:
-#                 raise serializers.ValidationError({field: f"{field.replace('_', ' ').title()} must be a positive number."})
-
-#         return data
-
-#     def create(self, validated_data):
-#         user = self.context['request'].user
-#         validated_data['user'] = user 
-#         validated_data.pop('facility_id', None)
-#         return Waste.objects.create(**validated_data)
 class WasteCreateSerializer(serializers.ModelSerializer):
     facility_id = serializers.CharField(write_only=True)  # This is for input only
 
