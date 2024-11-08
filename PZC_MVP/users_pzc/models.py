@@ -102,16 +102,6 @@ class Energy(models.Model):
     user = models.ForeignKey(CustomUser,on_delete=models.CASCADE)
     facility = models.ForeignKey(Facility, on_delete=models.CASCADE)
     energy_id =  models.CharField(max_length=255, primary_key=True, editable=False)
-    FUEL_USED_IN_OPERATIONS_CHOICES=[
-        ('Types','Types'),
-        ('Crude oil - Diesel','Crude oil - Diesel'),
-        ('Crude oil - Petrol','Crude oil - Petrol'),
-        ('Coal - Cooking coal','Coal - Cooking coal'),
-        ('Coal - Coke Oven Coal','Coal - Coke Oven Coal'),
-        ('Natural gas','Natural gas'),
-        ('Biomass - wood','Biomass - wood'),
-        ('Biomass - Other solid waste','Biomass - Other solid waste')
-    ]
     category = models.CharField(max_length=255)
     DatePicker = models.DateField(null=True,blank=True)
     hvac=models.FloatField(default=0.0)
@@ -120,7 +110,7 @@ class Energy(models.Model):
     admin_block = models.FloatField(default=0.0)
     utilities = models.FloatField(default=0.0)
     others = models.FloatField(default=0.0)
-    fuel_used_in_Operations = models.CharField(max_length=255,choices=FUEL_USED_IN_OPERATIONS_CHOICES,default='Types')
+    fuel_used_in_Operations = models.CharField(max_length=255)
     fuel_consumption = models.FloatField(default=0.0)
     renewable_solar = models.FloatField(default=0.0)
     renewable_other = models.FloatField(default=0.0)
