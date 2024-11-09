@@ -159,6 +159,7 @@ class WasteSerializer(serializers.ModelSerializer):
         fields = ['user_id','facility_id','category', 'DatePicker', 'food_waste', 'solid_Waste', 
                   'E_Waste', 'Biomedical_waste', 'liquid_discharge', 
                   'other_waste', 'Recycle_waste','Landfill_waste','waste_id']
+
 class WasteCreateSerializer(serializers.ModelSerializer):
     facility_id = serializers.CharField(
         write_only=True, required=True,
@@ -287,7 +288,6 @@ class WasteCreateSerializer(serializers.ModelSerializer):
         representation['facility_id'] = instance.facility.facility_id
         representation.pop('facility', None)
         return representation
-
 class EnergySerializer(serializers.ModelSerializer):
     class Meta:
         model = Energy
@@ -299,30 +299,22 @@ class EnergySerializer(serializers.ModelSerializer):
 
 class EnergyCreateSerializer(serializers.ModelSerializer):
     facility_id = serializers.CharField(
-        write_only=True,
-        required=True,  # Ensures the field is required
+        write_only=True, required=True,
         error_messages={
             'required': 'Facility ID is required.',
-            'null': 'Facility ID cannot be null.',
-            'blank': 'Facility ID cannot be blank.'
+            'null': 'Facility ID cannot be null.'
         }
     )
-
-    category = serializers.CharField(
-        required=True,
-        error_messages={
-            'required': 'Category is required.',
-            'blank': 'Category cannot be blank.'
-        }
-    )
-    
     DatePicker = serializers.DateField(
         required=True,
         error_messages={
             'required': 'Date is required.',
-            'invalid': 'Invalid date format. Please use YYYY-MM-DD.',
-            'blank': 'Date cannot be blank.'
+            'invalid': 'Invalid date format. Please use YYYY-MM-DD.'
         }
+    )
+    category = serializers.CharField(
+        required=True,
+        error_messages={'required': 'Category is required.'}
     )
 
     hvac = serializers.FloatField(
@@ -430,9 +422,24 @@ class EnergyCreateSerializer(serializers.ModelSerializer):
             'admin_block', 'utilities', 'others', 'fuel_used_in_Operations', 
             'fuel_consumption', 'renewable_solar', 'renewable_other', 'energy_id'
         ]
-        extra_kwargs = {'facility': {'read_only': True}}
+        extra_kwargs = {
+            'facility': {'read_only': True},
+            'energy_id': {'read_only': True}
+        }
 
     def validate(self, data):
+        if 'facility_id' not in data or not data['facility_id']:
+            raise serializers.ValidationError({"facility_id": "Facility ID is required."})
+
+        if 'category' not in data or not data['category']:
+            raise serializers.ValidationError({"category": "Category is required."})
+
+        if 'DatePicker' not in data or not data['DatePicker']:
+            raise serializers.ValidationError({"DatePicker": "Date is required."})
+        # required_fields = ['facility_id', 'category', 'DatePicker']
+        # for field in required_fields:
+        #     if field not in data:
+        #         raise serializers.ValidationError({field: f"{field.replace('_', ' ').title()} is required."})
         facility_id = data.get('facility_id')
         if not facility_id:
             raise serializers.ValidationError({"facility_id": "Facility ID is required."})
@@ -481,7 +488,6 @@ class WaterSerializer(serializers.ModelSerializer):
         fields = ['DatePicker','category','Generated_Water', 'Recycled_Water', 'Softener_usage', 
                   'Boiler_usage', 'otherUsage', 'facility','water_id']
 
-
 class WaterCreateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Water
@@ -503,8 +509,6 @@ class WaterCreateSerializer(serializers.ModelSerializer):
             validated_data.pop('user')
         water = Water.objects.create(user=user, **validated_data)
         return water
-
-
 
 class BiodiversitySerializer(serializers.ModelSerializer):
     class Meta:

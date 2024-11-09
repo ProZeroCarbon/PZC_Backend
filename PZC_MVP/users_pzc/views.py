@@ -106,108 +106,28 @@ class FacilityCreateView(APIView):
             return Response({"message": "Facility added successfully."}, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
-# #FacilityView or get
-#second
-# class FacilityView(APIView):
-    permission_classes = [IsAuthenticated]
-    filter_backends = [DjangoFilterBackend]
-    filterset_class = WasteFilter
-
-    def get(self, request):
-        user = request.user
-        facility_id = request.GET.get('facility_id', 'all')  # Default to 'all' if not provided
-
-        # Retrieve waste data based on the selected facility or all facilities
-        if facility_id.lower() == 'all':
-            # Get waste data for all facilities for the current user
-            waste_data = Waste.objects.filter(user=user)
-        else:
-            # Get waste data for the specific facility
-            waste_data = Waste.objects.filter(user=user, facility__facility_id=facility_id)
-
-        # Check if there's any waste data to filter and serialize
-        if waste_data.exists():
-            # Apply filtering through the DjangoFilterBackend
-            filtered_waste_data = WasteFilter(request.GET, queryset=waste_data).qs
-            waste_serializer = WasteSerializer(filtered_waste_data, many=True)
-
-            # Calculate the overall total waste from the filtered data
-            overall_total = sum(
-                waste.food_waste + waste.solid_Waste + waste.E_Waste + waste.Biomedical_waste + waste.other_waste
-                for waste in filtered_waste_data
-            )
-        else:
-            waste_serializer = WasteSerializer([], many=True)
-            overall_total = 0
-
-        # Prepare the response data
-        response_data = {
-            'email': user.email,
-            'waste_data': waste_serializer.data,
-            'overall_waste_total': overall_total
-        }
-
-        return Response(response_data, status=status.HTTP_200_OK)
+#FacilityView or get
 class FacilityView(APIView):
     permission_classes = [IsAuthenticated]
     filter_backends = [DjangoFilterBackend]
-    filterset_class = WasteFilter
-
+    filterset_class = FacilityFilter
     def get(self, request):
         user = request.user
         facility_id = request.GET.get('facility_id', 'all')
 
-        # Retrieve waste data based on the selected facility or all facilities
-        if facility_id.lower() == 'all':
-            waste_data = Waste.objects.filter(user=user)
+        if facility_id and facility_id.lower() == 'all':
+            facility_data = Facility.objects.filter(user=user)
         else:
-            waste_data = Waste.objects.filter(user=user, facility__facility_id=facility_id)
-        
-        # Check if there’s any waste data to filter and serialize
-        if waste_data.exists():
-            filtered_waste_data = WasteFilter(request.GET, queryset=waste_data).qs
-            waste_serializer = WasteSerializer(filtered_waste_data, many=True)
-
-            overall_total = sum(
-                waste.food_waste + waste.solid_Waste + waste.E_Waste + waste.Biomedical_waste + waste.other_waste
-                for waste in filtered_waste_data
-            )
-        else:
-            waste_serializer = WasteSerializer([], many=True)
-            overall_total = 0
-
-        response_data = {
+            facility_data = Facility.objects.filter(user=user, facility_id=facility_id)
+            
+        facility_data = Facility.objects.filter(user=user)
+        filtered_facility_data = FacilityFilter(request.GET,queryset=facility_data).qs
+        facility_serializer = FacilitySerializer(filtered_facility_data, many=True)
+        user_data = {
             'email': user.email,
-            'waste_data': waste_serializer.data,
-            'overall_waste_total': overall_total
+            'facility_data': facility_serializer.data,
         }
-
-        return Response(response_data, status=status.HTTP_200_OK)
-
-
-# class FacilityView(APIView):
-#     permission_classes = [IsAuthenticated]
-#     filter_backends = [DjangoFilterBackend]
-#     filterset_class = FacilityFilter
-
-#     def get(self, request):
-#         user = request.user
-#         facility_id = request.GET.get('facility_id', 'all')
-
-#         # If "all" is selected, retrieve all facilities for the user
-#         if facility_id and facility_id.lower() == 'all':
-#             facility_data = Facility.objects.filter(user=user)
-#         else:
-#             facility_data = Facility.objects.filter(user=user, facility_id=facility_id)
-#         facility_data = Facility.objects.filter(user=user)
-#         filtered_facility_data = FacilityFilter(request.GET,queryset=facility_data).qs
-#         facility_serializer = FacilitySerializer(filtered_facility_data, many=True)
-#         user_data = {
-#             'email': user.email,
-#             'facility_data': facility_serializer.data,
-#         }
-#         return Response(user_data, status=status.HTTP_200_OK)
-
+        return Response(user_data, status=status.HTTP_200_OK)
 
 class FacilityEditView(APIView):
     permission_classes = [IsAuthenticated]
@@ -239,8 +159,7 @@ class FacilityDeleteView(APIView):
             return Response({"message": "Facility deleted successfully."}, status=status.HTTP_200_OK)
         except Facility.DoesNotExist:
             return Response({"error": "Facility not found."}, status=status.HTTP_404_NOT_FOUND)
-
-        
+      
 '''Facility Crud Operations Ends'''
 
 
@@ -264,14 +183,15 @@ class WasteView(APIView):
     def get(self, request):
         user = request.user
         facility_id = request.GET.get('facility_id', 'all')
-        if facility_id and facility_id.lower() != 'all':
+        
+        if facility_id.lower() != 'all':
             waste_data = Waste.objects.filter(user=user, facility__facility_id=facility_id)
         else:
             waste_data = Waste.objects.filter(user=user)
-    
-        filtered_waste_data = WasteFilter(request.GET, queryset=waste_data).qs
-        waste_serializer = WasteSerializer(filtered_waste_data, many=True)
         
+        filtered_waste_data = WasteFilter(request.GET, queryset=waste_data).qs
+        
+        waste_serializer = WasteSerializer(filtered_waste_data, many=True)
         overall_total = sum(
             waste.food_waste + waste.solid_Waste + waste.E_Waste + waste.Biomedical_waste + waste.other_waste
             for waste in filtered_waste_data
@@ -284,12 +204,13 @@ class WasteView(APIView):
         }
         
         return Response(response_data, status=status.HTTP_200_OK)
+
 class WasteEditView(APIView):
     permission_classes = [IsAuthenticated]
 
-    def put(self, request, facility_id):
+    def put(self, request, waste_id):
         try:
-            waste = Waste.objects.get(facility__facility_id=facility_id, user=request.user)
+            waste = Waste.objects.get(waste_id=waste_id, user=request.user)
         except Waste.DoesNotExist:
             return Response({"error": "Waste data not found."}, status=status.HTTP_404_NOT_FOUND)
 
@@ -304,9 +225,9 @@ class WasteEditView(APIView):
 class WasteDeleteView(APIView):
     permission_classes = [IsAuthenticated]
 
-    def delete(self, request, facility_id):
+    def delete(self, request, waste_id):
         try:
-           waste = Waste.objects.get(facility__facility_id=facility_id, user=request.user)
+           waste = Waste.objects.get(waste_id=waste_id, user=request.user)
         except Waste.DoesNotExist:
             return Response({"error": "Waste data not found."}, status=status.HTTP_404_NOT_FOUND)
 
@@ -337,10 +258,11 @@ class EnergyView(APIView):
         user = request.user
         
         facility_id = request.GET.get('facility_id', 'all')
-        if facility_id and facility_id.lower() != 'all':
+        if facility_id.lower() != 'all':
             energy_data = Energy.objects.filter(user=user, facility__facility_id=facility_id)
         else:
             energy_data = Energy.objects.filter(user=user)
+            
         filtered_energy_data =EnergyFilter(request.GET,queryset=energy_data).qs
         energy_serializer = EnergySerializer(filtered_energy_data,many=True)
         overall_total = 0.0
@@ -359,9 +281,9 @@ class EnergyView(APIView):
 class EnergyEditView(APIView):
     permission_classes = [IsAuthenticated]
 
-    def put(self, request, facility_id):
+    def put(self, request, energy_id):
         try:
-            energy = Energy.objects.get(facility__facility_id=facility_id, user=request.user)
+            energy = Energy.objects.get(energy_id=energy_id, user=request.user)
         except Energy.DoesNotExist:
             return Response({"error": "Energy data not found."}, status=status.HTTP_404_NOT_FOUND)
         
@@ -376,9 +298,9 @@ class EnergyEditView(APIView):
 class EnergyDeleteView(APIView):
     permission_classes = [IsAuthenticated]
 
-    def delete(self, request, facility_id):
+    def delete(self, request, energy_id):
         try:
-            energy = Energy.objects.get(facility__facility_id=facility_id, user=request.user)
+            energy = Energy.objects.get(energy_id=energy_id, user=request.user)
         except Energy.DoesNotExist:
             return Response({"error": "Energy data not found."}, status=status.HTTP_404_NOT_FOUND)
 
@@ -436,7 +358,6 @@ class WaterEditView(APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 #WaterDelete
-
 class WaterDeleteView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -610,35 +531,103 @@ class LogoutView(APIView):
     
 '''Waste Overviewgraphs and Individual Line charts and donut charts Starts'''
 
-#FoodWaste Overview
+#Waste_OverviewCard
+class WasteViewCard_Over(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        user = request.user
+        facility_id = request.GET.get('facility_id', 'all')
+        facility_location = request.GET.get('facility_location', None)
+        year = request.GET.get('year', None)
+
+        try:
+            waste_data = Waste.objects.filter(user=user)
+
+            # Filter by year if provided
+            if year:
+                try:
+                    year = int(year)
+                    waste_data = waste_data.filter(DatePicker__year=year)
+                except ValueError:
+                    return Response({'error': 'Invalid year parameter.'}, status=status.HTTP_400_BAD_REQUEST)
+
+            # Filter by facility_id if provided and valid
+            if facility_id.lower() != 'all':
+                if not Facility.objects.filter(facility_id=facility_id).exists():
+                    return Response({'error': 'Invalid facility ID.'}, status=status.HTTP_400_BAD_REQUEST)
+                waste_data = waste_data.filter(facility__facility_id=facility_id)
+
+            # Filter by facility_location if provided
+            if facility_location:
+                waste_data = waste_data.filter(facility__facility_location__icontains=facility_location)
+
+            # Define waste fields for aggregation
+            waste_fields = [
+                'food_waste', 'solid_Waste', 'E_Waste', 'Biomedical_waste',
+                'liquid_discharge', 'other_waste', 'Recycle_waste', 'Recycle_waste'
+            ]
+
+            # Initialize response data
+            response_data = {'overall_waste_totals': {}, 'facility_waste_data': {}}
+
+            for field in waste_fields:
+                # Aggregate waste by facility for the current waste type
+                facility_waste_data = (
+                    waste_data
+                    .values('facility__facility_name')
+                    .annotate(total=Sum(field))
+                    .order_by('-total')
+                )
+
+                # Prepare facility-wise data for each waste type
+                response_data['facility_waste_data'][field] = [
+                    {
+                        "facility_name": entry['facility__facility_name'],
+                        f"total_{field}": entry['total']
+                    }
+                    for entry in facility_waste_data
+                ]
+
+                # Calculate overall waste total for each waste type
+                overall_total = waste_data.aggregate(total=Sum(field))['total'] or 0
+                response_data['overall_waste_totals'][f"overall_{field}"] = overall_total
+
+            return Response(response_data, status=status.HTTP_200_OK)
+
+        except Exception as e:
+            # Log the error for debugging purposes
+            print(f"An error occurred: {e}")
+            return Response({'error': 'An error occurred while processing your request.'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 class FoodWasteOverviewView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
         user = request.user
-        facility_id = request.GET.get('facility_id', None)
+        facility_id = request.GET.get('facility_id', 'all')
         facility_location = request.GET.get('facility_location', None)
         year = request.GET.get('year', None)
 
-        if not year:
-            return Response({'error': 'Year parameter is required.'}, status=status.HTTP_400_BAD_REQUEST)
-
         try:
-            year = int(year)
-        except (TypeError, ValueError):
-            return Response({'error': 'Invalid year parameter.'}, status=status.HTTP_400_BAD_REQUEST)
+            filters = {'user': user}
+            
+            # Filter by year if provided
+            if year:
+                try:
+                    year = int(year)
+                    filters['DatePicker__year'] = year
+                except ValueError:
+                    return Response({'error': 'Invalid year parameter.'}, status=status.HTTP_400_BAD_REQUEST)
 
-        try:
-            # Monthly food waste query
-            filters = {
-                'user': user,
-                'DatePicker__year': year,
-            }
-            if facility_id and facility_id.lower() != 'all':
+            # Filter by facility_id if provided and valid
+            if facility_id.lower() != 'all':
                 filters['facility__facility_id'] = facility_id
+
+            # Filter by facility_location if provided
             if facility_location:
                 filters['facility__facility_location__icontains'] = facility_location
 
+            # Monthly food waste data
             monthly_food_waste = (
                 Waste.objects.filter(**filters)
                 .values('DatePicker__month')
@@ -649,24 +638,21 @@ class FoodWasteOverviewView(APIView):
             # Prepare line chart data
             line_chart_data = []
             food_waste = defaultdict(float)
-
             for entry in monthly_food_waste:
                 month_name = datetime(1900, entry['DatePicker__month'], 1).strftime('%b')
                 food_waste[entry['DatePicker__month']] = entry['total_food_waste']
-
-            for month in range(1, 13):
+                
+            month_order = [4, 5, 6, 7, 8, 9, 10, 11, 12, 1, 2, 3]
+            for month in month_order:
                 month_name = datetime(1900, month, 1).strftime('%b')
                 line_chart_data.append({
                     "month": month_name,
                     "food_waste": food_waste.get(month, 0)
                 })
 
-            # Facility-wise food waste query
-            facility_filters = {'user': user}
-            if facility_id and facility_id.lower() != 'all':
-                facility_filters['facility__facility_id'] = facility_id
+            # Facility-wise food waste data for donut chart
             facility_food_waste = (
-                Waste.objects.filter(**facility_filters)
+                Waste.objects.filter(user=user)
                 .values('facility__facility_name')
                 .annotate(total_food_waste=Sum('food_waste'))
                 .order_by('-total_food_waste')
@@ -694,74 +680,7 @@ class FoodWasteOverviewView(APIView):
                 {'error': f'An error occurred while processing your request: {str(e)}'},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
-#foodWaste Overview Card
-class FoodWasteViewCard(APIView):
-    permission_classes = [IsAuthenticated]
-
-    def get(self, request):
-        user = request.user
-        facility_id = request.GET.get('facility_id', None)
-        facility_location = request.GET.get('facility_location', None)
-        year = request.GET.get('year', None)
-
-        # Ensure year is provided and valid
-        if not year:
-            return Response({'error': 'Year parameter is required.'}, status=status.HTTP_400_BAD_REQUEST)
-
-        try:
-            year = int(year)
-        except (TypeError, ValueError):
-            return Response({'error': 'Invalid year parameter.'}, status=status.HTTP_400_BAD_REQUEST)
-
-        try:
-            # Base query for all food waste data for the given user and year
-            food_waste_data = Waste.objects.filter(user=user, DatePicker__year=year)
-
-            # Filter by facility_id if provided and valid
-            if facility_id and facility_id.lower() != 'all':
-                if not Facility.objects.filter(facility_id=facility_id).exists():
-                    return Response({'error': 'Invalid facility ID.'}, status=status.HTTP_400_BAD_REQUEST)
-                food_waste_data = food_waste_data.filter(facility__facility_id=facility_id)
-
-            # Filter by facility_location if provided
-            if facility_location:
-                food_waste_data = food_waste_data.filter(facility__facility_location__icontains=facility_location)
-
-            # Aggregate food waste by facility
-            facility_food_waste = (
-                food_waste_data
-                .values('facility__facility_name')
-                .annotate(total_food_waste=Sum('food_waste'))
-                .order_by('-total_food_waste')
-            )
-
-            # Prepare the response data for facility-wise food waste
-            facility_food_waste_data = [
-                {
-                    "facility_name": entry['facility__facility_name'],
-                    "total_food_waste": entry['total_food_waste']
-                }
-                for entry in facility_food_waste
-            ]
-
-            overall_food_waste = food_waste_data.aggregate(total=Sum('food_waste'))['total'] or 0
-
-            # Return the data as response
-            response_data = {
-                'overall_food_waste': overall_food_waste,
-                'facility_food_waste': facility_food_waste_data,
-            }
-
-            return Response(response_data, status=status.HTTP_200_OK)
-
-        except Exception as e:
-            # Log the error for debugging purposes
-            print(f"An error occurred: {e}")
-            return Response({'error': 'An error occurred while processing your request.'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-
-
-#Solid Waste overview
+#solidWasteOverview
 class SolidWasteOverviewView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -771,20 +690,17 @@ class SolidWasteOverviewView(APIView):
         facility_location = request.GET.get('facility_location', None)
         year = request.GET.get('year', None)
 
-        if not year:
-            return Response({'error': 'Year parameter is required.'}, status=status.HTTP_400_BAD_REQUEST)
-
         try:
-            year = int(year)
-        except (TypeError, ValueError):
-            return Response({'error': 'Invalid year parameter.'}, status=status.HTTP_400_BAD_REQUEST)
+            filters = {'user': user}
+            
+            # Filter by year if provided
+            if year:
+                try:
+                    year = int(year)
+                    filters['DatePicker__year'] = year
+                except ValueError:
+                    return Response({'error': 'Invalid year parameter.'}, status=status.HTTP_400_BAD_REQUEST)
 
-        try:
-            # Monthly food waste query
-            filters = {
-                'user': user,
-                'DatePicker__year': year,
-            }
             if facility_id and facility_id.lower() != 'all':
                 filters['facility__facility_id'] = facility_id
             if facility_location:
@@ -805,7 +721,8 @@ class SolidWasteOverviewView(APIView):
                 month_name = datetime(1900, entry['DatePicker__month'], 1).strftime('%b')
                 solid_Waste[entry['DatePicker__month']] = entry['total_solid_Waste']
 
-            for month in range(1, 13):
+            month_order = [4, 5, 6, 7, 8, 9, 10, 11, 12, 1, 2, 3]
+            for month in month_order:
                 month_name = datetime(1900, month, 1).strftime('%b')
                 line_chart_data.append({
                     "month": month_name,
@@ -846,75 +763,6 @@ class SolidWasteOverviewView(APIView):
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 
-
-#Solid Waste overview Card
-class SolidWasteViewCard(APIView):
-    permission_classes = [IsAuthenticated]
-
-    def get(self, request):
-        user = request.user
-        facility_id = request.GET.get('facility_id', None)
-        facility_location = request.GET.get('facility_location', None)
-        year = request.GET.get('year', None)
-
-        # Ensure year is provided and valid
-        if not year:
-            return Response({'error': 'Year parameter is required.'}, status=status.HTTP_400_BAD_REQUEST)
-
-        try:
-            year = int(year)
-        except (TypeError, ValueError):
-            return Response({'error': 'Invalid year parameter.'}, status=status.HTTP_400_BAD_REQUEST)
-
-        try:
-            # Base query for all food waste data for the given user and year
-            solid_Waste_data = Waste.objects.filter(user=user, DatePicker__year=year)
-
-            # Filter by facility_id if provided and valid
-            if facility_id and facility_id.lower() != 'all':
-                if not Facility.objects.filter(facility_id=facility_id).exists():
-                    return Response({'error': 'Invalid facility ID.'}, status=status.HTTP_400_BAD_REQUEST)
-                solid_Waste_data = solid_Waste_data.filter(facility__facility_id=facility_id)
-
-            # Filter by facility_location if provided
-            if facility_location:
-                solid_Waste_data = solid_Waste_data.filter(facility__facility_location__icontains=facility_location)
-
-            # Aggregate food waste by facility
-            facility_solid_Waste = (
-                solid_Waste_data
-                .values('facility__facility_name')
-                .annotate(total_solid_Waste=Sum('solid_Waste'))
-                .order_by('-total_solid_Waste')
-            )
-
-            # Prepare the response data for facility-wise food waste
-            facility_solid_Waste_data = [
-                {
-                    "facility_name": entry['facility__facility_name'],
-                    "total_solid_Waste": entry['total_solid_Waste']
-                }
-                for entry in facility_solid_Waste
-            ]
-
-            # Calculate overall food waste
-            overall_solid_Waste = solid_Waste_data.aggregate(total=Sum('solid_Waste'))['total'] or 0
-
-            # Return the data as response
-            response_data = {
-                'overall_solid_Waste': overall_solid_Waste,
-                'facility_solid_Waste': facility_solid_Waste_data,
-            }
-
-            return Response(response_data, status=status.HTTP_200_OK)
-
-        except Exception as e:
-            # Log the error for debugging purposes
-            print(f"An error occurred: {e}")
-            return Response({'error': 'An error occurred while processing your request.'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-
-
 #e_waste overview view
 class E_WasteOverviewView(APIView):
     permission_classes = [IsAuthenticated]
@@ -925,20 +773,16 @@ class E_WasteOverviewView(APIView):
         facility_location = request.GET.get('facility_location', None)
         year = request.GET.get('year', None)
 
-        if not year:
-            return Response({'error': 'Year parameter is required.'}, status=status.HTTP_400_BAD_REQUEST)
-
         try:
-            year = int(year)
-        except (TypeError, ValueError):
-            return Response({'error': 'Invalid year parameter.'}, status=status.HTTP_400_BAD_REQUEST)
-
-        try:
-            # Monthly food waste query
-            filters = {
-                'user': user,
-                'DatePicker__year': year,
-            }
+            filters = {'user': user}
+            
+            # Filter by year if provided
+            if year:
+                try:
+                    year = int(year)
+                    filters['DatePicker__year'] = year
+                except ValueError:
+                    return Response({'error': 'Invalid year parameter.'}, status=status.HTTP_400_BAD_REQUEST)
             if facility_id and facility_id.lower() != 'all':
                 filters['facility__facility_id'] = facility_id
             if facility_location:
@@ -959,7 +803,8 @@ class E_WasteOverviewView(APIView):
                 month_name = datetime(1900, entry['DatePicker__month'], 1).strftime('%b')
                 E_Waste[entry['DatePicker__month']] = entry['total_E_Waste']
 
-            for month in range(1, 13):
+            month_order = [4, 5, 6, 7, 8, 9, 10, 11, 12, 1, 2, 3]
+            for month in month_order:
                 month_name = datetime(1900, month, 1).strftime('%b')
                 line_chart_data.append({
                     "month": month_name,
@@ -999,73 +844,6 @@ class E_WasteOverviewView(APIView):
                 {'error': f'An error occurred while processing your request: {str(e)}'},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
-       
-#E-waste Overview Card
-class E_WasteViewCard(APIView):
-    permission_classes = [IsAuthenticated]
-
-    def get(self, request):
-        user = request.user
-        facility_id = request.GET.get('facility_id', None)
-        facility_location = request.GET.get('facility_location', None)
-        year = request.GET.get('year', None)
-
-        # Ensure year is provided and valid
-        if not year:
-            return Response({'error': 'Year parameter is required.'}, status=status.HTTP_400_BAD_REQUEST)
-
-        try:
-            year = int(year)
-        except (TypeError, ValueError):
-            return Response({'error': 'Invalid year parameter.'}, status=status.HTTP_400_BAD_REQUEST)
-
-        try:
-            # Base query for all food waste data for the given user and year
-            E_Waste_data = Waste.objects.filter(user=user, DatePicker__year=year)
-
-            # Filter by facility_id if provided and valid
-            if facility_id and facility_id.lower() != 'all':
-                if not Facility.objects.filter(facility_id=facility_id).exists():
-                    return Response({'error': 'Invalid facility ID.'}, status=status.HTTP_400_BAD_REQUEST)
-                E_Waste_data = E_Waste_data.filter(facility__facility_id=facility_id)
-
-            # Filter by facility_location if provided
-            if facility_location:
-                E_Waste_data = E_Waste_data.filter(facility__facility_location__icontains=facility_location)
-
-            # Aggregate food waste by facility
-            facility_E_Waste = (
-                E_Waste_data
-                .values('facility__facility_name')
-                .annotate(total_E_Waste=Sum('E_Waste'))
-                .order_by('-total_E_Waste')
-            )
-
-            # Prepare the response data for facility-wise food waste
-            facility_E_Waste_data = [
-                {
-                    "facility_name": entry['facility__facility_name'],
-                    "total_E_Waste": entry['total_E_Waste']
-                }
-                for entry in facility_E_Waste
-            ]
-
-            # Calculate overall food waste
-            overall_E_Waste = E_Waste_data.aggregate(total=Sum('E_Waste'))['total'] or 0
-
-            # Return the data as response
-            response_data = {
-                'overall_E_Waste': overall_E_Waste,
-                'facility_E_Waste': facility_E_Waste_data,
-            }
-
-            return Response(response_data, status=status.HTTP_200_OK)
-
-        except Exception as e:
-            # Log the error for debugging purposes
-            print(f"An error occurred: {e}")
-            return Response({'error': 'An error occurred while processing your request.'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
 
 #biomedical_waste Overview
 class Biomedical_WasteOverviewView(APIView):
@@ -1077,20 +855,17 @@ class Biomedical_WasteOverviewView(APIView):
         facility_location = request.GET.get('facility_location', None)
         year = request.GET.get('year', None)
 
-        if not year:
-            return Response({'error': 'Year parameter is required.'}, status=status.HTTP_400_BAD_REQUEST)
-
         try:
-            year = int(year)
-        except (TypeError, ValueError):
-            return Response({'error': 'Invalid year parameter.'}, status=status.HTTP_400_BAD_REQUEST)
-
-        try:
-            # Monthly food waste query
-            filters = {
-                'user': user,
-                'DatePicker__year': year,
-            }
+            filters = {'user': user}
+            
+            # Filter by year if provided
+            if year:
+                try:
+                    year = int(year)
+                    filters['DatePicker__year'] = year
+                except ValueError:
+                    return Response({'error': 'Invalid year parameter.'}, status=status.HTTP_400_BAD_REQUEST)
+            
             if facility_id and facility_id.lower() != 'all':
                 filters['facility__facility_id'] = facility_id
             if facility_location:
@@ -1111,7 +886,8 @@ class Biomedical_WasteOverviewView(APIView):
                 month_name = datetime(1900, entry['DatePicker__month'], 1).strftime('%b')
                 Biomedical_waste[entry['DatePicker__month']] = entry['total_Biomedical_waste']
 
-            for month in range(1, 13):
+            month_order = [4, 5, 6, 7, 8, 9, 10, 11, 12, 1, 2, 3]
+            for month in month_order:
                 month_name = datetime(1900, month, 1).strftime('%b')
                 line_chart_data.append({
                     "month": month_name,
@@ -1151,77 +927,8 @@ class Biomedical_WasteOverviewView(APIView):
                 {'error': f'An error occurred while processing your request: {str(e)}'},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             ) 
-
-
-#Biomedical_overview_Card
-class Biomedical_WasteViewCard(APIView):
-    permission_classes = [IsAuthenticated]
-
-    def get(self, request):
-        user = request.user
-        facility_id = request.GET.get('facility_id', None)
-        facility_location = request.GET.get('facility_location', None)
-        year = request.GET.get('year', None)
-
-        # Ensure year is provided and valid
-        if not year:
-            return Response({'error': 'Year parameter is required.'}, status=status.HTTP_400_BAD_REQUEST)
-
-        try:
-            year = int(year)
-        except (TypeError, ValueError):
-            return Response({'error': 'Invalid year parameter.'}, status=status.HTTP_400_BAD_REQUEST)
-
-        try:
-            # Base query for all food waste data for the given user and year
-            Biomedical_waste = Waste.objects.filter(user=user, DatePicker__year=year)
-
-            # Filter by facility_id if provided and valid
-            if facility_id and facility_id.lower() != 'all':
-                if not Facility.objects.filter(facility_id=facility_id).exists():
-                    return Response({'error': 'Invalid facility ID.'}, status=status.HTTP_400_BAD_REQUEST)
-                Biomedical_waste = Biomedical_waste.filter(facility__facility_id=facility_id)
-
-            # Filter by facility_location if provided
-            if facility_location:
-                Biomedical_waste = Biomedical_waste.filter(facility__facility_location__icontains=facility_location)
-
-            # Aggregate food waste by facility
-            facility_Biomedical_waste = (
-                Biomedical_waste
-                .values('facility__facility_name')
-                .annotate(total_Biomedical_waste=Sum('Biomedical_waste'))
-                .order_by('-total_Biomedical_waste')
-            )
-
-            # Prepare the response data for facility-wise food waste
-            facility_Biomedical_waste = [
-                {
-                    "facility_name": entry['facility__facility_name'],
-                    "total_Biomedical_waste": entry['total_Biomedical_waste']
-                }
-                for entry in facility_Biomedical_waste
-            ]
-
-            # Calculate overall food waste
-            overall_Biomedical_waste = Biomedical_waste.aggregate(total=Sum('Biomedical_waste'))['total'] or 0
-
-            # Return the data as response
-            response_data = {
-                'overall_Biomedical_waste': overall_Biomedical_waste,
-                'facility_Biomedical_waste': facility_Biomedical_waste,
-            }
-
-            return Response(response_data, status=status.HTTP_200_OK)
-
-        except Exception as e:
-            # Log the error for debugging purposes
-            print(f"An error occurred: {e}")
-            return Response({'error': 'An error occurred while processing your request.'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-  
-        
+     
 #Liquid_discharge Overview 
-
 class Liquid_DischargeOverviewView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -1231,20 +938,16 @@ class Liquid_DischargeOverviewView(APIView):
         facility_location = request.GET.get('facility_location', None)
         year = request.GET.get('year', None)
 
-        if not year:
-            return Response({'error': 'Year parameter is required.'}, status=status.HTTP_400_BAD_REQUEST)
-
         try:
-            year = int(year)
-        except (TypeError, ValueError):
-            return Response({'error': 'Invalid year parameter.'}, status=status.HTTP_400_BAD_REQUEST)
-
-        try:
-            # Monthly food waste query
-            filters = {
-                'user': user,
-                'DatePicker__year': year,
-            }
+            filters = {'user': user}
+            
+            # Filter by year if provided
+            if year:
+                try:
+                    year = int(year)
+                    filters['DatePicker__year'] = year
+                except ValueError:
+                    return Response({'error': 'Invalid year parameter.'}, status=status.HTTP_400_BAD_REQUEST)
             if facility_id and facility_id.lower() != 'all':
                 filters['facility__facility_id'] = facility_id
             if facility_location:
@@ -1265,7 +968,8 @@ class Liquid_DischargeOverviewView(APIView):
                 month_name = datetime(1900, entry['DatePicker__month'], 1).strftime('%b')
                 liquid_discharge[entry['DatePicker__month']] = entry['total_liquid_discharge']
 
-            for month in range(1, 13):
+            month_order = [4, 5, 6, 7, 8, 9, 10, 11, 12, 1, 2, 3]
+            for month in month_order:
                 month_name = datetime(1900, month, 1).strftime('%b')
                 line_chart_data.append({
                     "month": month_name,
@@ -1305,73 +1009,7 @@ class Liquid_DischargeOverviewView(APIView):
                 {'error': f'An error occurred while processing your request: {str(e)}'},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )  
-#LiquidOverview Card
 
-class Liquid_DischargeViewCard(APIView):
-    permission_classes = [IsAuthenticated]
-
-    def get(self, request):
-        user = request.user
-        facility_id = request.GET.get('facility_id', None)
-        facility_location = request.GET.get('facility_location', None)
-        year = request.GET.get('year', None)
-
-        # Ensure year is provided and valid
-        if not year:
-            return Response({'error': 'Year parameter is required.'}, status=status.HTTP_400_BAD_REQUEST)
-
-        try:
-            year = int(year)
-        except (TypeError, ValueError):
-            return Response({'error': 'Invalid year parameter.'}, status=status.HTTP_400_BAD_REQUEST)
-
-        try:
-            # Base query for all food waste data for the given user and year
-            liquid_discharge = Waste.objects.filter(user=user, DatePicker__year=year)
-
-            # Filter by facility_id if provided and valid
-            if facility_id and facility_id.lower() != 'all':
-                if not Facility.objects.filter(facility_id=facility_id).exists():
-                    return Response({'error': 'Invalid facility ID.'}, status=status.HTTP_400_BAD_REQUEST)
-                liquid_discharge = liquid_discharge.filter(facility__facility_id=facility_id)
-
-            # Filter by facility_location if provided
-            if facility_location:
-                liquid_discharge = liquid_discharge.filter(facility__facility_location__icontains=facility_location)
-
-            # Aggregate food waste by facility
-            facility_liquid_discharge = (
-                liquid_discharge
-                .values('facility__facility_name')
-                .annotate(total_liquid_discharge=Sum('liquid_discharge'))
-                .order_by('-total_liquid_discharge')
-            )
-
-            # Prepare the response data for facility-wise food waste
-            facility_liquid_discharge = [
-                {
-                    "facility_name": entry['facility__facility_name'],
-                    "total_liquid_discharge": entry['total_liquid_discharge']
-                }
-                for entry in facility_liquid_discharge
-            ]
-
-            # Calculate overall food waste
-            overall_liquid_discharge = liquid_discharge.aggregate(total=Sum('liquid_discharge'))['total'] or 0
-
-            # Return the data as response
-            response_data = {
-                'overall_liquid_discharge': overall_liquid_discharge,
-                'facility_liquid_discharge': facility_liquid_discharge,
-            }
-
-            return Response(response_data, status=status.HTTP_200_OK)
-
-        except Exception as e:
-            # Log the error for debugging purposes
-            print(f"An error occurred: {e}")
-            return Response({'error': 'An error occurred while processing your request.'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-    
 #OtherOverview
 class OthersOverviewView(APIView):
     permission_classes = [IsAuthenticated]
@@ -1382,19 +1020,17 @@ class OthersOverviewView(APIView):
         facility_location = request.GET.get('facility_location', None)
         year = request.GET.get('year', None)
 
-        if not year:
-            return Response({'error': 'Year parameter is required.'}, status=status.HTTP_400_BAD_REQUEST)
-
         try:
-            year = int(year)
-        except (TypeError, ValueError):
-            return Response({'error': 'Invalid year parameter.'}, status=status.HTTP_400_BAD_REQUEST)
-
-        try:
-            filters = {
-                'user': user,
-                'DatePicker__year': year,
-            }
+            filters = {'user': user}
+            
+            # Filter by year if provided
+            if year:
+                try:
+                    year = int(year)
+                    filters['DatePicker__year'] = year
+                except ValueError:
+                    return Response({'error': 'Invalid year parameter.'}, status=status.HTTP_400_BAD_REQUEST)
+                
             if facility_id and facility_id.lower() != 'all':
                 filters['facility__facility_id'] = facility_id
             if facility_location:
@@ -1415,7 +1051,8 @@ class OthersOverviewView(APIView):
                 month_name = datetime(1900, entry['DatePicker__month'], 1).strftime('%b')
                 other_waste[entry['DatePicker__month']] = entry['total_other_waste']
 
-            for month in range(1, 13):
+            month_order = [4, 5, 6, 7, 8, 9, 10, 11, 12, 1, 2, 3]
+            for month in month_order:
                 month_name = datetime(1900, month, 1).strftime('%b')
                 line_chart_data.append({
                     "month": month_name,
@@ -1455,72 +1092,7 @@ class OthersOverviewView(APIView):
                 {'error': f'An error occurred while processing your request: {str(e)}'},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )  
-#OtherviewCard
-class OthersViewCard(APIView):
-    permission_classes = [IsAuthenticated]
 
-    def get(self, request):
-        user = request.user
-        facility_id = request.GET.get('facility_id', None)
-        facility_location = request.GET.get('facility_location', None)
-        year = request.GET.get('year', None)
-
-        # Ensure year is provided and valid
-        if not year:
-            return Response({'error': 'Year parameter is required.'}, status=status.HTTP_400_BAD_REQUEST)
-
-        try:
-            year = int(year)
-        except (TypeError, ValueError):
-            return Response({'error': 'Invalid year parameter.'}, status=status.HTTP_400_BAD_REQUEST)
-
-        try:
-            # Base query for all food waste data for the given user and year
-            other_waste = Waste.objects.filter(user=user, DatePicker__year=year)
-
-            # Filter by facility_id if provided and valid
-            if facility_id and facility_id.lower() != 'all':
-                if not Facility.objects.filter(facility_id=facility_id).exists():
-                    return Response({'error': 'Invalid facility ID.'}, status=status.HTTP_400_BAD_REQUEST)
-                other_waste = other_waste.filter(facility__facility_id=facility_id)
-
-            # Filter by facility_location if provided
-            if facility_location:
-                other_waste = other_waste.filter(facility__facility_location__icontains=facility_location)
-
-            # Aggregate food waste by facility
-            facility_other_waste = (
-                other_waste
-                .values('facility__facility_name')
-                .annotate(total_other_waste=Sum('other_waste'))
-                .order_by('-total_other_waste')
-            )
-
-            # Prepare the response data for facility-wise food waste
-            facility_other_waste = [
-                {
-                    "facility_name": entry['facility__facility_name'],
-                    "total_other_waste": entry['total_other_waste']
-                }
-                for entry in facility_other_waste
-            ]
-
-            # Calculate overall food waste
-            overall_other_waste = other_waste.aggregate(total=Sum('other_waste'))['total'] or 0
-
-            # Return the data as response
-            response_data = {
-                'overall_other_waste': overall_other_waste,
-                'facility_other_waste': facility_other_waste,
-            }
-
-            return Response(response_data, status=status.HTTP_200_OK)
-
-        except Exception as e:
-            # Log the error for debugging purposes
-            print(f"An error occurred: {e}")
-            return Response({'error': 'An error occurred while processing your request.'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-  
 #Sent for RecycleOverview
 class Waste_Sent_For_RecycleOverviewView(APIView):
     permission_classes = [IsAuthenticated]
@@ -1531,19 +1103,16 @@ class Waste_Sent_For_RecycleOverviewView(APIView):
         facility_location = request.GET.get('facility_location', None)
         year = request.GET.get('year', None)
 
-        if not year:
-            return Response({'error': 'Year parameter is required.'}, status=status.HTTP_400_BAD_REQUEST)
-
         try:
-            year = int(year)
-        except (TypeError, ValueError):
-            return Response({'error': 'Invalid year parameter.'}, status=status.HTTP_400_BAD_REQUEST)
-
-        try:
-            filters = {
-                'user': user,
-                'DatePicker__year': year,
-            }
+            filters = {'user': user}
+            
+            # Filter by year if provided
+            if year:
+                try:
+                    year = int(year)
+                    filters['DatePicker__year'] = year
+                except ValueError:
+                    return Response({'error': 'Invalid year parameter.'}, status=status.HTTP_400_BAD_REQUEST)
             if facility_id and facility_id.lower() != 'all':
                 filters['facility__facility_id'] = facility_id
             if facility_location:
@@ -1564,7 +1133,8 @@ class Waste_Sent_For_RecycleOverviewView(APIView):
                 month_name = datetime(1900, entry['DatePicker__month'], 1).strftime('%b')
                 Recycle_waste[entry['DatePicker__month']] = entry['total_Recycle_waste']
 
-            for month in range(1, 13):
+            month_order = [4, 5, 6, 7, 8, 9, 10, 11, 12, 1, 2, 3]
+            for month in month_order:
                 month_name = datetime(1900, month, 1).strftime('%b')
                 line_chart_data.append({
                     "month": month_name,
@@ -1605,147 +1175,227 @@ class Waste_Sent_For_RecycleOverviewView(APIView):
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )  
 
-        
-#Sent_for_recycleOverviewcard
-class Sent_For_RecycleViewCard(APIView):
-    permission_classes = [IsAuthenticated]
-
-    def get(self, request):
-        user = request.user
-        facility_id = request.GET.get('facility_id', None)
-        facility_location = request.GET.get('facility_location', None)
-        year = request.GET.get('year', None)
-
-        # Ensure year is provided and valid
-        if not year:
-            return Response({'error': 'Year parameter is required.'}, status=status.HTTP_400_BAD_REQUEST)
-
-        try:
-            year = int(year)
-        except (TypeError, ValueError):
-            return Response({'error': 'Invalid year parameter.'}, status=status.HTTP_400_BAD_REQUEST)
-
-        try:
-            # Base query for all food waste data for the given user and year
-            Recycle_waste = Waste.objects.filter(user=user, DatePicker__year=year)
-
-            # Filter by facility_id if provided and valid
-            if facility_id and facility_id.lower() != 'all':
-                if not Facility.objects.filter(facility_id=facility_id).exists():
-                    return Response({'error': 'Invalid facility ID.'}, status=status.HTTP_400_BAD_REQUEST)
-                Recycle_waste = Recycle_waste.filter(facility__facility_id=facility_id)
-
-            # Filter by facility_location if provided
-            if facility_location:
-                Recycle_waste = Recycle_waste.filter(facility__facility_location__icontains=facility_location)
-
-            # Aggregate food waste by facility
-            facility_Recycle_waste = (
-                Recycle_waste
-                .values('facility__facility_name')
-                .annotate(total_Recycle_waste=Sum('Recycle_waste'))
-                .order_by('-total_Recycle_waste')
-            )
-
-            # Prepare the response data for facility-wise food waste
-            facility_Recycle_waste = [
-                {
-                    "facility_name": entry['facility__facility_name'],
-                    "total_Recycle_waste": entry['total_Recycle_waste']
-                }
-                for entry in facility_Recycle_waste
-            ]
-
-            # Calculate overall food waste
-            overall_Recycle_waste = Recycle_waste.aggregate(total=Sum('Recycle_waste'))['total'] or 0
-
-            # Return the data as response
-            response_data = {
-                'overall_Recycle_waste': overall_Recycle_waste,
-                'facility_Recycle_waste': facility_Recycle_waste,
-            }
-
-            return Response(response_data, status=status.HTTP_200_OK)
-
-        except Exception as e:
-            # Log the error for debugging purposes
-            print(f"An error occurred: {e}")
-            return Response({'error': 'An error occurred while processing your request.'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
 #Sent to Landfills Overview
+# class Waste_Sent_For_LandFillOverviewView(APIView):
+#     permission_classes = [IsAuthenticated]
+
+#     def get(self, request):
+#         user = request.user
+#         facility_id = request.GET.get('facility_id', None)
+#         facility_location = request.GET.get('facility_location', None)
+#         year = request.GET.get('year', None)
+
+#         try:
+#             filters = {'user': user}
+            
+#             # Filter by year if provided
+#             if year:
+#                 try:
+#                     year = int(year)
+#                     filters['DatePicker__year'] = year
+#                 except ValueError:
+#                     return Response({'error': 'Invalid year parameter.'}, status=status.HTTP_400_BAD_REQUEST)
+                
+#             if facility_id and facility_id.lower() != 'all':
+#                 filters['facility__facility_id'] = facility_id
+#             if facility_location:
+#                 filters['facility__facility_location__icontains'] = facility_location
+
+#             monthly_Landfill_waste = (
+#                 Waste.objects.filter(**filters)
+#                 .values('DatePicker__month')
+#                 .annotate(total_Landfill_waste=Sum('Landfill_waste'))
+#                 .order_by('DatePicker__month')
+#             )
+
+#             # Prepare line chart data
+#             line_chart_data = []
+#             Landfill_waste = defaultdict(float)
+
+#             for entry in monthly_Landfill_waste:
+#                 month_name = datetime(1900, entry['DatePicker__month'], 1).strftime('%b')
+#                 Landfill_waste[entry['DatePicker__month']] = entry['total_Landfill_waste']
+
+#             for month in range(1, 13):
+#                 month_name = datetime(1900, month, 1).strftime('%b')
+#                 line_chart_data.append({
+#                     "month": month_name,
+#                     "Landfill_waste": Landfill_waste.get(month, 0)
+#                 })
+
+#             # Facility-wise food waste query
+#             facility_filters = {'user': user}
+#             if facility_id and facility_id.lower() != 'all':
+#                 facility_filters['facility__facility_id'] = facility_id
+#             facility_Landfill_waste = (
+#                 Waste.objects.filter(**facility_filters)
+#                 .values('facility__facility_name')
+#                 .annotate(total_Landfill_waste=Sum('Landfill_waste'))
+#                 .order_by('-total_Landfill_waste')
+#             )
+
+#             # Prepare donut chart data
+#             total_Landfill_waste = sum(entry['total_Landfill_waste'] for entry in facility_Landfill_waste)
+#             donut_chart_data = [
+#                 {
+#                     "facility_name": entry['facility__facility_name'],
+#                     "percentage": (entry['total_Landfill_waste'] / total_Landfill_waste * 100) if total_Landfill_waste else 0,
+#                 }
+#                 for entry in facility_Landfill_waste
+#             ]
+
+#             response_data = {
+#                 "line_chart_data": line_chart_data,
+#                 "donut_chart_data": donut_chart_data
+#             }
+
+#             return Response(response_data, status=status.HTTP_200_OK)
+
+#         except Exception as e:
+#             return Response(
+#                 {'error': f'An error occurred while processing your request: {str(e)}'},
+#                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
+#             )  
+
+# # class Waste_Sent_For_LandFillOverviewView(APIView):
+#     permission_classes = [IsAuthenticated]
+
+#     def get(self, request):
+#         user = request.user
+#         facility_id = request.GET.get('facility_id', None)
+#         year = request.GET.get('year', None)
+#         facility_location = request.GET.get('facility_location', None)
+
+#         # Initialize filters with the user
+#         filters = {'user': user}
+        
+#         # Add year to filters if provided and valid
+#         if year:
+#             try:
+#                 year = int(year)
+#                 filters['DatePicker__year'] = year
+#             except ValueError:
+#                 return Response({'error': 'Invalid year parameter.'}, status=status.HTTP_400_BAD_REQUEST)
+
+#         # Add facility and location filters as needed
+#         if facility_id and facility_id.lower() != 'all':
+#             filters['facility__id'] = facility_id
+#         if facility_location:
+#             filters['facility__facility_location__icontains'] = facility_location
+
+#         try:
+#             # Monthly Landfill waste data
+#             monthly_Landfill_waste = (
+#                 Waste.objects.filter(**filters)
+#                 .values('DatePicker__month')
+#                 .annotate(total_Landfill_waste=Sum('Landfill_waste'))
+#                 .order_by('DatePicker__month')
+#             )
+
+#             # Prepare line chart data
+#             line_chart_data = []
+#             Landfill_waste = defaultdict(float)
+
+#             for entry in monthly_Landfill_waste:
+#                 month_name = datetime(1900, entry['DatePicker__month'], 1).strftime('%b')
+#                 Landfill_waste[entry['DatePicker__month']] = entry['total_Landfill_waste']
+
+#             for month in range(1, 13):
+#                 month_name = datetime(1900, month, 1).strftime('%b')
+#                 line_chart_data.append({
+#                     "month": month_name,
+#                     "Landfill_waste": Landfill_waste.get(month, 0)
+#                 })
+            
+#             # Facility-wise landfill waste for donut chart
+#             facility_Landfill_waste = (
+#                 Waste.objects.filter(user=user, **({'facility__id': facility_id} if facility_id and facility_id.lower() != 'all' else {}))
+#                 .values('facility__facility_name')
+#                 .annotate(total_Landfill_waste=Sum('Landfill_waste'))
+#                 .order_by('-total_Landfill_waste')
+#             )
+
+#             # Prepare donut chart data
+#             total_Landfill_waste = sum(entry['total_Landfill_waste'] for entry in facility_Landfill_waste)
+#             donut_chart_data = [
+#                 {
+#                     "facility_name": entry['facility__facility_name'],
+#                     "percentage": (entry['total_Landfill_waste'] / total_Landfill_waste * 100) if total_Landfill_waste else 0,
+#                 }
+#                 for entry in facility_Landfill_waste
+#             ]
+
+#             response_data = {
+#                 "line_chart_data": line_chart_data,
+#                 "donut_chart_data": donut_chart_data
+#             }
+
+#             return Response(response_data, status=status.HTTP_200_OK)
+
+#         except Exception as e:
+#             print(f"Error occurred: {e}")
+#             return Response({'error': 'An error occurred while processing your request.'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
 class Waste_Sent_For_LandFillOverviewView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
         user = request.user
         facility_id = request.GET.get('facility_id', None)
-        year = request.GET.get('year', None)
         facility_location = request.GET.get('facility_location', None)
-        
-        
-        if year is None:
-            return Response({'error': 'Year parameter is required.'}, status=status.HTTP_400_BAD_REQUEST)
+        year = request.GET.get('year', None)
 
         try:
-            year = int(year)
-        except (TypeError, ValueError):
-            return Response({'error': 'Invalid year parameter.'}, status=status.HTTP_400_BAD_REQUEST)
-
-        try:
+            filters = {'user': user}
+            
+            # Filter by year if provided
+            if year:
+                try:
+                    year = int(year)
+                    filters['DatePicker__year'] = year
+                except ValueError:
+                    return Response({'error': 'Invalid year parameter.'}, status=status.HTTP_400_BAD_REQUEST)
+                
             if facility_id and facility_id.lower() != 'all':
-                monthly_Landfill_waste = (
-                    Waste.objects.filter(user=user, facility__id=facility_id, DatePicker__year=year,facility__facility_location__icontains=facility_location)
-                    .values('DatePicker__month')
-                    .annotate(total_Landfill_waste=Sum('Landfill_waste'))
-                    .order_by('DatePicker__month')
-                )
-            else:
-                monthly_Landfill_waste = (
-                    Waste.objects.filter(user=user, DatePicker__year=year)
-                    .values('DatePicker__month')
-                    .annotate(total_Landfill_waste=Sum('Landfill_waste'))
-                    .order_by('DatePicker__month')
-                )
+                filters['facility__facility_id'] = facility_id
+            if facility_location:
+                filters['facility__facility_location__icontains'] = facility_location
 
-            line_chart_data = []
+            monthly_Landfill_waste = (
+                Waste.objects.filter(**filters)
+                .values('DatePicker__month')
+                .annotate(total_Landfill_waste=Sum('Landfill_waste'))
+                .order_by('DatePicker__month')
+            )
 
-            for entry in monthly_Landfill_waste:
-                month_name = datetime(1900, entry['DatePicker__month'], 1).strftime('%b')
-                line_chart_data.append({
-                    "month": month_name,
-                    "Landfill_waste": entry['total_Landfill_waste']
-                    
-                })
-
-            line_chart_data = []
+            # Prepare line chart data
             Landfill_waste = defaultdict(float)
 
             for entry in monthly_Landfill_waste:
                 month_name = datetime(1900, entry['DatePicker__month'], 1).strftime('%b')
                 Landfill_waste[entry['DatePicker__month']] = entry['total_Landfill_waste']
 
-            for month in range(1, 13):
+            line_chart_data = []
+            month_order = [4, 5, 6, 7, 8, 9, 10, 11, 12, 1, 2, 3]
+            for month in month_order:
                 month_name = datetime(1900, month, 1).strftime('%b')
                 line_chart_data.append({
                     "month": month_name,
                     "Landfill_waste": Landfill_waste.get(month, 0)
                 })
-            
-            if facility_id and facility_id.lower() != 'all':
-                facility_Landfill_waste = (
-                    Waste.objects.filter(user=user, facility__id=facility_id)
-                    .values('facility__facility_name')
-                    .annotate(total_Landfill_waste=Sum('Landfill_waste'))
-                    .order_by('-total_Landfill_waste')
-                )
-            else:
-                facility_Landfill_waste = (
-                    Waste.objects.filter(user=user)
-                    .values('facility__facility_name')
-                    .annotate(total_Landfill_waste=Sum('Landfill_waste'))
-                    .order_by('-total_Landfill_waste')
-                )
 
+            # Facility-wise landfill waste query
+            facility_filters = {'user': user}
+            if facility_id and facility_id.lower() != 'all':
+                facility_filters['facility__facility_id'] = facility_id
+            facility_Landfill_waste = (
+                Waste.objects.filter(**facility_filters)
+                .values('facility__facility_name')
+                .annotate(total_Landfill_waste=Sum('Landfill_waste'))
+                .order_by('-total_Landfill_waste')
+            )
+
+            # Prepare donut chart data
             total_Landfill_waste = sum(entry['total_Landfill_waste'] for entry in facility_Landfill_waste)
             donut_chart_data = [
                 {
@@ -1763,139 +1413,11 @@ class Waste_Sent_For_LandFillOverviewView(APIView):
             return Response(response_data, status=status.HTTP_200_OK)
 
         except Exception as e:
-            print(f"Error occurred: {e}")
-            return Response({'error': 'An error occurred while processing your request.'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-        
-    
-#Sent_for_LandfillCard
-class Sent_For_LandFillViewCard(APIView):
-    permission_classes = [IsAuthenticated]
+            return Response(
+                {'error': f'An error occurred while processing your request: {str(e)}'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )  
 
-    def get(self, request):
-        user = request.user
-        facility_id = request.GET.get('facility_id', None)
-        facility_location = request.GET.get('facility_location', None)
-        year = request.GET.get('year', None)
-
-        # Ensure year is provided and valid
-        if not year:
-            return Response({'error': 'Year parameter is required.'}, status=status.HTTP_400_BAD_REQUEST)
-
-        try:
-            year = int(year)
-        except (TypeError, ValueError):
-            return Response({'error': 'Invalid year parameter.'}, status=status.HTTP_400_BAD_REQUEST)
-
-        try:
-            # Base query for all food waste data for the given user and year
-            Landfill_waste = Waste.objects.filter(user=user, DatePicker__year=year)
-
-            # Filter by facility_id if provided and valid
-            if facility_id and facility_id.lower() != 'all':
-                if not Facility.objects.filter(facility_id=facility_id).exists():
-                    return Response({'error': 'Invalid facility ID.'}, status=status.HTTP_400_BAD_REQUEST)
-                Landfill_waste = Landfill_waste.filter(facility__facility_id=facility_id)
-
-            # Filter by facility_location if provided
-            if facility_location:
-                Landfill_waste = Landfill_waste.filter(facility__facility_location__icontains=facility_location)
-
-            # Aggregate food waste by facility
-            facility_Landfill_waste = (
-                Landfill_waste
-                .values('facility__facility_name')
-                .annotate(total_Landfill_waste=Sum('Landfill_waste'))
-                .order_by('-total_Landfill_waste')
-            )
-
-            # Prepare the response data for facility-wise food waste
-            facility_Landfill_waste = [
-                {
-                    "facility_name": entry['facility__facility_name'],
-                    "total_Landfill_waste": entry['total_Landfill_waste']
-                }
-                for entry in facility_Landfill_waste
-            ]
-
-            # Calculate overall food waste
-            overall_Landfill_waste = Landfill_waste.aggregate(total=Sum('Landfill_waste'))['total'] or 0
-
-            # Return the data as response
-            response_data = {
-                'overall_Landfill_waste': overall_Landfill_waste,
-                'facility_Landfill_waste': facility_Landfill_waste,
-            }
-
-            return Response(response_data, status=status.HTTP_200_OK)
-
-        except Exception as e:
-            # Log the error for debugging purposes
-            print(f"An error occurred: {e}")
-            return Response({'error': 'An error occurred while processing your request.'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-        
-#WasteStackedOverviewGraph
-
-# class StackedWasteOverviewView(APIView):
-#     permission_classes = [IsAuthenticated]
-
-#     def get(self, request):
-#         user = request.user
-#         facility_id = request.GET.get('facility_id', None)
-#         year = request.GET.get('year', None)
-        
-#         if year is None:
-#             return Response({'error': 'Year parameter is required.'}, status=status.HTTP_400_BAD_REQUEST)
-
-#         try:
-#             year = int(year)
-#         except (TypeError, ValueError):
-#             return Response({'error': 'Invalid year parameter.'}, status=status.HTTP_400_BAD_REQUEST)
-
-#         try:
-#             waste_types = [
-#                 'food_waste', 'solid_Waste', 'E_Waste', 'Biomedical_waste',
-#                 'liquid_discharge', 'other_waste', 'Landfill_waste', 'Landfill_waste'
-#             ]
-#             monthly_data = {month: {waste_type: 0 for waste_type in waste_types} for month in range(1, 13)}
-
-#             for waste_type in waste_types:
-#                 if facility_id and facility_id.lower() != 'all':
-#                     monthly_waste = (
-#                         Waste.objects.filter(user=user, facility__id=facility_id, DatePicker__year=year)
-#                         .values('DatePicker__month')
-#                         .annotate(total=Coalesce(Sum(waste_type, output_field=FloatField()), Value(0, output_field=FloatField())))
-#                         .order_by('DatePicker__month')
-#                     )
-#                 else:
-#                     monthly_waste = (
-#                         Waste.objects.filter(user=user, DatePicker__year=year)
-#                         .values('DatePicker__month')
-#                         .annotate(total=Coalesce(Sum(waste_type, output_field=FloatField()), Value(0, output_field=FloatField())))
-#                         .order_by('DatePicker__month')
-#                     )
-
-#                 for entry in monthly_waste:
-#                     month = entry['DatePicker__month']
-#                     monthly_data[month][waste_type] = entry['total']
-
-#             stacked_bar_data = []
-#             for month in range(1, 13):
-#                 month_name = datetime(1900, month, 1).strftime('%b')
-#                 stacked_bar_data.append({
-#                     "month": month_name,
-#                     **monthly_data[month]
-#                 })
-
-#             response_data = {
-#                 "stacked_bar_data": stacked_bar_data
-#             }
-
-#             return Response(response_data, status=status.HTTP_200_OK)
-
-#         except Exception as e:
-#             print(f"Error occurred: {e}") 
-#             return Response({'error': f'An error occurred: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-  
 class StackedWasteOverviewView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -1904,31 +1426,47 @@ class StackedWasteOverviewView(APIView):
         facility_id = request.GET.get('facility_id', None)
         facility_location = request.GET.get('facility_location', None)
         year = request.GET.get('year', None)
-        
-        if year is None:
-            return Response({'error': 'Year parameter is required.'}, status=status.HTTP_400_BAD_REQUEST)
 
         try:
-            year = int(year)
-        except (TypeError, ValueError):
-            return Response({'error': 'Invalid year parameter.'}, status=status.HTTP_400_BAD_REQUEST)
+            filters = {'user': user}
+            
+            # Check if the year is provided and valid
+            if not year:
+                # If year is not provided, return the data for the current year
+                year = timezone.now().year  # default to current year
+            else:
+                try:
+                    year = int(year)
+                    filters['DatePicker__year'] = year
+                except ValueError:
+                    return Response({'error': 'Invalid year parameter.'}, status=status.HTTP_400_BAD_REQUEST)
 
-        try:
+            # Validate facility_id if provided
+            if facility_id and facility_id.lower() != 'all':
+                try:
+                    # Check if the facility_id exists in the Facility model
+                    Facility.objects.get(facility_id=facility_id)
+                    filters['facility__facility_id'] = facility_id
+                except Facility.DoesNotExist:
+                    return Response({'error': f'Facility with ID {facility_id} does not exist.'}, status=status.HTTP_400_BAD_REQUEST)
+
+            # Validate facility_location if provided
+            if facility_location and facility_location.lower() != 'all':
+                # You can check if any facility exists with the given location, or just validate it's a non-empty string
+                if not Facility.objects.filter(facility_location__icontains=facility_location).exists():
+                    return Response({'error': f'No facility found with location {facility_location}.'}, status=status.HTTP_400_BAD_REQUEST)
+                filters['facility__facility_location__icontains'] = facility_location
+
             waste_types = [
                 'food_waste', 'solid_Waste', 'E_Waste', 'Biomedical_waste',
                 'liquid_discharge', 'other_waste', 'Recycle_waste', 'Landfill_waste'
             ]
             monthly_data = {month: {waste_type: 0 for waste_type in waste_types} for month in range(1, 13)}
 
+            # Fetch and assign monthly waste data for each waste type
             for waste_type in waste_types:
-                queryset = Waste.objects.filter(user=user, DatePicker__year=year)
+                queryset = Waste.objects.filter(**filters)
                 
-                if facility_id and facility_id.lower() != 'all':
-                    queryset = queryset.filter(facility__facility_id=facility_id)
-
-                if facility_location and facility_location.lower() != 'all':
-                    queryset = queryset.filter(facility__facility_location__icontains=facility_location)
-
                 monthly_waste = (
                     queryset
                     .values('DatePicker__month')
@@ -1940,8 +1478,10 @@ class StackedWasteOverviewView(APIView):
                     month = entry['DatePicker__month']
                     monthly_data[month][waste_type] = entry['total']
 
+            # Prepare stacked bar chart data with custom month ordering (April to March)
             stacked_bar_data = []
-            for month in range(1, 13):
+            month_order = [4, 5, 6, 7, 8, 9, 10, 11, 12, 1, 2, 3]
+            for month in month_order:
                 month_name = datetime(1900, month, 1).strftime('%b')
                 stacked_bar_data.append({
                     "month": month_name,
@@ -1952,7 +1492,6 @@ class StackedWasteOverviewView(APIView):
                 "facility_id": facility_id,
                 "year": year,
                 "facility_location": facility_location,
-                
                 "stacked_bar_data": stacked_bar_data
             }
 
@@ -1962,68 +1501,6 @@ class StackedWasteOverviewView(APIView):
             print(f"Error occurred: {e}") 
             return Response({'error': f'An error occurred: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-#Waste overview Donut Chart
-# class WasteOverallDonutChartView(APIView):
-#     permission_classes = [IsAuthenticated]
-
-#     def get(self, request):
-#         user = request.user
-#         year = request.GET.get('year', None)
-#         facility_id = request.GET.get('facility_id', None)
-#         facility_location = request.GET.get('facility_location', None)
-        
-#         if not year:
-#             return Response({'error': 'Year parameter is required.'}, status=status.HTTP_400_BAD_REQUEST)
-        
-#         try:
-#             year = int(year)
-#         except (TypeError, ValueError):
-#             return Response({'error': 'Invalid year parameter.'}, status=status.HTTP_400_BAD_REQUEST)
-
-#         try:
-#             # Base queryset filtered by user and year
-#             queryset = Waste.objects.filter(user=user, DatePicker__year=year)
-
-#             # Apply facility_id filter if provided and not 'all'
-#             if facility_id and facility_id.lower() != 'all':
-#                 queryset = queryset.filter(facility__facility_id=facility_id)
-
-#             # Apply facility_location filter if provided and not 'all'
-#             if facility_location and facility_location.lower() != 'all':
-#                 queryset = queryset.filter(facility__facility_location__icontains=facility_location)
-
-#             # Aggregate waste totals for each waste type
-#             waste_totals = queryset.aggregate(
-#                 food_waste_total=Coalesce(Sum(Cast('food_waste', FloatField())), 0.0),
-#                 solid_waste_total=Coalesce(Sum(Cast('solid_waste', FloatField())), 0.0),
-#                 e_waste_total=Coalesce(Sum(Cast('E_Waste', FloatField())), 0.0),
-#                 biomedical_waste_total=Coalesce(Sum(Cast('Biomedical_waste', FloatField())), 0.0),
-#                 other_waste_total=Coalesce(Sum(Cast('other_waste', FloatField())), 0.0)
-#             )
-
-#             # Calculate overall waste total
-#             overall_total = sum(waste_totals.values())
-
-#             if overall_total == 0:
-#                 return Response({'error': 'No waste data available for the selected year and facility.'}, status=status.HTTP_204_NO_CONTENT)
-
-#             # Calculate percentages for each waste type
-#             waste_percentages = {key: (value / overall_total) * 100 for key, value in waste_totals.items()}
-
-#             # Format response data
-#             response_data = {
-#                 "year": year,
-#                 "facility_id": facility_id,
-#                 "facility_location": facility_location,
-#                 "waste_percentages": waste_percentages
-#             }
-
-#             return Response(response_data, status=status.HTTP_200_OK)
-
-#         except Exception as e:
-#             import logging
-#             logging.error(f"Error in WasteOverallDonutChartView: {e}")
-#             return Response({'error': 'An internal error occurred.'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 class WasteOverallDonutChartView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -2032,16 +1509,37 @@ class WasteOverallDonutChartView(APIView):
         year = request.GET.get('year', None)
         facility_id = request.GET.get('facility_id', None)
         facility_location = request.GET.get('facility_location', None)
-        
-        if year is None:
-            return Response({'error': 'Year parameter is required.'}, status=status.HTTP_400_BAD_REQUEST)
-        
-        try:
-            year = int(year)
-        except (TypeError, ValueError):
-            return Response({'error': 'Invalid year parameter.'}, status=status.HTTP_400_BAD_REQUEST)
 
         try:
+            filters = {'user': user}
+
+            # Validate year parameter
+            if not year:
+                # If no year is provided, use the current year
+                year = timezone.now().year
+            else:
+                try:
+                    year = int(year)
+                    filters['DatePicker__year'] = year
+                except ValueError:
+                    return Response({'error': 'Invalid year parameter.'}, status=status.HTTP_400_BAD_REQUEST)
+
+            # Validate facility_id if provided
+            if facility_id and facility_id.lower() != 'all':
+                try:
+                    # Check if the facility with the given facility_id exists
+                    Facility.objects.get(facility_id=facility_id)
+                    filters['facility__facility_id'] = facility_id
+                except Facility.DoesNotExist:
+                    return Response({'error': f'Facility with ID {facility_id} does not exist.'}, status=status.HTTP_400_BAD_REQUEST)
+
+            # Validate facility_location if provided
+            if facility_location and facility_location.lower() != 'all':
+                if not Facility.objects.filter(facility_location__icontains=facility_location).exists():
+                    return Response({'error': f'No facility found with location {facility_location}.'}, status=status.HTTP_400_BAD_REQUEST)
+                filters['facility__facility_location__icontains'] = facility_location
+
+            # List of waste types to calculate totals
             waste_types = [
                 'food_waste', 'solid_Waste', 'E_Waste', 'Biomedical_waste', 'other_waste'
             ]
@@ -2049,12 +1547,11 @@ class WasteOverallDonutChartView(APIView):
             # Base queryset filtered by user and year
             queryset = Waste.objects.filter(user=user, DatePicker__year=year)
 
-           
-            # Apply facility_id filter if provided and not 'all'
+            # Apply facility_id filter if provided
             if facility_id and facility_id.lower() != 'all':
                 queryset = queryset.filter(facility__facility_id=facility_id)
 
-            # Apply facility_location filter if provided and not 'all'
+            # Apply facility_location filter if provided
             if facility_location and facility_location.lower() != 'all':
                 queryset = queryset.filter(facility__facility_location__icontains=facility_location)
 
@@ -2095,40 +1592,53 @@ class WasteOverallDonutChartView(APIView):
         except Exception as e:
             print(f"Error occurred: {e}")
             return Response({'error': f'An error occurred: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
  #SentToLandFillOverview
 class SentToLandfillOverviewView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
         user = request.user
+        
+        # Get parameters from the request
         year = request.GET.get('year', None)
         facility_id = request.GET.get('facility_id', None)
         facility_location = request.GET.get('facility_location', None)
         
+        # Default to the current year if 'year' is not provided
+        if not year:
+            year = timezone.now().year
+        else:
+            try:
+                year = int(year)  # Ensure the 'year' parameter is a valid integer
+            except ValueError:
+                return Response({'error': 'Invalid year parameter.'}, status=status.HTTP_400_BAD_REQUEST)
         
-        if year is None:
-            return Response({'error': 'Year parameter is required.'}, status=status.HTTP_400_BAD_REQUEST)
+        # Initialize the filters with the user and year
+        filters = {'user': user, 'DatePicker__year': year}
         
         try:
-            year = int(year)
-        except (TypeError, ValueError):
-            return Response({'error': 'Invalid year parameter.'}, status=status.HTTP_400_BAD_REQUEST)
-
-        try:
+            # Define the list of waste fields to calculate the overall total
             overall_total_fields = [
                 'food_waste', 'solid_Waste', 'E_Waste', 'Biomedical_waste', 'other_waste'
             ]
 
-            queryset = Waste.objects.filter(user=user, DatePicker__year=year)
+            # Start with the base queryset filtered by user and year
+            queryset = Waste.objects.filter(**filters)
 
+            # Apply facility_id filter if provided (and not 'all')
             if facility_id and facility_id.lower() != 'all':
                 queryset = queryset.filter(facility__facility_id=facility_id)
+            
+            # Apply facility_location filter if provided (and not 'all')
+            if facility_location and facility_location.lower() != 'all':
+                queryset = queryset.filter(facility__facility_location__icontains=facility_location)
 
+            # Calculate the total 'Landfill_waste'
             Landfill_waste_total = queryset.aggregate(
                 total=Coalesce(Sum(Cast('Landfill_waste', FloatField())), 0.0)
             )['total']
 
+            # Calculate the overall total waste (sum of food_waste, solid_Waste, etc.)
             overall_total = sum(
                 queryset.aggregate(
                     **{f"{waste_type}_total": Coalesce(Sum(Cast(waste_type, FloatField())), 0.0)
@@ -2136,20 +1646,20 @@ class SentToLandfillOverviewView(APIView):
                 ).values()
             )
 
+            # Calculate the remaining waste (excluding Landfill waste)
             remaining_waste_total = overall_total - Landfill_waste_total
 
             if overall_total == 0:
                 return Response({'error': 'No waste data available for the selected year and facility.'}, status=status.HTTP_204_NO_CONTENT)
 
-            if facility_location and facility_location.lower() != 'all':
-                queryset = queryset.filter(facility__facility_location__icontains=facility_location)
-        
-            landfill_percentage = (Landfill_waste_total / overall_total) * 100
-            remaining_percentage = (remaining_waste_total / overall_total) * 100
+            # Calculate the landfill and remaining waste percentages
+            landfill_percentage = (Landfill_waste_total / overall_total) * 100 if overall_total else 0
+            remaining_percentage = (remaining_waste_total / overall_total) * 100 if overall_total else 0
 
+            # Prepare the response data
             response_data = {
                 "year": year,
-                "facility_id": facility_id,
+                "facility_id": facility_id if facility_id else "all",  # Default to "all" if no specific facility is selected
                 "landfill_percentage": landfill_percentage,
                 "remaining_percentage": remaining_percentage
             }
@@ -2159,44 +1669,55 @@ class SentToLandfillOverviewView(APIView):
         except Exception as e:
             print(f"Error occurred: {e}")
             return Response({'error': f'An error occurred: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-       
-#Sent to Recycle
+        
+        
+        
 class SentToRecycledOverviewView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
         user = request.user
+        
+        # Get parameters from the request
         year = request.GET.get('year', None)
         facility_id = request.GET.get('facility_id', None)
         facility_location = request.GET.get('facility_location', None)
         
+        # Default to the current year if 'year' is not provided
+        if not year:
+            year = timezone.now().year
+        else:
+            try:
+                year = int(year)  # Ensure the 'year' parameter is a valid integer
+            except ValueError:
+                return Response({'error': 'Invalid year parameter.'}, status=status.HTTP_400_BAD_REQUEST)
         
-        if year is None:
-            return Response({'error': 'Year parameter is required.'}, status=status.HTTP_400_BAD_REQUEST)
+        # Initialize the filters with the user and year
+        filters = {'user': user, 'DatePicker__year': year}
         
         try:
-            year = int(year)
-        except (TypeError, ValueError):
-            return Response({'error': 'Invalid year parameter.'}, status=status.HTTP_400_BAD_REQUEST)
-
-        try:
+            # Define the list of waste fields to calculate the overall total
             overall_total_fields = [
                 'food_waste', 'solid_Waste', 'E_Waste', 'Biomedical_waste', 'other_waste'
             ]
 
-            queryset = Waste.objects.filter(user=user, DatePicker__year=year)
-            
+            # Start with the base queryset filtered by user and year
+            queryset = Waste.objects.filter(**filters)
+
+            # Apply facility_id filter if provided (and not 'all')
             if facility_id and facility_id.lower() != 'all':
                 queryset = queryset.filter(facility__facility_id=facility_id)
-                
+            
+            # Apply facility_location filter if provided (and not 'all')
             if facility_location and facility_location.lower() != 'all':
                 queryset = queryset.filter(facility__facility_location__icontains=facility_location)
-            # Calculate total for 'sent_for_recycle'
+
+            # Calculate the total 'Landfill_waste'
             Recycle_waste_total = queryset.aggregate(
                 total=Coalesce(Sum(Cast('Recycle_waste', FloatField())), 0.0)
             )['total']
 
-            # Calculate total for other waste fields
+            # Calculate the overall total waste (sum of food_waste, solid_Waste, etc.)
             overall_total = sum(
                 queryset.aggregate(
                     **{f"{waste_type}_total": Coalesce(Sum(Cast(waste_type, FloatField())), 0.0)
@@ -2204,23 +1725,21 @@ class SentToRecycledOverviewView(APIView):
                 ).values()
             )
 
-            # Calculate remaining waste by excluding 'sent_for_recycle'
+            # Calculate the remaining waste (excluding Landfill waste)
             remaining_waste_total = overall_total - Recycle_waste_total
-            
-            # overall_total += sent_for_recycle_total
 
             if overall_total == 0:
                 return Response({'error': 'No waste data available for the selected year and facility.'}, status=status.HTTP_204_NO_CONTENT)
 
-            # Calculate percentages
-            recycle_percentage = (Recycle_waste_total / overall_total) * 100
-            remaining_percentage = (remaining_waste_total / overall_total) * 100
+            # Calculate the landfill and remaining waste percentages
+            landfill_percentage = (Recycle_waste_total / overall_total) * 100 if overall_total else 0
+            remaining_percentage = (remaining_waste_total / overall_total) * 100 if overall_total else 0
 
-            # Format response data
+            # Prepare the response data
             response_data = {
                 "year": year,
-                "facility_id": facility_id,
-                "recycle_percentage": recycle_percentage,
+                "facility_id": facility_id if facility_id else "all",  # Default to "all" if no specific facility is selected
+                "landfill_percentage": landfill_percentage,
                 "remaining_percentage": remaining_percentage
             }
 
@@ -2229,65 +1748,78 @@ class SentToRecycledOverviewView(APIView):
         except Exception as e:
             print(f"Error occurred: {e}")
             return Response({'error': f'An error occurred: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-        
+#Sent to Recycle
 '''Waste Overviewgraphs and Individual Line charts and donut charts Ends'''
 
 
 '''Energy  Overview Cards ,Graphs and Individual line charts and donut charts Starts'''
-#HVAC CardOverView
-class HVAC_CardOverview(APIView):
+class EnergyViewCard_Over(APIView):
     permission_classes = [IsAuthenticated]
-    
+
     def get(self, request):
         user = request.user
-        year = request.GET.get('year', None)
-        facility_id = request.GET.get('facility_id', None)
+        facility_id = request.GET.get('facility_id', 'all')
         facility_location = request.GET.get('facility_location', None)
-        
-        if year is None:
-            return Response({'error': 'Year parameter is required.'}, status=status.HTTP_400_BAD_REQUEST)
-        
+        year = request.GET.get('year', None)
+
         try:
-            year = int(year)
-        except (TypeError, ValueError):
-            return Response({'error': 'Invalid year parameter.'}, status=status.HTTP_400_BAD_REQUEST)
-        
-        try:
-            HVAC_data = Energy.objects.filter(user=user, DatePicker__year=year)
-        
-            if facility_id and facility_id.lower() != 'all':
+            energy_data = Energy.objects.filter(user=user)
+
+            # Filter by year if provided
+            if year:
+                try:
+                    year = int(year)
+                    energy_data = energy_data.filter(DatePicker__year=year)
+                except ValueError:
+                    return Response({'error': 'Invalid year parameter.'}, status=status.HTTP_400_BAD_REQUEST)
+
+            # Filter by facility_id if provided and valid
+            if facility_id.lower() != 'all':
                 if not Facility.objects.filter(facility_id=facility_id).exists():
                     return Response({'error': 'Invalid facility ID.'}, status=status.HTTP_400_BAD_REQUEST)
-                HVAC_data = HVAC_data.filter(facility__facility_id=facility_id)
-                
-            if facility_location:
-                HVAC_data = HVAC_data.filter(facility__facility_location__icontains=facility_location)
-            
-            facility_HVAC = (
-                HVAC_data
-                .values('facility__facility_name')
-                .annotate(total_hvac=Sum('hvac'))
-                .order_by('-total_hvac')
-            )
-            facility_HVAC_data = [
-                {
-                    "facility_name": entry['facility__facility_name'],
-                    "total_hvac": entry['total_hvac']
-                }
-                for entry in facility_HVAC
-            ]
-            overall_hvac = HVAC_data.aggregate(total=Sum('hvac'))['total'] or 0
+                energy_data = energy_data.filter(facility__facility_id=facility_id)
 
-            response_data = {
-                'overall_hvac': overall_hvac,
-                'facility_hvac': facility_HVAC_data,
-            }
+            # Filter by facility_location if provided
+            if facility_location:
+                energy_data = energy_data.filter(facility__facility_location__icontains=facility_location)
+
+            # Define waste fields for aggregation
+            waste_fields = [
+                'hvac', 'production', 'stp', 'admin_block',
+                'utilities', 'others', 'fuel_used_in_Operations', 'fuel_consumption','renewable_solar','renewable_other'
+            ]
+
+            # Initialize response data
+            response_data = {'overall_waste_totals': {}, 'facility_energy_data': {}}
+
+            for field in waste_fields:
+                # Aggregate waste by facility for the current waste type
+                facility_energy_data = (
+                    energy_data
+                    .values('facility__facility_name')
+                    .annotate(total=Sum(field))
+                    .order_by('-total')
+                )
+
+                # Prepare facility-wise data for each waste type
+                response_data['facility_energy_data'][field] = [
+                    {
+                        "facility_name": entry['facility__facility_name'],
+                        f"total_{field}": entry['total']
+                    }
+                    for entry in facility_energy_data
+                ]
+
+                # Calculate overall waste total for each waste type
+                overall_total = energy_data.aggregate(total=Sum(field))['total'] or 0
+                response_data['overall_waste_totals'][f"overall_{field}"] = overall_total
+
             return Response(response_data, status=status.HTTP_200_OK)
 
         except Exception as e:
-            print(f"Error occurred in HVAC_CardOverview: {e}")  # Log the specific error
-            return Response({'error': f'An error occurred: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
+            # Log the error for debugging purposes
+            print(f"An error occurred: {e}")
+            return Response({'error': 'An error occurred while processing your request.'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 #HVAC Line Charts and Donut Chart  
 class HVACOverviewView(APIView):
     permission_classes = [IsAuthenticated]
@@ -2374,59 +1906,88 @@ class HVACOverviewView(APIView):
                 {'error': f'An error occurred while processing your request: {str(e)}'},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
-#Production overviewCard
-class ProductionOverViewCard(APIView):
-    permission_classes = [IsAuthenticated]
-    
-    def get(self, request):
-        user = request.user
-        year = request.GET.get('year', None)
-        facility_id = request.GET.get('facility_id', None)
-        facility_location = request.GET.get('facility_location', None)
-        
-        if year is None:
-            return Response({'error': 'Year parameter is required.'}, status=status.HTTP_400_BAD_REQUEST)
-        
-        try:
-            year = int(year)
-        except (TypeError, ValueError):
-            return Response({'error': 'Invalid year parameter.'}, status=status.HTTP_400_BAD_REQUEST)
-        
-        try:
-            production_data = Energy.objects.filter(user=user, DatePicker__year=year)
-        
-            if facility_id and facility_id.lower() != 'all':
-                if not Facility.objects.filter(facility_id=facility_id).exists():
-                    return Response({'error': 'Invalid facility ID.'}, status=status.HTTP_400_BAD_REQUEST)
-                production_data = production_data.filter(facility__facility_id=facility_id)
-                
-            if facility_location:
-                production_data = production_data.filter(facility__facility_location__icontains=facility_location)
+
+# class HVACOverviewView(APIView):
+#     permission_classes = [IsAuthenticated]
+
+#     def get(self, request):
+#         user = request.user
+#         facility_id = request.GET.get('facility_id', 'all')
+#         facility_location = request.GET.get('facility_location', None)
+#         year = request.GET.get('year', None)
+
+#         try:
+#             filters = {'user': user}
             
-            facility_production = (
-                production_data
-                .values('facility__facility_name')
-                .annotate(total_production=Sum('production'))
-                .order_by('-total_production')
-            )
-            facility_production_data = [
-                {
-                    "facility_name": entry['facility__facility_name'],
-                    "total_production": entry['total_production']
-                }
-                for entry in facility_production
-            ]
-            overall_production = production_data.aggregate(total=Sum('production'))['total'] or 0
+#             # Filter by year if provided
+#             if year:
+#                 try:
+#                     year = int(year)
+#                     filters['DatePicker__year'] = year
+#                 except ValueError:
+#                     return Response({'error': 'Invalid year parameter.'}, status=status.HTTP_400_BAD_REQUEST)
 
-            response_data = {
-                'overall_production': overall_production,
-                'facility_production': facility_production_data,
-            }
-            return Response(response_data, status=status.HTTP_200_OK)
+#             # Filter by facility_id if provided and valid
+#             if facility_id.lower() != 'all':
+#                 filters['facility__facility_id'] = facility_id
 
-        except Exception as e:
-            print(f"Error occurred in HVAC_CardOverview: {e}")  # Log the specific error
-            return Response({'error': f'An error occurred: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+#             # Filter by facility_location if provided
+#             if facility_location:
+#                 filters['facility__facility_location__icontains'] = facility_location
+
+#             # Monthly HVAC data (assuming the field is 'overall_usage' or another field)
+#             monthly_hvac = (
+#                 Energy.objects.filter(**filters)
+#                 .values('DatePicker__month')
+#                 .annotate(total_hvac=Sum('overall_usage'))  # Replace 'hvac' with the correct field name
+#                 .order_by('DatePicker__month')
+#             )
+
+#             # Prepare line chart data
+#             line_chart_data = []
+#             hvac = defaultdict(float)
+#             for entry in monthly_hvac:
+#                 month_name = datetime(1900, entry['DatePicker__month'], 1).strftime('%b')
+#                 hvac[entry['DatePicker__month']] = entry['total_hvac']
+                
+#             month_order = [4, 5, 6, 7, 8, 9, 10, 11, 12, 1, 2, 3]
+#             for month in month_order:
+#                 month_name = datetime(1900, month, 1).strftime('%b')
+#                 line_chart_data.append({
+#                     "month": month_name,
+#                     "hvac": hvac.get(month, 0)
+#                 })
+
+#             # Facility-wise HVAC data for donut chart
+#             facility_hvac = (
+#                 Waste.objects.filter(user=user)
+#                 .values('facility__facility_name')
+#                 .annotate(total_hvac=Sum('overall_usage'))  # Replace 'hvac' with the correct field name
+#                 .order_by('-total_hvac')
+#             )
+
+#             # Prepare donut chart data
+#             total_hvac = sum(entry['total_hvac'] for entry in facility_hvac)
+#             donut_chart_data = [
+#                 {
+#                     "facility_name": entry['facility__facility_name'],
+#                     "percentage": (entry['total_hvac'] / total_hvac * 100) if total_hvac else 0,
+#                 }
+#                 for entry in facility_hvac
+#             ]
+
+#             response_data = {
+#                 "line_chart_data": line_chart_data,
+#                 "donut_chart_data": donut_chart_data
+#             }
+
+#             return Response(response_data, status=status.HTTP_200_OK)
+
+#         except Exception as e:
+#             return Response(
+#                 {'error': f'An error occurred while processing your request: {str(e)}'},
+#                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
+#             )
 #ProductionLine Charts and Donut charts
 class ProductionOverviewView(APIView):
     permission_classes = [IsAuthenticated]
@@ -2513,60 +2074,6 @@ class ProductionOverviewView(APIView):
                 {'error': f'An error occurred while processing your request: {str(e)}'},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
-  
-#stp overviewcard
-class StpOverViewCard(APIView):
-    permission_classes = [IsAuthenticated]
-    
-    def get(self, request):
-        user = request.user
-        year = request.GET.get('year', None)
-        facility_id = request.GET.get('facility_id', None)
-        facility_location = request.GET.get('facility_location', None)
-        
-        if year is None:
-            return Response({'error': 'Year parameter is required.'}, status=status.HTTP_400_BAD_REQUEST)
-        
-        try:
-            year = int(year)
-        except (TypeError, ValueError):
-            return Response({'error': 'Invalid year parameter.'}, status=status.HTTP_400_BAD_REQUEST)
-        
-        try:
-            stp_data = Energy.objects.filter(user=user, DatePicker__year=year)
-        
-            if facility_id and facility_id.lower() != 'all':
-                if not Facility.objects.filter(facility_id=facility_id).exists():
-                    return Response({'error': 'Invalid facility ID.'}, status=status.HTTP_400_BAD_REQUEST)
-                stp_data = stp_data.filter(facility__facility_id=facility_id)
-                
-            if facility_location:
-                stp_data = stp_data.filter(facility__facility_location__icontains=facility_location)
-            
-            facility_stp = (
-                stp_data
-                .values('facility__facility_name')
-                .annotate(total_stp=Sum('stp'))
-                .order_by('-total_stp')
-            )
-            facility_stp_data = [
-                {
-                    "facility_name": entry['facility__facility_name'],
-                    "total_stp": entry['total_stp']
-                }
-                for entry in facility_stp
-            ]
-            overall_stp = stp_data.aggregate(total=Sum('stp'))['total'] or 0
-
-            response_data = {
-                'overall_stp': overall_stp,
-                'facility_stp': facility_stp_data,
-            }
-            return Response(response_data, status=status.HTTP_200_OK)
-
-        except Exception as e:
-            print(f"Error occurred in HVAC_CardOverview: {e}")  # Log the specific error
-            return Response({'error': f'An error occurred: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 #STP Overview line charts and donut charts
 class StpOverviewView(APIView):
@@ -2655,63 +2162,6 @@ class StpOverviewView(APIView):
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 
-#Admin_block CardOverview
-class Admin_BlockOverViewCard(APIView):
-    permission_classes = [IsAuthenticated]
-
-    def get(self, request):
-        user = request.user
-        facility_id = request.GET.get('facility_id', None)
-        facility_location = request.GET.get('facility_location', None)
-        year = request.GET.get('year', None)
-
-        if year is None:
-            return Response({'error': 'Year parameter is required.'}, status=status.HTTP_400_BAD_REQUEST)
-
-        try:
-            year = int(year)
-        except (TypeError, ValueError):
-            return Response({'error': 'Invalid year parameter.'}, status=status.HTTP_400_BAD_REQUEST)
-
-        try:
-            admin_block_data = Energy.objects.filter(user=user, DatePicker__year=year)
-
-            if facility_id and facility_id.lower() != 'all':
-                if not Facility.objects.filter(id=facility_id).exists():
-                    return Response({'error': 'Invalid facility ID.'}, status=status.HTTP_400_BAD_REQUEST)
-                admin_block_data = admin_block_data.filter(facility__id=facility_id)
-
-            if facility_location:
-                admin_block_data = admin_block_data.filter(facility__facility_location__icontains=facility_location)
-
-            facility_admin_block = (
-                admin_block_data
-                .values('facility__facility_name')
-                .annotate(total_admin_block=Sum('admin_block'))
-                .order_by('-total_admin_block')
-            )
-
-            facility_admin_block_data = [
-                {
-                    "facility_name": entry['facility__facility_name'],
-                    "total_admin_block": entry['total_admin_block']
-                }
-                for entry in facility_admin_block
-            ]
-
-            overall_admin_block = admin_block_data.aggregate(total=Sum('admin_block'))['total'] or 0
-
-            response_data = {
-                'overall_admin_block': overall_admin_block,
-                'facility_admin_block': facility_admin_block_data,
-            }
-
-            return Response(response_data, status=status.HTTP_200_OK)
-
-        except Exception as e:
-            print(f"An error occurred: {e}")
-            return Response({'error': 'An error occurred while processing your request.'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
 #Admin_block Overview Linecharts and donut charts
 class Admin_BlockOverviewView(APIView):
     permission_classes = [IsAuthenticated]
@@ -2721,8 +2171,8 @@ class Admin_BlockOverviewView(APIView):
         facility_id = request.GET.get('facility_id', None)
         facility_location = request.GET.get('facility_location', None)
         year = request.GET.get('year', None)
-        
-        if year is None:
+
+        if not year:
             return Response({'error': 'Year parameter is required.'}, status=status.HTTP_400_BAD_REQUEST)
 
         try:
@@ -2731,23 +2181,23 @@ class Admin_BlockOverviewView(APIView):
             return Response({'error': 'Invalid year parameter.'}, status=status.HTTP_400_BAD_REQUEST)
 
         try:
-            # Query to get monthly food waste
+            filters = {
+                'user': user,
+                'DatePicker__year': year,
+            }
             if facility_id and facility_id.lower() != 'all':
-                monthly_admin_block = (
-                    Energy.objects.filter(user=user, facility__id=facility_id, DatePicker__year=year,facility__facility_location__icontains=facility_location)
-                    .values('DatePicker__month')
-                    .annotate(total_admin_block=Sum('admin_block'))
-                    .order_by('DatePicker__month')
-                )
-            else:
-                monthly_admin_block = (
-                    Energy.objects.filter(user=user, DatePicker__year=year,facility__facility_location__icontains=facility_location)
-                    .values('DatePicker__month')
-                    .annotate(total_admin_block=Sum('admin_block'))
-                    .order_by('DatePicker__month')
-                )
+                filters['facility__facility_id'] = facility_id
+            if facility_location:
+                filters['facility__facility_location__icontains'] = facility_location
 
-          
+            # Line Chart Data: Monthly HVAC Consumption
+            monthly_admin_block = (
+                Energy.objects.filter(**filters)
+                .values('DatePicker__month')
+                .annotate(total_admin_block=Sum('admin_block'))
+                .order_by('DatePicker__month')
+            )
+
             line_chart_data = []
             admin_block = defaultdict(float)
 
@@ -2762,21 +2212,18 @@ class Admin_BlockOverviewView(APIView):
                     "admin_block": admin_block.get(month, 0)
                 })
 
-            # Query for facility-wise food waste
-            if facility_id and facility_id.lower() != 'all':
-                facility_admin_block = (
-                    Energy.objects.filter(user=user, facility__id=facility_id)
-                    .values('facility__facility_name')
-                    .annotate(total_admin_block=Sum('admin_block'))
-                    .order_by('-total_admin_block')
-                )
-            else:
-                facility_admin_block = (
-                    Energy.objects.filter(user=user)
-                    .values('facility__facility_name')
-                    .annotate(total_admin_block=Sum('admin_block'))
-                    .order_by('-total_admin_block')
-                )
+            # Donut Chart Data: admin_block per Facility
+            facility_filters = {
+                'user': user,
+                **({'facility__facility_id': facility_id} if facility_id and facility_id.lower() != 'all' else {})
+            }
+
+            facility_admin_block = (
+                Energy.objects.filter(**facility_filters)
+                .values('facility__facility_name')
+                .annotate(total_admin_block=Sum('admin_block'))
+                .order_by('-total_admin_block')
+            )
 
             total_admin_block = sum(entry['total_admin_block'] for entry in facility_admin_block)
             donut_chart_data = [
@@ -2795,8 +2242,101 @@ class Admin_BlockOverviewView(APIView):
             return Response(response_data, status=status.HTTP_200_OK)
 
         except Exception as e:
-            return Response({'error': 'An error occurred while processing your request.'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            # Log the error for debugging purposes
+            print(f"Error in admin_blockOverviewView: {e}")
+            return Response(
+                {'error': f'An error occurred while processing your request: {str(e)}'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
 
+#Utilities_OverView Linecharts and Donut Charts
+class Utilities_OverviewView(APIView):
+    permission_classes = [IsAuthenticated]
 
+    def get(self, request):
+        user = request.user
+        facility_id = request.GET.get('facility_id', None)
+        facility_location = request.GET.get('facility_location', None)
+        year = request.GET.get('year', None)
+
+        if not year:
+            return Response({'error': 'Year parameter is required.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            year = int(year)
+        except (TypeError, ValueError):
+            return Response({'error': 'Invalid year parameter.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            filters = {
+                'user': user,
+                'DatePicker__year': year,
+            }
+            if facility_id and facility_id.lower() != 'all':
+                filters['facility__facility_id'] = facility_id
+            if facility_location:
+                filters['facility__facility_location__icontains'] = facility_location
+
+            # Line Chart Data: Monthly HVAC Consumption
+            monthly_utilities = (
+                Energy.objects.filter(**filters)
+                .values('DatePicker__month')
+                .annotate(total_utilities=Sum('utilities'))
+                .order_by('DatePicker__month')
+            )
+
+            line_chart_data = []
+            utilities = defaultdict(float)
+
+            for entry in monthly_utilities:
+                month_name = datetime(1900, entry['DatePicker__month'], 1).strftime('%b')
+                utilities[entry['DatePicker__month']] = entry['total_utilities']
+
+            for month in range(1, 13):
+                month_name = datetime(1900, month, 1).strftime('%b')
+                line_chart_data.append({
+                    "month": month_name,
+                    "utilities": utilities.get(month, 0)
+                })
+
+            # Donut Chart Data: utilities per Facility
+            facility_filters = {
+                'user': user,
+                **({'facility__facility_id': facility_id} if facility_id and facility_id.lower() != 'all' else {})
+            }
+
+            facility_utilities = (
+                Energy.objects.filter(**facility_filters)
+                .values('facility__facility_name')
+                .annotate(total_utilities=Sum('utilities'))
+                .order_by('-total_utilities')
+            )
+
+            total_utilities = sum(entry['total_utilities'] for entry in facility_utilities)
+            donut_chart_data = [
+                {
+                    "facility_name": entry['facility__facility_name'],
+                    "percentage": (entry['total_utilities'] / total_utilities * 100) if total_utilities else 0,
+                }
+                for entry in facility_utilities
+            ]
+
+            response_data = {
+                "line_chart_data": line_chart_data,
+                "donut_chart_data": donut_chart_data
+            }
+
+            return Response(response_data, status=status.HTTP_200_OK)
+
+        except Exception as e:
+            # Log the error for debugging purposes
+            print(f"Error in utilitiesOverviewView: {e}")
+            return Response(
+                {'error': f'An error occurred while processing your request: {str(e)}'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+    
+#        
 '''Energy  Overview Cards ,Graphs and Individual line charts and donut charts Ends'''
+   
