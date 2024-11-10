@@ -1775,37 +1775,35 @@ class WasteOverallDonutChartView(APIView):
     def get(self, request):
         user = request.user
         year = request.GET.get('year', None)
-        facility_id = request.GET.get('facility_id', None)
+        facility_id = request.GET.get('facility_id', 'all')
         facility_location = request.GET.get('facility_location', None)
 
         try:
             filters = {'user': user}
 
-            # Check if we should filter by fiscal year (April to March)
-            if facility_location and facility_location.lower() != 'all':
-                # Calculate last April to March period
-                today = datetime.now()
-                if today.month >= 4:  # Current year is the end of financial year (April to March)
-                    start_date = datetime(today.year, 4, 1)
-                    end_date = datetime(today.year + 1, 3, 31)
-                else:  # Last financial year (if current month is before April)
-                    start_date = datetime(today.year - 1, 4, 1)
-                    end_date = datetime(today.year, 3, 31)
-
-                filters['DatePicker__range'] = (start_date, end_date)
-
-            # Filter by year if provided
+            # Determine the default or specified year and fiscal year range (April to March)
+            today = datetime.now()
             if year:
                 try:
                     year = int(year)
-                    # Fiscal year range (April to March)
-                    if year >= 2023:
-                        start_date = datetime(year, 4, 1)
-                        end_date = datetime(year + 1, 3, 31)
-                        filters['DatePicker__range'] = (start_date, end_date)
                 except ValueError:
                     return Response({'error': 'Invalid year parameter.'}, status=status.HTTP_400_BAD_REQUEST)
-            # Validate facility_id if provided
+            else:
+                year = today.year
+
+            # Define fiscal year range
+            if today.month >= 4:
+                # Current fiscal year
+                start_date = datetime(year, 4, 1)
+                end_date = datetime(year + 1, 3, 31)
+            else:
+                # Previous fiscal year if it's early in the year
+                start_date = datetime(year - 1, 4, 1)
+                end_date = datetime(year, 3, 31)
+
+            filters['DatePicker__range'] = (start_date, end_date)
+
+            # Facility and location filtering
             if facility_id and facility_id.lower() != 'all':
                 try:
                     # Check if the facility with the given facility_id exists
@@ -1814,27 +1812,13 @@ class WasteOverallDonutChartView(APIView):
                 except Facility.DoesNotExist:
                     return Response({'error': f'Facility with ID {facility_id} does not exist.'}, status=status.HTTP_400_BAD_REQUEST)
 
-            # Validate facility_location if provided
             if facility_location and facility_location.lower() != 'all':
                 if not Facility.objects.filter(facility_location__icontains=facility_location).exists():
                     return Response({'error': f'No facility found with location {facility_location}.'}, status=status.HTTP_400_BAD_REQUEST)
                 filters['facility__facility_location__icontains'] = facility_location
 
-            # List of waste types to calculate totals
-            waste_types = [
-                'food_waste', 'solid_Waste', 'E_Waste', 'Biomedical_waste', 'other_waste'
-            ]
-
-            # Base queryset filtered by user and year
-            queryset = Waste.objects.filter(user=user, DatePicker__year=year)
-
-            # Apply facility_id filter if provided
-            if facility_id and facility_id.lower() != 'all':
-                queryset = queryset.filter(facility__facility_id=facility_id)
-
-            # Apply facility_location filter if provided
-            if facility_location and facility_location.lower() != 'all':
-                queryset = queryset.filter(facility__facility_location__icontains=facility_location)
+            # Queryset filtered by fiscal year, facility, and location if provided
+            queryset = Waste.objects.filter(**filters)
 
             # Aggregate waste totals for each waste type
             waste_totals = queryset.aggregate(
@@ -1845,19 +1829,20 @@ class WasteOverallDonutChartView(APIView):
                 other_waste_total=Coalesce(Sum(Cast('other_waste', FloatField())), 0.0)
             )
 
-            # Calculate overall waste total
+            # Calculate the overall total waste
             overall_total = sum(waste_totals.values())
 
+            # Return an empty response if no data is available for the selected year and facility
             if overall_total == 0:
                 return Response({'error': 'No waste data available for the selected year and facility.'}, status=status.HTTP_204_NO_CONTENT)
 
             # Calculate percentages for each waste type
             waste_percentages = {
-                'food_waste': (waste_totals['food_waste_total'] / overall_total) * 100,
-                'solid_Waste': (waste_totals['solid_Waste_total'] / overall_total) * 100,
-                'E_Waste': (waste_totals['E_Waste_total'] / overall_total) * 100,
-                'Biomedical_waste': (waste_totals['Biomedical_waste_total'] / overall_total) * 100,
-                'other_waste': (waste_totals['other_waste_total'] / overall_total) * 100,
+                'food_waste': (waste_totals['food_waste_total'] / overall_total) * 100 if overall_total else 0,
+                'solid_Waste': (waste_totals['solid_Waste_total'] / overall_total) * 100 if overall_total else 0,
+                'E_Waste': (waste_totals['E_Waste_total'] / overall_total) * 100 if overall_total else 0,
+                'Biomedical_waste': (waste_totals['Biomedical_waste_total'] / overall_total) * 100 if overall_total else 0,
+                'other_waste': (waste_totals['other_waste_total'] / overall_total) * 100 if overall_total else 0,
             }
 
             # Format response data
@@ -1873,6 +1858,110 @@ class WasteOverallDonutChartView(APIView):
         except Exception as e:
             print(f"Error occurred: {e}")
             return Response({'error': f'An error occurred: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+# class WasteOverallDonutChartView(APIView):
+#     permission_classes = [IsAuthenticated]
+
+#     def get(self, request):
+#         user = request.user
+#         year = request.GET.get('year', None)
+#         facility_id = request.GET.get('facility_id', None)
+#         facility_location = request.GET.get('facility_location', None)
+
+#         try:
+#             filters = {'user': user}
+
+#             # Check if we should filter by fiscal year (April to March)
+#             if facility_location and facility_location.lower() != 'all':
+#                 # Calculate last April to March period
+#                 today = datetime.now()
+#                 if today.month >= 4:  # Current year is the end of financial year (April to March)
+#                     start_date = datetime(today.year, 4, 1)
+#                     end_date = datetime(today.year + 1, 3, 31)
+#                 else:  # Last financial year (if current month is before April)
+#                     start_date = datetime(today.year - 1, 4, 1)
+#                     end_date = datetime(today.year, 3, 31)
+
+#                 filters['DatePicker__range'] = (start_date, end_date)
+
+#             # Filter by year if provided
+#             if year:
+#                 try:
+#                     year = int(year)
+#                     # Fiscal year range (April to March)
+#                     if year >= 2023:
+#                         start_date = datetime(year, 4, 1)
+#                         end_date = datetime(year + 1, 3, 31)
+#                         filters['DatePicker__range'] = (start_date, end_date)
+#                 except ValueError:
+#                     return Response({'error': 'Invalid year parameter.'}, status=status.HTTP_400_BAD_REQUEST)
+#             # Validate facility_id if provided
+#             if facility_id and facility_id.lower() != 'all':
+#                 try:
+#                     # Check if the facility with the given facility_id exists
+#                     Facility.objects.get(facility_id=facility_id)
+#                     filters['facility__facility_id'] = facility_id
+#                 except Facility.DoesNotExist:
+#                     return Response({'error': f'Facility with ID {facility_id} does not exist.'}, status=status.HTTP_400_BAD_REQUEST)
+
+#             # Validate facility_location if provided
+#             if facility_location and facility_location.lower() != 'all':
+#                 if not Facility.objects.filter(facility_location__icontains=facility_location).exists():
+#                     return Response({'error': f'No facility found with location {facility_location}.'}, status=status.HTTP_400_BAD_REQUEST)
+#                 filters['facility__facility_location__icontains'] = facility_location
+
+#             # List of waste types to calculate totals
+#             waste_types = [
+#                 'food_waste', 'solid_Waste', 'E_Waste', 'Biomedical_waste', 'other_waste'
+#             ]
+
+#             # Base queryset filtered by user and year
+#             queryset = Waste.objects.filter(user=user, DatePicker__year=year)
+
+#             # Apply facility_id filter if provided
+#             if facility_id and facility_id.lower() != 'all':
+#                 queryset = queryset.filter(facility__facility_id=facility_id)
+
+#             # Apply facility_location filter if provided
+#             if facility_location and facility_location.lower() != 'all':
+#                 queryset = queryset.filter(facility__facility_location__icontains=facility_location)
+
+#             # Aggregate waste totals for each waste type
+#             waste_totals = queryset.aggregate(
+#                 food_waste_total=Coalesce(Sum(Cast('food_waste', FloatField())), 0.0),
+#                 solid_Waste_total=Coalesce(Sum(Cast('solid_Waste', FloatField())), 0.0),
+#                 E_Waste_total=Coalesce(Sum(Cast('E_Waste', FloatField())), 0.0),
+#                 Biomedical_waste_total=Coalesce(Sum(Cast('Biomedical_waste', FloatField())), 0.0),
+#                 other_waste_total=Coalesce(Sum(Cast('other_waste', FloatField())), 0.0)
+#             )
+
+#             # Calculate overall waste total
+#             overall_total = sum(waste_totals.values())
+
+#             if overall_total == 0:
+#                 return Response({'error': 'No waste data available for the selected year and facility.'}, status=status.HTTP_204_NO_CONTENT)
+
+#             # Calculate percentages for each waste type
+#             waste_percentages = {
+#                 'food_waste': (waste_totals['food_waste_total'] / overall_total) * 100,
+#                 'solid_Waste': (waste_totals['solid_Waste_total'] / overall_total) * 100,
+#                 'E_Waste': (waste_totals['E_Waste_total'] / overall_total) * 100,
+#                 'Biomedical_waste': (waste_totals['Biomedical_waste_total'] / overall_total) * 100,
+#                 'other_waste': (waste_totals['other_waste_total'] / overall_total) * 100,
+#             }
+
+#             # Format response data
+#             response_data = {
+#                 "year": year,
+#                 "facility_id": facility_id,
+#                 "facility_location": facility_location,
+#                 "waste_percentages": waste_percentages
+#             }
+
+#             return Response(response_data, status=status.HTTP_200_OK)
+
+#         except Exception as e:
+#             print(f"Error occurred: {e}")
+#             return Response({'error': f'An error occurred: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
  #SentToLandFillOverview
 class SentToLandfillOverviewView(APIView):
     permission_classes = [IsAuthenticated]
