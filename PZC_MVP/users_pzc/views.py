@@ -542,13 +542,30 @@ class WasteViewCard_Over(APIView):
         year = request.GET.get('year', None)
 
         try:
-            waste_data = Waste.objects.filter(user=user)
+            filters = {'user': user}
+            waste_data = Waste.objects.filter(**filters)
+
+            # Check if we should filter by fiscal year (April to March)
+            if facility_id.lower() == 'all':
+                # Calculate last April to March period
+                today = datetime.now()
+                if today.month >= 4:  # Current year is the end of financial year (April to March)
+                    start_date = datetime(today.year, 4, 1)
+                    end_date = datetime(today.year + 1, 3, 31)
+                else:  # Last financial year (if current month is before April)
+                    start_date = datetime(today.year - 1, 4, 1)
+                    end_date = datetime(today.year, 3, 31)
+
+                filters['DatePicker__range'] = (start_date, end_date)
 
             # Filter by year if provided
             if year:
                 try:
                     year = int(year)
-                    waste_data = waste_data.filter(DatePicker__year=year)
+                    # Fiscal year range (April to March)
+                    start_date = datetime(year, 4, 1)
+                    end_date = datetime(year + 1, 3, 31)
+                    filters['DatePicker__range'] = (start_date, end_date)
                 except ValueError:
                     return Response({'error': 'Invalid year parameter.'}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -562,10 +579,10 @@ class WasteViewCard_Over(APIView):
             if facility_location:
                 waste_data = waste_data.filter(facility__facility_location__icontains=facility_location)
 
-            # Define waste fields for aggregation
+            # Define waste fields for aggregation (removed duplicate 'Recycle_waste')
             waste_fields = [
                 'food_waste', 'solid_Waste', 'E_Waste', 'Biomedical_waste',
-                'liquid_discharge', 'other_waste', 'Recycle_waste', 'Recycle_waste'
+                'liquid_discharge', 'other_waste', 'Recycle_waste', 'Landfill_waste'
             ]
 
             # Initialize response data
@@ -599,6 +616,7 @@ class WasteViewCard_Over(APIView):
             # Log the error for debugging purposes
             print(f"An error occurred: {e}")
             return Response({'error': 'An error occurred while processing your request.'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
 class FoodWasteOverviewView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -611,16 +629,33 @@ class FoodWasteOverviewView(APIView):
         try:
             filters = {'user': user}
             
+            # Check if we should filter by fiscal year (April to March)
+            if facility_id.lower() == 'all':
+                # Calculate last April to March period
+                today = datetime.now()
+                if today.month >= 4:  # Current year is the end of financial year (April to March)
+                    start_date = datetime(today.year, 4, 1)
+                    end_date = datetime(today.year + 1, 3, 31)
+                else:  # Last financial year (if current month is before April)
+                    start_date = datetime(today.year - 1, 4, 1)
+                    end_date = datetime(today.year, 3, 31)
+
+                filters['DatePicker__range'] = (start_date, end_date)
+
             # Filter by year if provided
             if year:
                 try:
                     year = int(year)
-                    filters['DatePicker__year'] = year
+                    # Fiscal year range (April to March)
+                    if year >= 2023:
+                        start_date = datetime(year, 4, 1)
+                        end_date = datetime(year + 1, 3, 31)
+                        filters['DatePicker__range'] = (start_date, end_date)
                 except ValueError:
                     return Response({'error': 'Invalid year parameter.'}, status=status.HTTP_400_BAD_REQUEST)
-
-            # Filter by facility_id if provided and valid
-            if facility_id.lower() != 'all':
+            
+                
+            if facility_id and facility_id.lower() != 'all':
                 filters['facility__facility_id'] = facility_id
 
             # Filter by facility_location if provided
@@ -691,13 +726,28 @@ class SolidWasteOverviewView(APIView):
         year = request.GET.get('year', None)
 
         try:
-            filters = {'user': user}
-            
+            # Check if we should filter by fiscal year (April to March)
+            if facility_id.lower() == 'all':
+                # Calculate last April to March period
+                today = datetime.now()
+                if today.month >= 4:  # Current year is the end of financial year (April to March)
+                    start_date = datetime(today.year, 4, 1)
+                    end_date = datetime(today.year + 1, 3, 31)
+                else:  # Last financial year (if current month is before April)
+                    start_date = datetime(today.year - 1, 4, 1)
+                    end_date = datetime(today.year, 3, 31)
+
+                filters['DatePicker__range'] = (start_date, end_date)
+
             # Filter by year if provided
             if year:
                 try:
                     year = int(year)
-                    filters['DatePicker__year'] = year
+                    # Fiscal year range (April to March)
+                    if year >= 2023:
+                        start_date = datetime(year, 4, 1)
+                        end_date = datetime(year + 1, 3, 31)
+                        filters['DatePicker__range'] = (start_date, end_date)
                 except ValueError:
                     return Response({'error': 'Invalid year parameter.'}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -776,13 +826,31 @@ class E_WasteOverviewView(APIView):
         try:
             filters = {'user': user}
             
+            # Check if we should filter by fiscal year (April to March)
+            if facility_id.lower() == 'all':
+                # Calculate last April to March period
+                today = datetime.now()
+                if today.month >= 4:  # Current year is the end of financial year (April to March)
+                    start_date = datetime(today.year, 4, 1)
+                    end_date = datetime(today.year + 1, 3, 31)
+                else:  # Last financial year (if current month is before April)
+                    start_date = datetime(today.year - 1, 4, 1)
+                    end_date = datetime(today.year, 3, 31)
+
+                filters['DatePicker__range'] = (start_date, end_date)
+
             # Filter by year if provided
             if year:
                 try:
                     year = int(year)
-                    filters['DatePicker__year'] = year
+                    # Fiscal year range (April to March)
+                    if year >= 2023:
+                        start_date = datetime(year, 4, 1)
+                        end_date = datetime(year + 1, 3, 31)
+                        filters['DatePicker__range'] = (start_date, end_date)
                 except ValueError:
                     return Response({'error': 'Invalid year parameter.'}, status=status.HTTP_400_BAD_REQUEST)
+                
             if facility_id and facility_id.lower() != 'all':
                 filters['facility__facility_id'] = facility_id
             if facility_location:
@@ -859,10 +927,28 @@ class Biomedical_WasteOverviewView(APIView):
             filters = {'user': user}
             
             # Filter by year if provided
+           # Check if we should filter by fiscal year (April to March)
+            if facility_id.lower() == 'all':
+                # Calculate last April to March period
+                today = datetime.now()
+                if today.month >= 4:  # Current year is the end of financial year (April to March)
+                    start_date = datetime(today.year, 4, 1)
+                    end_date = datetime(today.year + 1, 3, 31)
+                else:  # Last financial year (if current month is before April)
+                    start_date = datetime(today.year - 1, 4, 1)
+                    end_date = datetime(today.year, 3, 31)
+
+                filters['DatePicker__range'] = (start_date, end_date)
+
+            # Filter by year if provided
             if year:
                 try:
                     year = int(year)
-                    filters['DatePicker__year'] = year
+                    # Fiscal year range (April to March)
+                    if year >= 2023:
+                        start_date = datetime(year, 4, 1)
+                        end_date = datetime(year + 1, 3, 31)
+                        filters['DatePicker__range'] = (start_date, end_date)
                 except ValueError:
                     return Response({'error': 'Invalid year parameter.'}, status=status.HTTP_400_BAD_REQUEST)
             
@@ -941,13 +1027,31 @@ class Liquid_DischargeOverviewView(APIView):
         try:
             filters = {'user': user}
             
+            # Check if we should filter by fiscal year (April to March)
+            if facility_id.lower() == 'all':
+                # Calculate last April to March period
+                today = datetime.now()
+                if today.month >= 4:  # Current year is the end of financial year (April to March)
+                    start_date = datetime(today.year, 4, 1)
+                    end_date = datetime(today.year + 1, 3, 31)
+                else:  # Last financial year (if current month is before April)
+                    start_date = datetime(today.year - 1, 4, 1)
+                    end_date = datetime(today.year, 3, 31)
+
+                filters['DatePicker__range'] = (start_date, end_date)
+
             # Filter by year if provided
             if year:
                 try:
                     year = int(year)
-                    filters['DatePicker__year'] = year
+                    # Fiscal year range (April to March)
+                    if year >= 2023:
+                        start_date = datetime(year, 4, 1)
+                        end_date = datetime(year + 1, 3, 31)
+                        filters['DatePicker__range'] = (start_date, end_date)
                 except ValueError:
                     return Response({'error': 'Invalid year parameter.'}, status=status.HTTP_400_BAD_REQUEST)
+                
             if facility_id and facility_id.lower() != 'all':
                 filters['facility__facility_id'] = facility_id
             if facility_location:
@@ -1023,14 +1127,32 @@ class OthersOverviewView(APIView):
         try:
             filters = {'user': user}
             
+            # Check if we should filter by fiscal year (April to March)
+            if facility_id.lower() == 'all':
+                # Calculate last April to March period
+                today = datetime.now()
+                if today.month >= 4:  # Current year is the end of financial year (April to March)
+                    start_date = datetime(today.year, 4, 1)
+                    end_date = datetime(today.year + 1, 3, 31)
+                else:  # Last financial year (if current month is before April)
+                    start_date = datetime(today.year - 1, 4, 1)
+                    end_date = datetime(today.year, 3, 31)
+
+                filters['DatePicker__range'] = (start_date, end_date)
+
             # Filter by year if provided
             if year:
                 try:
                     year = int(year)
-                    filters['DatePicker__year'] = year
+                    # Fiscal year range (April to March)
+                    if year >= 2023:
+                        start_date = datetime(year, 4, 1)
+                        end_date = datetime(year + 1, 3, 31)
+                        filters['DatePicker__range'] = (start_date, end_date)
                 except ValueError:
                     return Response({'error': 'Invalid year parameter.'}, status=status.HTTP_400_BAD_REQUEST)
                 
+                  
             if facility_id and facility_id.lower() != 'all':
                 filters['facility__facility_id'] = facility_id
             if facility_location:
@@ -1106,11 +1228,28 @@ class Waste_Sent_For_RecycleOverviewView(APIView):
         try:
             filters = {'user': user}
             
+            # Check if we should filter by fiscal year (April to March)
+            if facility_id.lower() == 'all':
+                # Calculate last April to March period
+                today = datetime.now()
+                if today.month >= 4:  # Current year is the end of financial year (April to March)
+                    start_date = datetime(today.year, 4, 1)
+                    end_date = datetime(today.year + 1, 3, 31)
+                else:  # Last financial year (if current month is before April)
+                    start_date = datetime(today.year - 1, 4, 1)
+                    end_date = datetime(today.year, 3, 31)
+
+                filters['DatePicker__range'] = (start_date, end_date)
+
             # Filter by year if provided
             if year:
                 try:
                     year = int(year)
-                    filters['DatePicker__year'] = year
+                    # Fiscal year range (April to March)
+                    if year >= 2023:
+                        start_date = datetime(year, 4, 1)
+                        end_date = datetime(year + 1, 3, 31)
+                        filters['DatePicker__range'] = (start_date, end_date)
                 except ValueError:
                     return Response({'error': 'Invalid year parameter.'}, status=status.HTTP_400_BAD_REQUEST)
             if facility_id and facility_id.lower() != 'all':
@@ -1348,14 +1487,30 @@ class Waste_Sent_For_LandFillOverviewView(APIView):
         try:
             filters = {'user': user}
             
+            # Check if we should filter by fiscal year (April to March)
+            if facility_id.lower() == 'all':
+                # Calculate last April to March period
+                today = datetime.now()
+                if today.month >= 4:  # Current year is the end of financial year (April to March)
+                    start_date = datetime(today.year, 4, 1)
+                    end_date = datetime(today.year + 1, 3, 31)
+                else:  # Last financial year (if current month is before April)
+                    start_date = datetime(today.year - 1, 4, 1)
+                    end_date = datetime(today.year, 3, 31)
+
+                filters['DatePicker__range'] = (start_date, end_date)
+
             # Filter by year if provided
             if year:
                 try:
                     year = int(year)
-                    filters['DatePicker__year'] = year
+                    # Fiscal year range (April to March)
+                    if year >= 2023:
+                        start_date = datetime(year, 4, 1)
+                        end_date = datetime(year + 1, 3, 31)
+                        filters['DatePicker__range'] = (start_date, end_date)
                 except ValueError:
-                    return Response({'error': 'Invalid year parameter.'}, status=status.HTTP_400_BAD_REQUEST)
-                
+                    return Response({'error': 'Invalid year parameter.'}, status=status.HTTP_400_BAD_REQUEST)   
             if facility_id and facility_id.lower() != 'all':
                 filters['facility__facility_id'] = facility_id
             if facility_location:
@@ -1431,16 +1586,31 @@ class StackedWasteOverviewView(APIView):
             filters = {'user': user}
             
             # Check if the year is provided and valid
-            if not year:
-                # If year is not provided, return the data for the current year
-                year = timezone.now().year  # default to current year
-            else:
+            # Check if we should filter by fiscal year (April to March)
+            if facility_id.lower() == 'all':
+                # Calculate last April to March period
+                today = datetime.now()
+                if today.month >= 4:  # Current year is the end of financial year (April to March)
+                    start_date = datetime(today.year, 4, 1)
+                    end_date = datetime(today.year + 1, 3, 31)
+                else:  # Last financial year (if current month is before April)
+                    start_date = datetime(today.year - 1, 4, 1)
+                    end_date = datetime(today.year, 3, 31)
+
+                filters['DatePicker__range'] = (start_date, end_date)
+
+            # Filter by year if provided
+            if year:
                 try:
                     year = int(year)
-                    filters['DatePicker__year'] = year
+                    # Fiscal year range (April to March)
+                    if year >= 2023:
+                        start_date = datetime(year, 4, 1)
+                        end_date = datetime(year + 1, 3, 31)
+                        filters['DatePicker__range'] = (start_date, end_date)
                 except ValueError:
                     return Response({'error': 'Invalid year parameter.'}, status=status.HTTP_400_BAD_REQUEST)
-
+            
             # Validate facility_id if provided
             if facility_id and facility_id.lower() != 'all':
                 try:
@@ -1513,17 +1683,30 @@ class WasteOverallDonutChartView(APIView):
         try:
             filters = {'user': user}
 
-            # Validate year parameter
-            if not year:
-                # If no year is provided, use the current year
-                year = timezone.now().year
-            else:
+            # Check if we should filter by fiscal year (April to March)
+            if facility_id.lower() == 'all':
+                # Calculate last April to March period
+                today = datetime.now()
+                if today.month >= 4:  # Current year is the end of financial year (April to March)
+                    start_date = datetime(today.year, 4, 1)
+                    end_date = datetime(today.year + 1, 3, 31)
+                else:  # Last financial year (if current month is before April)
+                    start_date = datetime(today.year - 1, 4, 1)
+                    end_date = datetime(today.year, 3, 31)
+
+                filters['DatePicker__range'] = (start_date, end_date)
+
+            # Filter by year if provided
+            if year:
                 try:
                     year = int(year)
-                    filters['DatePicker__year'] = year
+                    # Fiscal year range (April to March)
+                    if year >= 2023:
+                        start_date = datetime(year, 4, 1)
+                        end_date = datetime(year + 1, 3, 31)
+                        filters['DatePicker__range'] = (start_date, end_date)
                 except ValueError:
                     return Response({'error': 'Invalid year parameter.'}, status=status.HTTP_400_BAD_REQUEST)
-
             # Validate facility_id if provided
             if facility_id and facility_id.lower() != 'all':
                 try:
@@ -1763,13 +1946,30 @@ class EnergyViewCard_Over(APIView):
         year = request.GET.get('year', None)
 
         try:
+            filters = {'user': user}
             energy_data = Energy.objects.filter(user=user)
+
+            # Check if we should filter by fiscal year (April to March)
+            if facility_id.lower() == 'all':
+                # Calculate last April to March period (Last Financial Year)
+                today = datetime.now()
+                if today.month >= 4:  # Current year is the end of financial year (April to March)
+                    start_date = datetime(today.year - 1, 4, 1)
+                    end_date = datetime(today.year, 3, 31)
+                else:  # Last financial year (if current month is before April)
+                    start_date = datetime(today.year - 2, 4, 1)
+                    end_date = datetime(today.year - 1, 3, 31)
+
+                filters['DatePicker__range'] = (start_date, end_date)
 
             # Filter by year if provided
             if year:
                 try:
                     year = int(year)
-                    energy_data = energy_data.filter(DatePicker__year=year)
+                    # Fiscal year range (April to March)
+                    start_date = datetime(year, 4, 1)
+                    end_date = datetime(year + 1, 3, 31)
+                    filters['DatePicker__range'] = (start_date, end_date)
                 except ValueError:
                     return Response({'error': 'Invalid year parameter.'}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -1783,17 +1983,20 @@ class EnergyViewCard_Over(APIView):
             if facility_location:
                 energy_data = energy_data.filter(facility__facility_location__icontains=facility_location)
 
-            # Define waste fields for aggregation
-            waste_fields = [
+            # Define energy fields for aggregation
+            energy_fields = [
                 'hvac', 'production', 'stp', 'admin_block',
-                'utilities', 'others', 'fuel_used_in_Operations', 'fuel_consumption','renewable_solar','renewable_other'
+                'utilities', 'others', 'fuel_used_in_Operations', 'fuel_consumption', 'renewable_solar', 'renewable_other'
             ]
 
             # Initialize response data
-            response_data = {'overall_waste_totals': {}, 'facility_energy_data': {}}
+            response_data = {
+                'overall_energy_totals': {}, 
+                'facility_energy_data': {}
+            }
 
-            for field in waste_fields:
-                # Aggregate waste by facility for the current waste type
+            for field in energy_fields:
+                # Aggregate energy by facility for the current energy type
                 facility_energy_data = (
                     energy_data
                     .values('facility__facility_name')
@@ -1801,7 +2004,7 @@ class EnergyViewCard_Over(APIView):
                     .order_by('-total')
                 )
 
-                # Prepare facility-wise data for each waste type
+                # Prepare facility-wise data for each energy type
                 response_data['facility_energy_data'][field] = [
                     {
                         "facility_name": entry['facility__facility_name'],
@@ -1810,9 +2013,9 @@ class EnergyViewCard_Over(APIView):
                     for entry in facility_energy_data
                 ]
 
-                # Calculate overall waste total for each waste type
+                # Calculate overall energy total for each energy type
                 overall_total = energy_data.aggregate(total=Sum(field))['total'] or 0
-                response_data['overall_waste_totals'][f"overall_{field}"] = overall_total
+                response_data['overall_energy_totals'][f"overall_{field}"] = overall_total
 
             return Response(response_data, status=status.HTTP_200_OK)
 
@@ -1820,35 +2023,58 @@ class EnergyViewCard_Over(APIView):
             # Log the error for debugging purposes
             print(f"An error occurred: {e}")
             return Response({'error': 'An error occurred while processing your request.'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-#HVAC Line Charts and Donut Chart  
+
+
+#HVAC Line Charts and Donut Chart 
 class HVACOverviewView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
         user = request.user
-        facility_id = request.GET.get('facility_id', None)
+        facility_id = request.GET.get('facility_id', 'all')
         facility_location = request.GET.get('facility_location', None)
         year = request.GET.get('year', None)
 
-        if not year:
-            return Response({'error': 'Year parameter is required.'}, status=status.HTTP_400_BAD_REQUEST)
-
         try:
-            year = int(year)
-        except (TypeError, ValueError):
-            return Response({'error': 'Invalid year parameter.'}, status=status.HTTP_400_BAD_REQUEST)
+            filters = {'user': user}
+            
+            # Check if we should filter by fiscal year (April to March)
+            if facility_id.lower() == 'all':
+                # Calculate last April to March period
+                today = datetime.now()
+                if today.month >= 4:  # Current year is the end of financial year (April to March)
+                    start_date = datetime(today.year, 4, 1)
+                    end_date = datetime(today.year + 1, 3, 31)
+                else:  # Last financial year (if current month is before April)
+                    start_date = datetime(today.year - 1, 4, 1)
+                    end_date = datetime(today.year, 3, 31)
 
-        try:
-            filters = {
-                'user': user,
-                'DatePicker__year': year,
-            }
-            if facility_id and facility_id.lower() != 'all':
+                filters['DatePicker__range'] = (start_date, end_date)
+
+            # Filter by year if provided
+            if year:
+                try:
+                    year = int(year)
+                    # Fiscal year range (April to March)
+                    if year >= 2023:
+                        start_date = datetime(year, 4, 1)
+                        end_date = datetime(year + 1, 3, 31)
+                        filters['DatePicker__range'] = (start_date, end_date)
+                except ValueError:
+                    return Response({'error': 'Invalid year parameter.'}, status=status.HTTP_400_BAD_REQUEST)
+            # elif facility_id.lower() == 'all':
+            #     # When 'all' facilities are selected, filter to only include the last year
+            #     last_year = datetime.now().year - 1
+            #     filters['DatePicker__year'] = last_year
+            # Filter by facility_id if provided and valid
+            if facility_id.lower() != 'all':
                 filters['facility__facility_id'] = facility_id
+
+            # Filter by facility_location if provided
             if facility_location:
                 filters['facility__facility_location__icontains'] = facility_location
 
-            # Line Chart Data: Monthly HVAC Consumption
+            # Monthly food waste data
             monthly_hvac = (
                 Energy.objects.filter(**filters)
                 .values('DatePicker__month')
@@ -1856,33 +2082,30 @@ class HVACOverviewView(APIView):
                 .order_by('DatePicker__month')
             )
 
+            # Prepare line chart data
             line_chart_data = []
             hvac = defaultdict(float)
-
             for entry in monthly_hvac:
                 month_name = datetime(1900, entry['DatePicker__month'], 1).strftime('%b')
                 hvac[entry['DatePicker__month']] = entry['total_hvac']
-
-            for month in range(1, 13):
+                
+            month_order = [4, 5, 6, 7, 8, 9, 10, 11, 12, 1, 2, 3]
+            for month in month_order:
                 month_name = datetime(1900, month, 1).strftime('%b')
                 line_chart_data.append({
                     "month": month_name,
                     "hvac": hvac.get(month, 0)
                 })
 
-            # Donut Chart Data: HVAC per Facility
-            facility_filters = {
-                'user': user,
-                **({'facility__facility_id': facility_id} if facility_id and facility_id.lower() != 'all' else {})
-            }
-
+            # Facility-wise food waste data for donut chart
             facility_hvac = (
-                Energy.objects.filter(**facility_filters)
+                Energy.objects.filter(user=user)
                 .values('facility__facility_name')
                 .annotate(total_hvac=Sum('hvac'))
                 .order_by('-total_hvac')
             )
 
+            # Prepare donut chart data
             total_hvac = sum(entry['total_hvac'] for entry in facility_hvac)
             donut_chart_data = [
                 {
@@ -1900,94 +2123,11 @@ class HVACOverviewView(APIView):
             return Response(response_data, status=status.HTTP_200_OK)
 
         except Exception as e:
-            # Log the error for debugging purposes
-            print(f"Error in HVACOverviewView: {e}")
-            return Response(
+            return Response(    
                 {'error': f'An error occurred while processing your request: {str(e)}'},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 
-# class HVACOverviewView(APIView):
-#     permission_classes = [IsAuthenticated]
-
-#     def get(self, request):
-#         user = request.user
-#         facility_id = request.GET.get('facility_id', 'all')
-#         facility_location = request.GET.get('facility_location', None)
-#         year = request.GET.get('year', None)
-
-#         try:
-#             filters = {'user': user}
-            
-#             # Filter by year if provided
-#             if year:
-#                 try:
-#                     year = int(year)
-#                     filters['DatePicker__year'] = year
-#                 except ValueError:
-#                     return Response({'error': 'Invalid year parameter.'}, status=status.HTTP_400_BAD_REQUEST)
-
-#             # Filter by facility_id if provided and valid
-#             if facility_id.lower() != 'all':
-#                 filters['facility__facility_id'] = facility_id
-
-#             # Filter by facility_location if provided
-#             if facility_location:
-#                 filters['facility__facility_location__icontains'] = facility_location
-
-#             # Monthly HVAC data (assuming the field is 'overall_usage' or another field)
-#             monthly_hvac = (
-#                 Energy.objects.filter(**filters)
-#                 .values('DatePicker__month')
-#                 .annotate(total_hvac=Sum('overall_usage'))  # Replace 'hvac' with the correct field name
-#                 .order_by('DatePicker__month')
-#             )
-
-#             # Prepare line chart data
-#             line_chart_data = []
-#             hvac = defaultdict(float)
-#             for entry in monthly_hvac:
-#                 month_name = datetime(1900, entry['DatePicker__month'], 1).strftime('%b')
-#                 hvac[entry['DatePicker__month']] = entry['total_hvac']
-                
-#             month_order = [4, 5, 6, 7, 8, 9, 10, 11, 12, 1, 2, 3]
-#             for month in month_order:
-#                 month_name = datetime(1900, month, 1).strftime('%b')
-#                 line_chart_data.append({
-#                     "month": month_name,
-#                     "hvac": hvac.get(month, 0)
-#                 })
-
-#             # Facility-wise HVAC data for donut chart
-#             facility_hvac = (
-#                 Waste.objects.filter(user=user)
-#                 .values('facility__facility_name')
-#                 .annotate(total_hvac=Sum('overall_usage'))  # Replace 'hvac' with the correct field name
-#                 .order_by('-total_hvac')
-#             )
-
-#             # Prepare donut chart data
-#             total_hvac = sum(entry['total_hvac'] for entry in facility_hvac)
-#             donut_chart_data = [
-#                 {
-#                     "facility_name": entry['facility__facility_name'],
-#                     "percentage": (entry['total_hvac'] / total_hvac * 100) if total_hvac else 0,
-#                 }
-#                 for entry in facility_hvac
-#             ]
-
-#             response_data = {
-#                 "line_chart_data": line_chart_data,
-#                 "donut_chart_data": donut_chart_data
-#             }
-
-#             return Response(response_data, status=status.HTTP_200_OK)
-
-#         except Exception as e:
-#             return Response(
-#                 {'error': f'An error occurred while processing your request: {str(e)}'},
-#                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
-#             )
 #ProductionLine Charts and Donut charts
 class ProductionOverviewView(APIView):
     permission_classes = [IsAuthenticated]
