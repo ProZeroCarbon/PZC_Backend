@@ -175,6 +175,68 @@ class WasteCreateView(APIView):
             return Response({"message": "Waste data added successfully."}, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+# class WasteView(APIView):
+#     permission_classes = [IsAuthenticated]
+#     filter_backends = [DjangoFilterBackend]
+#     filterset_class = WasteFilter
+
+#     def get(self, request):
+#         user = request.user
+#         facility_id = request.GET.get('facility_id', 'all')
+#         fiscal_year = request.GET.get('fiscal_year')
+
+#         # Determine the fiscal year date range based on input or current date
+#         try:
+#             if fiscal_year:
+#                 fiscal_year = int(fiscal_year)
+#             else:
+#                 current_date = datetime.now()
+#                 fiscal_year = current_date.year - 1 if current_date.month < 4 else current_date.year
+
+#             # Set the fiscal year date range (April 1 to March 31)
+#             start_date = datetime(fiscal_year, 4, 1)
+#             end_date = datetime(fiscal_year + 1, 3, 31)
+#         except ValueError:
+#             return Response(
+#                 {"error": "Invalid fiscal year format. Please provide a valid year, e.g., 2023."},
+#                 status=status.HTTP_400_BAD_REQUEST
+#             )
+
+#         # Base queryset filtered by user and fiscal year
+#         waste_data = Waste.objects.filter(user=user, DatePicker__range=(start_date, end_date))
+
+#         # Apply the filter for facility if specified
+#         if facility_id.lower() != 'all':
+#             waste_data = waste_data.filter(facility__facility_id=facility_id)
+        
+#         # Manually apply the filter using WasteFilter
+#         filtered_waste_data = WasteFilter(request.GET, queryset=waste_data).qs
+        
+#         # Check if data exists after filtering; if not, return default values
+#         if not filtered_waste_data.exists():
+#             response_data = {
+#                 'email': user.email,
+#                 'fiscal_year': fiscal_year,
+#                 'waste_data': [],
+#                 'overall_waste_total': 0
+#             }
+#             return Response(response_data, status=status.HTTP_200_OK)
+
+#         # Serialize and calculate overall waste total
+#         waste_serializer = WasteSerializer(filtered_waste_data, many=True)
+#         overall_total = sum(
+#             waste.food_waste + waste.solid_Waste + waste.E_Waste + waste.Biomedical_waste + waste.other_waste
+#             for waste in filtered_waste_data
+#         )
+
+#         response_data = {
+#             'email': user.email,
+#             'fiscal_year': fiscal_year,
+#             'waste_data': waste_serializer.data,
+#             'overall_waste_total': overall_total
+#         }
+
+#         return Response(response_data, status=status.HTTP_200_OK)
 class WasteView(APIView):
     permission_classes = [IsAuthenticated]
     filter_backends = [DjangoFilterBackend]
@@ -183,27 +245,61 @@ class WasteView(APIView):
     def get(self, request):
         user = request.user
         facility_id = request.GET.get('facility_id', 'all')
-        
+        fiscal_year = request.GET.get('fiscal_year')
+
+        # Determine the fiscal year date range based on input or current date
+        try:
+            if fiscal_year:
+                fiscal_year = int(fiscal_year)
+            else:
+                current_date = datetime.now()
+                fiscal_year = current_date.year - 1 if current_date.month < 4 else current_date.year
+
+            # Set the fiscal year date range (April 1 to March 31)
+            start_date = datetime(fiscal_year, 4, 1)
+            end_date = datetime(fiscal_year + 1, 3, 31)
+        except ValueError:
+            return Response(
+                {"error": "Invalid fiscal year format. Please provide a valid year, e.g., 2023."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Base queryset filtered by user and fiscal year
+        waste_data = Waste.objects.filter(user=user, DatePicker__range=(start_date, end_date))
+
+        # Apply the filter for facility if specified
         if facility_id.lower() != 'all':
-            waste_data = Waste.objects.filter(user=user, facility__facility_id=facility_id)
-        else:
-            waste_data = Waste.objects.filter(user=user)
+            waste_data = waste_data.filter(facility__facility_id=facility_id)
         
+        # Manually apply the filter using WasteFilter
         filtered_waste_data = WasteFilter(request.GET, queryset=waste_data).qs
         
+        # Check if data exists after filtering; if not, return default values
+        if not filtered_waste_data.exists():
+            response_data = {
+                'email': user.email,
+                'fiscal_year': fiscal_year,
+                'waste_data': [],
+                'overall_waste_total': 0
+            }
+            return Response(response_data, status=status.HTTP_200_OK)
+
+        # Serialize and calculate overall waste total
         waste_serializer = WasteSerializer(filtered_waste_data, many=True)
         overall_total = sum(
             waste.food_waste + waste.solid_Waste + waste.E_Waste + waste.Biomedical_waste + waste.other_waste
             for waste in filtered_waste_data
         )
-        
+
         response_data = {
             'email': user.email,
+            'fiscal_year': fiscal_year,
             'waste_data': waste_serializer.data,
             'overall_waste_total': overall_total
         }
-        
+
         return Response(response_data, status=status.HTTP_200_OK)
+
 
 class WasteEditView(APIView):
     permission_classes = [IsAuthenticated]
@@ -248,35 +344,68 @@ class EnergyCreateView(APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
-#Energyview
 class EnergyView(APIView):
     permission_classes = [IsAuthenticated]
     filter_backends = [DjangoFilterBackend]
-    filterset_class = EnergyFilter
-    
+    filterset_class = EnergyFilter  # Using EnergyFilter instead of WasteFilter
+
     def get(self, request):
         user = request.user
-        
         facility_id = request.GET.get('facility_id', 'all')
+        fiscal_year = request.GET.get('fiscal_year')
+
+        try:
+            if fiscal_year:
+                fiscal_year = int(fiscal_year)
+            else:
+                current_date = datetime.now()
+                fiscal_year = current_date.year - 1 if current_date.month < 4 else current_date.year
+
+            start_date = datetime(fiscal_year, 4, 1)
+            end_date = datetime(fiscal_year + 1, 3, 31)
+        except ValueError:
+            return Response(
+                {"error": "Invalid fiscal year format. Please provide a valid year, e.g., 2023."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Filter energy data by user and fiscal year
+        energy_data = Energy.objects.filter(user=user, DatePicker__range=(start_date, end_date))
+
+        # Filter by facility_id if specified
         if facility_id.lower() != 'all':
-            energy_data = Energy.objects.filter(user=user, facility__facility_id=facility_id)
-        else:
-            energy_data = Energy.objects.filter(user=user)
-            
-        filtered_energy_data =EnergyFilter(request.GET,queryset=energy_data).qs
-        energy_serializer = EnergySerializer(filtered_energy_data,many=True)
-        overall_total = 0.0
-        for energy in energy_data:
-            overall_total +=(energy.hvac + energy.production + energy.stp + energy.admin_block + energy.utilities + energy.others)
+            energy_data = energy_data.filter(facility__facility_id=facility_id)
+
+        # Apply the EnergyFilter to filter the energy data based on other query parameters
+        filtered_energy_data = EnergyFilter(request.GET, queryset=energy_data).qs
         
-        user_data={
-            'email' : user.email,
-            'energy_data' : energy_serializer.data,
-            'over_all_Energy_total' : overall_total
-            
+        # Check if data exists after filtering; if not, return default values
+        if not filtered_energy_data.exists():
+            response_data = {
+                'email': user.email,
+                'fiscal_year': fiscal_year,
+                'energy_data': [],
+                'overall_energy_total': 0
+            }
+            return Response(response_data, status=status.HTTP_200_OK)
+
+        # Serialize the filtered data
+        energy_serializer = EnergySerializer(filtered_energy_data, many=True)
+
+        # Calculate the overall energy total
+        overall_total = 0.0
+        for energy in filtered_energy_data:  # Use filtered data, not all data
+            overall_total += (energy.hvac + energy.production + energy.stp + energy.admin_block + energy.utilities + energy.others)
+
+        # Return the response with the serialized data and overall total
+        response_data = {
+            'email': user.email,
+            'fiscal_year': fiscal_year,
+            'energy_data': energy_serializer.data,
+            'overall_energy_total': overall_total
         }
-        return Response(user_data,status=status.HTTP_200_OK)
-    
+
+        return Response(response_data, status=status.HTTP_200_OK)
 #EnergyEdit
 class EnergyEditView(APIView):
     permission_classes = [IsAuthenticated]
@@ -317,7 +446,7 @@ class WaterCreateView(APIView):
         if serializer.is_valid():
             serializer.save()
             return Response({"messages":"Water data added succesfully"},status=status.HTTP_201_CREATED)
-        return Response(serializer.error,status=status.HTTP_400_BAD_REQUEST)
+        return Response(serializer.errors,status=status.HTTP_400_BAD_REQUEST)
 
 #WaterView 
 class WaterView(APIView):
@@ -327,13 +456,17 @@ class WaterView(APIView):
     
     def get(self,request):
         user = request.user
-        water_data = Water.objects.filter(user=user)
+        facility_id = request.GET.get('facility_id', 'all')
+        if facility_id.lower() != 'all':
+            water_data = Water.objects.filter(user=user, facility__facility_id=facility_id)
+        else:
+            water_data = Water.objects.filter(user=user)
+        
+        
         filtered_water_data = WaterFilter(request.GET,queryset=water_data).qs
         water_serializer = WaterSerializer(filtered_water_data,many=True)
+        
         overall_total = sum(water.overall_usage for water in water_data)
-        # overall_total = 0.0
-        # for water in water_data:
-        #     overall_total +=(water.generated_water + water.recycled_water + water.softener_usage + water.boiler_usage + water.other_usage)
         user_data={
            ' email' : user.email,
             'water_data' : water_serializer.data,
@@ -345,9 +478,9 @@ class WaterView(APIView):
 class WaterEditView(APIView):
     permission_classes = [IsAuthenticated]
 
-    def put(self, request, pk):
+    def put(self, request, water_id):
         try:
-            water = Water.objects.get(pk=pk, user=request.user)
+            water = Water.objects.get(water_id=water_id,user=request.user)
         except Water.DoesNotExist:
             return Response({"error": "Water data not found."}, status=status.HTTP_404_NOT_FOUND)
 
@@ -361,9 +494,9 @@ class WaterEditView(APIView):
 class WaterDeleteView(APIView):
     permission_classes = [IsAuthenticated]
 
-    def delete(self, request, pk):
+    def delete(self, request, water_id):
         try:
-            water = Water.objects.get(pk=pk, user=request.user)
+            water = Water.objects.get(water_id=water_id, user=request.user)
         except Water.DoesNotExist:
             return Response({"error": "Water data not found."}, status=status.HTTP_404_NOT_FOUND)
 
@@ -585,7 +718,6 @@ class WasteViewCard_Over(APIView):
             if facility_location:
                 waste_data = waste_data.filter(facility__facility_location__icontains=facility_location)
 
-            # Define waste fields for aggregation (removed duplicate 'Recycle_waste')
             waste_fields = [
                 'food_waste', 'solid_Waste', 'E_Waste', 'Biomedical_waste',
                 'liquid_discharge', 'other_waste', 'Recycle_waste', 'Landfill_waste'
@@ -695,7 +827,10 @@ class FoodWasteOverviewView(APIView):
                     })
 
             # Facility-wise food waste query for donut chart data
-            facility_filters = {'user': user}
+            facility_filters = {
+                'user': user,
+                'DatePicker__range': (start_date, end_date)
+            }
             if facility_id and facility_id.lower() != 'all':
                 facility_filters['facility__facility_id'] = facility_id
             facility_food_waste = (
@@ -799,8 +934,11 @@ class SolidWasteOverviewView(APIView):
                         "solid_Waste": 0
                     })
 
-            # Facility-wise food waste query for donut chart data
-            facility_filters = {'user': user}
+            # Facility-wise Solid waste query for donut chart data
+            facility_filters = {
+                'user': user,
+                'DatePicker__range': (start_date, end_date)
+            }
             if facility_id and facility_id.lower() != 'all':
                 facility_filters['facility__facility_id'] = facility_id
             facility_solid_Waste = (
@@ -906,8 +1044,11 @@ class E_WasteOverviewView(APIView):
                         "E_Waste": 0
                     })
 
-            # Facility-wise food waste query for donut chart data
-            facility_filters = {'user': user}
+            # Facility-wise E-waste waste query for donut chart data
+            facility_filters = {
+                'user': user,
+                'DatePicker__range': (start_date, end_date)
+            }
             if facility_id and facility_id.lower() != 'all':
                 facility_filters['facility__facility_id'] = facility_id
             facility_E_Waste = (
@@ -1012,8 +1153,11 @@ class Biomedical_WasteOverviewView(APIView):
                         "Biomedical_waste": 0
                     })
 
-            # Facility-wise food waste query for donut chart data
-            facility_filters = {'user': user}
+            # Facility-wise Bio-medical waste query for donut chart data
+            facility_filters = {
+                'user': user,
+                'DatePicker__range': (start_date, end_date)
+            }
             if facility_id and facility_id.lower() != 'all':
                 facility_filters['facility__facility_id'] = facility_id
             facility_Biomedical_waste = (
@@ -1119,7 +1263,10 @@ class Liquid_DischargeOverviewView(APIView):
                     })
 
             # Facility-wise liquid_discharge query for donut chart data
-            facility_filters = {'user': user}
+            facility_filters = {
+                'user': user,
+                'DatePicker__range': (start_date, end_date)
+            }
             if facility_id and facility_id.lower() != 'all':
                 facility_filters['facility__facility_id'] = facility_id
             facility_liquid_discharge = (
@@ -1225,7 +1372,10 @@ class OthersOverviewView(APIView):
                     })
 
             # Facility-wise other_waste query for donut chart data
-            facility_filters = {'user': user}
+            facility_filters = {
+                'user': user,
+                'DatePicker__range': (start_date, end_date)
+            }
             if facility_id and facility_id.lower() != 'all':
                 facility_filters['facility__facility_id'] = facility_id
             facility_other_waste = (
@@ -1331,7 +1481,10 @@ class Waste_Sent_For_RecycleOverviewView(APIView):
                     })
 
             # Facility-wise Waste_Sent_For_RecycleOverviewView query for donut chart data
-            facility_filters = {'user': user}
+            facility_filters = {
+                'user': user,
+                'DatePicker__range': (start_date, end_date)
+            }
             if facility_id and facility_id.lower() != 'all':
                 facility_filters['facility__facility_id'] = facility_id
             facility_Recycle_waste = (
@@ -1437,7 +1590,10 @@ class Waste_Sent_For_LandFillOverviewView(APIView):
                     })
 
             # Facility-wise Landfill_waste query for donut chart data
-            facility_filters = {'user': user}
+            facility_filters = {
+                'user': user,
+                'DatePicker__range': (start_date, end_date)
+            }
             if facility_id and facility_id.lower() != 'all':
                 facility_filters['facility__facility_id'] = facility_id
             facility_Landfill_waste = (
@@ -1520,7 +1676,7 @@ class StackedWasteOverviewView(APIView):
             # Define waste types
             waste_types = [
                 'food_waste', 'solid_Waste', 'E_Waste', 'Biomedical_waste',
-                'liquid_discharge', 'Recycle_waste', 'Landfill_waste'
+                'liquid_discharge', 'Recycle_waste', 'Landfill_waste','other_waste'
             ]
 
             # Initialize monthly data with zeros for each month and waste type
@@ -1804,14 +1960,14 @@ class SentToRecycledOverviewView(APIView):
                 return Response({'error': 'No waste data available for the selected year and facility.'}, status=status.HTTP_204_NO_CONTENT)
 
             # Calculate the landfill and remaining waste percentages
-            landfill_percentage = (Recycle_waste_total / overall_total) * 100 if overall_total else 0
+            Recycle_percentage = (Recycle_waste_total / overall_total) * 100 if overall_total else 0
             remaining_percentage = (remaining_waste_total / overall_total) * 100 if overall_total else 0
 
             # Prepare the response data
             response_data = {
                 "year": year,
                 "facility_id": facility_id if facility_id else "all",  # Default to "all" if no specific facility is selected
-                "landfill_percentage": landfill_percentage,
+                "Recycle_percentage": Recycle_percentage,
                 "remaining_percentage": remaining_percentage
             }
 
@@ -1825,6 +1981,7 @@ class SentToRecycledOverviewView(APIView):
 
 
 '''Energy  Overview Cards ,Graphs and Individual line charts and donut charts Starts'''
+
 class EnergyViewCard_Over(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -1835,54 +1992,59 @@ class EnergyViewCard_Over(APIView):
         year = request.GET.get('year', None)
 
         try:
-            filters = {'user': user}
-            energy_data = Energy.objects.filter(user=user)
-
-            # Check if we should filter by fiscal year (April to March)
-            if facility_id.lower() == 'all':
-                # Calculate last April to March period (Last Financial Year)
-                today = datetime.now()
-                if today.month >= 4:  # Current year is the end of financial year (April to March)
-                    start_date = datetime(today.year - 1, 4, 1)
-                    end_date = datetime(today.year, 3, 31)
-                else:  # Last financial year (if current month is before April)
-                    start_date = datetime(today.year - 2, 4, 1)
-                    end_date = datetime(today.year - 1, 3, 31)
-
-                filters['DatePicker__range'] = (start_date, end_date)
-
-            # Filter by year if provided
-            if year:
-                try:
-                    year = int(year)
-                    # Fiscal year range (April to March)
-                    start_date = datetime(year, 4, 1)
-                    end_date = datetime(year + 1, 3, 31)
-                    filters['DatePicker__range'] = (start_date, end_date)
-                except ValueError:
-                    return Response({'error': 'Invalid year parameter.'}, status=status.HTTP_400_BAD_REQUEST)
-
-            # Filter by facility_id if provided and valid
-            if facility_id.lower() != 'all':
+            # Check if the facility_id is valid
+            if facility_id != 'all':
                 if not Facility.objects.filter(facility_id=facility_id).exists():
                     return Response({'error': 'Invalid facility ID.'}, status=status.HTTP_400_BAD_REQUEST)
+
+            # Validate the year parameter if provided
+            if year:
+                try:
+                    year = int(year)  # Convert year to integer
+                    if year < 1900 or year > datetime.now().year + 1:  # Assume fiscal years don't go too far in the past or future
+                        return Response({'error': 'Invalid year parameter.'}, status=status.HTTP_400_BAD_REQUEST)
+                except ValueError:
+                    return Response({'error': 'Year must be an integer.'}, status=status.HTTP_400_BAD_REQUEST)
+
+            # Create filters dictionary
+            filters = {'user': user}
+            energy_data = Energy.objects.filter(**filters)
+
+            # Set up fiscal year range filtering if 'year' is provided
+            if year:
+                start_date = datetime(year, 4, 1)  # Start of fiscal year (April 1st)
+                end_date = datetime(year + 1, 3, 31)  # End of fiscal year (March 31st next year)
+                filters['DatePicker__range'] = (start_date, end_date)
+                energy_data = energy_data.filter(**filters)
+            else:
+                # If no year is specified, use the current fiscal year
+                today = datetime.now()
+                if today.month >= 4:  # Current fiscal year
+                    start_date = datetime(today.year, 4, 1)
+                    end_date = datetime(today.year + 1, 3, 31)
+                else:  # Last fiscal year (if before April)
+                    start_date = datetime(today.year - 1, 4, 1)
+                    end_date = datetime(today.year, 3, 31)
+                filters['DatePicker__range'] = (start_date, end_date)
+                energy_data = energy_data.filter(**filters)
+
+            # Filter by facility_id if provided and valid
+            if facility_id != 'all':
                 energy_data = energy_data.filter(facility__facility_id=facility_id)
 
             # Filter by facility_location if provided
             if facility_location:
                 energy_data = energy_data.filter(facility__facility_location__icontains=facility_location)
 
-            # Define energy fields for aggregation
+            # Define energy fields for aggregation 
             energy_fields = [
                 'hvac', 'production', 'stp', 'admin_block',
-                'utilities', 'others', 'fuel_used_in_Operations', 'fuel_consumption', 'renewable_solar', 'renewable_other'
+                'utilities', 'others', 'fuel_consumption', 'renewable_solar', 'renewable_other'
             ]
 
+
             # Initialize response data
-            response_data = {
-                'overall_energy_totals': {}, 
-                'facility_energy_data': {}
-            }
+            response_data = {'overall_energy_totals': {}, 'facility_energy_data': {}}
 
             for field in energy_fields:
                 # Aggregate energy by facility for the current energy type
@@ -1905,6 +2067,27 @@ class EnergyViewCard_Over(APIView):
                 # Calculate overall energy total for each energy type
                 overall_total = energy_data.aggregate(total=Sum(field))['total'] or 0
                 response_data['overall_energy_totals'][f"overall_{field}"] = overall_total
+                
+            # Calculate renewable energy
+            renewable_energy_totals = energy_data.aggregate(
+                total_renewable_energy=Sum('renewable_solar') + Sum('renewable_other')
+            )['total_renewable_energy'] or 0
+            response_data['overall_energy_totals']['overall_renewable_energy'] = renewable_energy_totals
+
+            # Calculate renewable energy totals by facility
+            renewable_facility_data = (
+                energy_data
+                .values('facility__facility_name')
+                .annotate(total_renewable_energy=Sum('renewable_solar') + Sum('renewable_other'))
+                .order_by('-total_renewable_energy')
+            )
+            response_data['facility_energy_data']['renewable_energy'] = [
+                {
+                    "facility_name": entry['facility__facility_name'],
+                    "total_renewable_energy": entry['total_renewable_energy']
+                }
+                for entry in renewable_facility_data
+            ]
 
             return Response(response_data, status=status.HTTP_200_OK)
 
@@ -1913,57 +2096,45 @@ class EnergyViewCard_Over(APIView):
             print(f"An error occurred: {e}")
             return Response({'error': 'An error occurred while processing your request.'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-
 #HVAC Line Charts and Donut Chart 
 class HVACOverviewView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
         user = request.user
-        facility_id = request.GET.get('facility_id', 'all')
+        facility_id = request.GET.get('facility_id', None)
         facility_location = request.GET.get('facility_location', None)
         year = request.GET.get('year', None)
 
         try:
             filters = {'user': user}
             
-            # Check if we should filter by fiscal year (April to March)
-            if facility_id.lower() == 'all':
-                # Calculate last April to March period
-                today = datetime.now()
-                if today.month >= 4:  # Current year is the end of financial year (April to March)
-                    start_date = datetime(today.year, 4, 1)
-                    end_date = datetime(today.year + 1, 3, 31)
-                else:  # Last financial year (if current month is before April)
-                    start_date = datetime(today.year - 1, 4, 1)
-                    end_date = datetime(today.year, 3, 31)
-
-                filters['DatePicker__range'] = (start_date, end_date)
-
-            # Filter by year if provided
+            # Determine fiscal year (April to March) based on selected year or default to current fiscal year
             if year:
                 try:
                     year = int(year)
-                    # Fiscal year range (April to March)
-                    if year >= 2023:
-                        start_date = datetime(year, 4, 1)
-                        end_date = datetime(year + 1, 3, 31)
-                        filters['DatePicker__range'] = (start_date, end_date)
                 except ValueError:
                     return Response({'error': 'Invalid year parameter.'}, status=status.HTTP_400_BAD_REQUEST)
-            # elif facility_id.lower() == 'all':
-            #     # When 'all' facilities are selected, filter to only include the last year
-            #     last_year = datetime.now().year - 1
-            #     filters['DatePicker__year'] = last_year
-            # Filter by facility_id if provided and valid
-            if facility_id.lower() != 'all':
-                filters['facility__facility_id'] = facility_id
+            else:
+                year = datetime.now().year
 
-            # Filter by facility_location if provided
+            # Define the fiscal year range for the selected year
+            if datetime.now().month >= 4:  # Current fiscal year starts in April
+                start_date = datetime(year, 4, 1)
+                end_date = datetime(year + 1, 3, 31)
+            else:  # Last fiscal year
+                start_date = datetime(year - 1, 4, 1)
+                end_date = datetime(year, 3, 31)
+            
+            filters['DatePicker__range'] = (start_date, end_date)
+
+            # Apply facility filters if provided
+            if facility_id and facility_id.lower() != 'all':
+                filters['facility__facility_id'] = facility_id
             if facility_location:
                 filters['facility__facility_location__icontains'] = facility_location
 
-            # Monthly food waste data
+            # Query monthly hvac data
             monthly_hvac = (
                 Energy.objects.filter(**filters)
                 .values('DatePicker__month')
@@ -1971,24 +2142,41 @@ class HVACOverviewView(APIView):
                 .order_by('DatePicker__month')
             )
 
-            # Prepare line chart data
+            # Prepare line chart data with zero defaults
             line_chart_data = []
             hvac = defaultdict(float)
+
+            # Map retrieved data to months
             for entry in monthly_hvac:
-                month_name = datetime(1900, entry['DatePicker__month'], 1).strftime('%b')
                 hvac[entry['DatePicker__month']] = entry['total_hvac']
-                
+
+            # Define the month order (April to March)
             month_order = [4, 5, 6, 7, 8, 9, 10, 11, 12, 1, 2, 3]
+            today = datetime.now()
+
             for month in month_order:
                 month_name = datetime(1900, month, 1).strftime('%b')
-                line_chart_data.append({
-                    "month": month_name,
-                    "hvac": hvac.get(month, 0)
-                })
+                # Include data up to the current month, set future months to zero
+                if (year == today.year and month <= today.month) or (year < today.year):
+                    line_chart_data.append({
+                        "month": month_name,
+                        "hvac": hvac.get(month, 0)
+                    })
+                else:
+                    line_chart_data.append({
+                        "month": month_name,
+                        "hvac": 0
+                    })
 
-            # Facility-wise food waste data for donut chart
+            # Facility-wise hvac query for donut chart data
+            facility_filters = {
+                'user': user,
+                'DatePicker__range': (start_date, end_date)
+            }
+            if facility_id and facility_id.lower() != 'all':
+                facility_filters['facility__facility_id'] = facility_id
             facility_hvac = (
-                Energy.objects.filter(user=user)
+                Energy.objects.filter(**facility_filters)
                 .values('facility__facility_name')
                 .annotate(total_hvac=Sum('hvac'))
                 .order_by('-total_hvac')
@@ -2012,7 +2200,7 @@ class HVACOverviewView(APIView):
             return Response(response_data, status=status.HTTP_200_OK)
 
         except Exception as e:
-            return Response(    
+            return Response(
                 {'error': f'An error occurred while processing your request: {str(e)}'},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
@@ -2027,25 +2215,35 @@ class ProductionOverviewView(APIView):
         facility_location = request.GET.get('facility_location', None)
         year = request.GET.get('year', None)
 
-        if not year:
-            return Response({'error': 'Year parameter is required.'}, status=status.HTTP_400_BAD_REQUEST)
-
         try:
-            year = int(year)
-        except (TypeError, ValueError):
-            return Response({'error': 'Invalid year parameter.'}, status=status.HTTP_400_BAD_REQUEST)
+            filters = {'user': user}
+            
+            # Determine fiscal year (April to March) based on selected year or default to current fiscal year
+            if year:
+                try:
+                    year = int(year)
+                except ValueError:
+                    return Response({'error': 'Invalid year parameter.'}, status=status.HTTP_400_BAD_REQUEST)
+            else:
+                year = datetime.now().year
 
-        try:
-            filters = {
-                'user': user,
-                'DatePicker__year': year,
-            }
+            # Define the fiscal year range for the selected year
+            if datetime.now().month >= 4:  # Current fiscal year starts in April
+                start_date = datetime(year, 4, 1)
+                end_date = datetime(year + 1, 3, 31)
+            else:  # Last fiscal year
+                start_date = datetime(year - 1, 4, 1)
+                end_date = datetime(year, 3, 31)
+            
+            filters['DatePicker__range'] = (start_date, end_date)
+
+            # Apply facility filters if provided
             if facility_id and facility_id.lower() != 'all':
                 filters['facility__facility_id'] = facility_id
             if facility_location:
                 filters['facility__facility_location__icontains'] = facility_location
 
-            # Line Chart Data: Monthly HVAC Consumption
+            # Query monthly production data
             monthly_production = (
                 Energy.objects.filter(**filters)
                 .values('DatePicker__month')
@@ -2053,26 +2251,39 @@ class ProductionOverviewView(APIView):
                 .order_by('DatePicker__month')
             )
 
+            # Prepare line chart data with zero defaults
             line_chart_data = []
             production = defaultdict(float)
 
+            # Map retrieved data to months
             for entry in monthly_production:
-                month_name = datetime(1900, entry['DatePicker__month'], 1).strftime('%b')
                 production[entry['DatePicker__month']] = entry['total_production']
 
-            for month in range(1, 13):
-                month_name = datetime(1900, month, 1).strftime('%b')
-                line_chart_data.append({
-                    "month": month_name,
-                    "production": production.get(month, 0)
-                })
+            # Define the month order (April to March)
+            month_order = [4, 5, 6, 7, 8, 9, 10, 11, 12, 1, 2, 3]
+            today = datetime.now()
 
-            # Donut Chart Data: production per Facility
+            for month in month_order:
+                month_name = datetime(1900, month, 1).strftime('%b')
+                # Include data up to the current month, set future months to zero
+                if (year == today.year and month <= today.month) or (year < today.year):
+                    line_chart_data.append({
+                        "month": month_name,
+                        "production": production.get(month, 0)
+                    })
+                else:
+                    line_chart_data.append({
+                        "month": month_name,
+                        "production": 0
+                    })
+
+            # Facility-wise production query for donut chart data
             facility_filters = {
                 'user': user,
-                **({'facility__facility_id': facility_id} if facility_id and facility_id.lower() != 'all' else {})
+                'DatePicker__range': (start_date, end_date)
             }
-
+            if facility_id and facility_id.lower() != 'all':
+                facility_filters['facility__facility_id'] = facility_id
             facility_production = (
                 Energy.objects.filter(**facility_filters)
                 .values('facility__facility_name')
@@ -2080,6 +2291,7 @@ class ProductionOverviewView(APIView):
                 .order_by('-total_production')
             )
 
+            # Prepare donut chart data
             total_production = sum(entry['total_production'] for entry in facility_production)
             donut_chart_data = [
                 {
@@ -2097,12 +2309,11 @@ class ProductionOverviewView(APIView):
             return Response(response_data, status=status.HTTP_200_OK)
 
         except Exception as e:
-            # Log the error for debugging purposes
-            print(f"Error in productionOverviewView: {e}")
             return Response(
                 {'error': f'An error occurred while processing your request: {str(e)}'},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
+
 
 #STP Overview line charts and donut charts
 class StpOverviewView(APIView):
@@ -2114,25 +2325,35 @@ class StpOverviewView(APIView):
         facility_location = request.GET.get('facility_location', None)
         year = request.GET.get('year', None)
 
-        if not year:
-            return Response({'error': 'Year parameter is required.'}, status=status.HTTP_400_BAD_REQUEST)
-
         try:
-            year = int(year)
-        except (TypeError, ValueError):
-            return Response({'error': 'Invalid year parameter.'}, status=status.HTTP_400_BAD_REQUEST)
+            filters = {'user': user}
+            
+            # Determine fiscal year (April to March) based on selected year or default to current fiscal year
+            if year:
+                try:
+                    year = int(year)
+                except ValueError:
+                    return Response({'error': 'Invalid year parameter.'}, status=status.HTTP_400_BAD_REQUEST)
+            else:
+                year = datetime.now().year
 
-        try:
-            filters = {
-                'user': user,
-                'DatePicker__year': year,
-            }
+            # Define the fiscal year range for the selected year
+            if datetime.now().month >= 4:  # Current fiscal year starts in April
+                start_date = datetime(year, 4, 1)
+                end_date = datetime(year + 1, 3, 31)
+            else:  # Last fiscal year
+                start_date = datetime(year - 1, 4, 1)
+                end_date = datetime(year, 3, 31)
+            
+            filters['DatePicker__range'] = (start_date, end_date)
+
+            # Apply facility filters if provided
             if facility_id and facility_id.lower() != 'all':
                 filters['facility__facility_id'] = facility_id
             if facility_location:
                 filters['facility__facility_location__icontains'] = facility_location
 
-            # Line Chart Data: Monthly HVAC Consumption
+            # Query monthly stp data
             monthly_stp = (
                 Energy.objects.filter(**filters)
                 .values('DatePicker__month')
@@ -2140,26 +2361,39 @@ class StpOverviewView(APIView):
                 .order_by('DatePicker__month')
             )
 
+            # Prepare line chart data with zero defaults
             line_chart_data = []
             stp = defaultdict(float)
 
+            # Map retrieved data to months
             for entry in monthly_stp:
-                month_name = datetime(1900, entry['DatePicker__month'], 1).strftime('%b')
                 stp[entry['DatePicker__month']] = entry['total_stp']
 
-            for month in range(1, 13):
-                month_name = datetime(1900, month, 1).strftime('%b')
-                line_chart_data.append({
-                    "month": month_name,
-                    "stp": stp.get(month, 0)
-                })
+            # Define the month order (April to March)
+            month_order = [4, 5, 6, 7, 8, 9, 10, 11, 12, 1, 2, 3]
+            today = datetime.now()
 
-            # Donut Chart Data: stp per Facility
+            for month in month_order:
+                month_name = datetime(1900, month, 1).strftime('%b')
+                # Include data up to the current month, set future months to zero
+                if (year == today.year and month <= today.month) or (year < today.year):
+                    line_chart_data.append({
+                        "month": month_name,
+                        "stp": stp.get(month, 0)
+                    })
+                else:
+                    line_chart_data.append({
+                        "month": month_name,
+                        "stp": 0
+                    })
+
+            # Facility-wise stp query for donut chart data
             facility_filters = {
                 'user': user,
-                **({'facility__facility_id': facility_id} if facility_id and facility_id.lower() != 'all' else {})
+                'DatePicker__range': (start_date, end_date)
             }
-
+            if facility_id and facility_id.lower() != 'all':
+                facility_filters['facility__facility_id'] = facility_id
             facility_stp = (
                 Energy.objects.filter(**facility_filters)
                 .values('facility__facility_name')
@@ -2167,6 +2401,7 @@ class StpOverviewView(APIView):
                 .order_by('-total_stp')
             )
 
+            # Prepare donut chart data
             total_stp = sum(entry['total_stp'] for entry in facility_stp)
             donut_chart_data = [
                 {
@@ -2184,8 +2419,6 @@ class StpOverviewView(APIView):
             return Response(response_data, status=status.HTTP_200_OK)
 
         except Exception as e:
-            # Log the error for debugging purposes
-            print(f"Error in stpOverviewView: {e}")
             return Response(
                 {'error': f'An error occurred while processing your request: {str(e)}'},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
@@ -2201,25 +2434,35 @@ class Admin_BlockOverviewView(APIView):
         facility_location = request.GET.get('facility_location', None)
         year = request.GET.get('year', None)
 
-        if not year:
-            return Response({'error': 'Year parameter is required.'}, status=status.HTTP_400_BAD_REQUEST)
-
         try:
-            year = int(year)
-        except (TypeError, ValueError):
-            return Response({'error': 'Invalid year parameter.'}, status=status.HTTP_400_BAD_REQUEST)
+            filters = {'user': user}
+            
+            # Determine fiscal year (April to March) based on selected year or default to current fiscal year
+            if year:
+                try:
+                    year = int(year)
+                except ValueError:
+                    return Response({'error': 'Invalid year parameter.'}, status=status.HTTP_400_BAD_REQUEST)
+            else:
+                year = datetime.now().year
 
-        try:
-            filters = {
-                'user': user,
-                'DatePicker__year': year,
-            }
+            # Define the fiscal year range for the selected year
+            if datetime.now().month >= 4:  # Current fiscal year starts in April
+                start_date = datetime(year, 4, 1)
+                end_date = datetime(year + 1, 3, 31)
+            else:  # Last fiscal year
+                start_date = datetime(year - 1, 4, 1)
+                end_date = datetime(year, 3, 31)
+            
+            filters['DatePicker__range'] = (start_date, end_date)
+
+            # Apply facility filters if provided
             if facility_id and facility_id.lower() != 'all':
                 filters['facility__facility_id'] = facility_id
             if facility_location:
                 filters['facility__facility_location__icontains'] = facility_location
 
-            # Line Chart Data: Monthly HVAC Consumption
+            # Query monthly admin_block data
             monthly_admin_block = (
                 Energy.objects.filter(**filters)
                 .values('DatePicker__month')
@@ -2227,26 +2470,39 @@ class Admin_BlockOverviewView(APIView):
                 .order_by('DatePicker__month')
             )
 
+            # Prepare line chart data with zero defaults
             line_chart_data = []
             admin_block = defaultdict(float)
 
+            # Map retrieved data to months
             for entry in monthly_admin_block:
-                month_name = datetime(1900, entry['DatePicker__month'], 1).strftime('%b')
                 admin_block[entry['DatePicker__month']] = entry['total_admin_block']
 
-            for month in range(1, 13):
-                month_name = datetime(1900, month, 1).strftime('%b')
-                line_chart_data.append({
-                    "month": month_name,
-                    "admin_block": admin_block.get(month, 0)
-                })
+            # Define the month order (April to March)
+            month_order = [4, 5, 6, 7, 8, 9, 10, 11, 12, 1, 2, 3]
+            today = datetime.now()
 
-            # Donut Chart Data: admin_block per Facility
+            for month in month_order:
+                month_name = datetime(1900, month, 1).strftime('%b')
+                # Include data up to the current month, set future months to zero
+                if (year == today.year and month <= today.month) or (year < today.year):
+                    line_chart_data.append({
+                        "month": month_name,
+                        "admin_block": admin_block.get(month, 0)
+                    })
+                else:
+                    line_chart_data.append({
+                        "month": month_name,
+                        "admin_block": 0
+                    })
+
+            # Facility-wise admin_block query for donut chart data
             facility_filters = {
                 'user': user,
-                **({'facility__facility_id': facility_id} if facility_id and facility_id.lower() != 'all' else {})
+                'DatePicker__range': (start_date, end_date)
             }
-
+            if facility_id and facility_id.lower() != 'all':
+                facility_filters['facility__facility_id'] = facility_id
             facility_admin_block = (
                 Energy.objects.filter(**facility_filters)
                 .values('facility__facility_name')
@@ -2254,6 +2510,7 @@ class Admin_BlockOverviewView(APIView):
                 .order_by('-total_admin_block')
             )
 
+            # Prepare donut chart data
             total_admin_block = sum(entry['total_admin_block'] for entry in facility_admin_block)
             donut_chart_data = [
                 {
@@ -2271,8 +2528,6 @@ class Admin_BlockOverviewView(APIView):
             return Response(response_data, status=status.HTTP_200_OK)
 
         except Exception as e:
-            # Log the error for debugging purposes
-            print(f"Error in admin_blockOverviewView: {e}")
             return Response(
                 {'error': f'An error occurred while processing your request: {str(e)}'},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
@@ -2289,25 +2544,35 @@ class Utilities_OverviewView(APIView):
         facility_location = request.GET.get('facility_location', None)
         year = request.GET.get('year', None)
 
-        if not year:
-            return Response({'error': 'Year parameter is required.'}, status=status.HTTP_400_BAD_REQUEST)
-
         try:
-            year = int(year)
-        except (TypeError, ValueError):
-            return Response({'error': 'Invalid year parameter.'}, status=status.HTTP_400_BAD_REQUEST)
+            filters = {'user': user}
+            
+            # Determine fiscal year (April to March) based on selected year or default to current fiscal year
+            if year:
+                try:
+                    year = int(year)
+                except ValueError:
+                    return Response({'error': 'Invalid year parameter.'}, status=status.HTTP_400_BAD_REQUEST)
+            else:
+                year = datetime.now().year
 
-        try:
-            filters = {
-                'user': user,
-                'DatePicker__year': year,
-            }
+            # Define the fiscal year range for the selected year
+            if datetime.now().month >= 4:  # Current fiscal year starts in April
+                start_date = datetime(year, 4, 1)
+                end_date = datetime(year + 1, 3, 31)
+            else:  # Last fiscal year
+                start_date = datetime(year - 1, 4, 1)
+                end_date = datetime(year, 3, 31)
+            
+            filters['DatePicker__range'] = (start_date, end_date)
+
+            # Apply facility filters if provided
             if facility_id and facility_id.lower() != 'all':
                 filters['facility__facility_id'] = facility_id
             if facility_location:
                 filters['facility__facility_location__icontains'] = facility_location
 
-            # Line Chart Data: Monthly HVAC Consumption
+            # Query monthly utilities data
             monthly_utilities = (
                 Energy.objects.filter(**filters)
                 .values('DatePicker__month')
@@ -2315,26 +2580,39 @@ class Utilities_OverviewView(APIView):
                 .order_by('DatePicker__month')
             )
 
+            # Prepare line chart data with zero defaults
             line_chart_data = []
             utilities = defaultdict(float)
 
+            # Map retrieved data to months
             for entry in monthly_utilities:
-                month_name = datetime(1900, entry['DatePicker__month'], 1).strftime('%b')
                 utilities[entry['DatePicker__month']] = entry['total_utilities']
 
-            for month in range(1, 13):
-                month_name = datetime(1900, month, 1).strftime('%b')
-                line_chart_data.append({
-                    "month": month_name,
-                    "utilities": utilities.get(month, 0)
-                })
+            # Define the month order (April to March)
+            month_order = [4, 5, 6, 7, 8, 9, 10, 11, 12, 1, 2, 3]
+            today = datetime.now()
 
-            # Donut Chart Data: utilities per Facility
+            for month in month_order:
+                month_name = datetime(1900, month, 1).strftime('%b')
+                # Include data up to the current month, set future months to zero
+                if (year == today.year and month <= today.month) or (year < today.year):
+                    line_chart_data.append({
+                        "month": month_name,
+                        "utilities": utilities.get(month, 0)
+                    })
+                else:
+                    line_chart_data.append({
+                        "month": month_name,
+                        "utilities": 0
+                    })
+
+            # Facility-wise utilities query for donut chart data
             facility_filters = {
                 'user': user,
-                **({'facility__facility_id': facility_id} if facility_id and facility_id.lower() != 'all' else {})
+                'DatePicker__range': (start_date, end_date)
             }
-
+            if facility_id and facility_id.lower() != 'all':
+                facility_filters['facility__facility_id'] = facility_id
             facility_utilities = (
                 Energy.objects.filter(**facility_filters)
                 .values('facility__facility_name')
@@ -2342,6 +2620,7 @@ class Utilities_OverviewView(APIView):
                 .order_by('-total_utilities')
             )
 
+            # Prepare donut chart data
             total_utilities = sum(entry['total_utilities'] for entry in facility_utilities)
             donut_chart_data = [
                 {
@@ -2359,13 +2638,121 @@ class Utilities_OverviewView(APIView):
             return Response(response_data, status=status.HTTP_200_OK)
 
         except Exception as e:
-            # Log the error for debugging purposes
-            print(f"Error in utilitiesOverviewView: {e}")
             return Response(
                 {'error': f'An error occurred while processing your request: {str(e)}'},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
-    
-#        
+
+
+# Others Overview Linecharts andDonut charts
+
+class Others_OverviewView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        user = request.user
+        facility_id = request.GET.get('facility_id', None)
+        facility_location = request.GET.get('facility_location', None)
+        year = request.GET.get('year', None)
+
+        try:
+            filters = {'user': user}
+            
+            # Determine fiscal year (April to March) based on selected year or default to current fiscal year
+            if year:
+                try:
+                    year = int(year)
+                except ValueError:
+                    return Response({'error': 'Invalid year parameter.'}, status=status.HTTP_400_BAD_REQUEST)
+            else:
+                year = datetime.now().year
+
+            # Define the fiscal year range for the selected year
+            if datetime.now().month >= 4:  # Current fiscal year starts in April
+                start_date = datetime(year, 4, 1)
+                end_date = datetime(year + 1, 3, 31)
+            else:  # Last fiscal year
+                start_date = datetime(year - 1, 4, 1)
+                end_date = datetime(year, 3, 31)
+            
+            filters['DatePicker__range'] = (start_date, end_date)
+
+            # Apply facility filters if provided
+            if facility_id and facility_id.lower() != 'all':
+                filters['facility__facility_id'] = facility_id
+            if facility_location:
+                filters['facility__facility_location__icontains'] = facility_location
+
+            # Query monthly others data
+            monthly_others = (
+                Energy.objects.filter(**filters)
+                .values('DatePicker__month')
+                .annotate(total_others=Sum('others'))
+                .order_by('DatePicker__month')
+            )
+
+            # Prepare line chart data with zero defaults
+            line_chart_data = []
+            others = defaultdict(float)
+
+            # Map retrieved data to months
+            for entry in monthly_others:
+                others[entry['DatePicker__month']] = entry['total_others']
+
+            # Define the month order (April to March)
+            month_order = [4, 5, 6, 7, 8, 9, 10, 11, 12, 1, 2, 3]
+            today = datetime.now()
+
+            for month in month_order:
+                month_name = datetime(1900, month, 1).strftime('%b')
+                # Include data up to the current month, set future months to zero
+                if (year == today.year and month <= today.month) or (year < today.year):
+                    line_chart_data.append({
+                        "month": month_name,
+                        "others": others.get(month, 0)
+                    })
+                else:
+                    line_chart_data.append({
+                        "month": month_name,
+                        "others": 0
+                    })
+
+            # Facility-wise others query for donut chart data
+            facility_filters = {
+                'user': user,
+                'DatePicker__range': (start_date, end_date)
+            }
+            if facility_id and facility_id.lower() != 'all':
+                facility_filters['facility__facility_id'] = facility_id
+            facility_others = (
+                Energy.objects.filter(**facility_filters)
+                .values('facility__facility_name')
+                .annotate(total_others=Sum('others'))
+                .order_by('-total_others')
+            )
+
+            # Prepare donut chart data
+            total_others = sum(entry['total_others'] for entry in facility_others)
+            donut_chart_data = [
+                {
+                    "facility_name": entry['facility__facility_name'],
+                    "percentage": (entry['total_others'] / total_others * 100) if total_others else 0,
+                }
+                for entry in facility_others
+            ]
+
+            response_data = {
+                "line_chart_data": line_chart_data,
+                "donut_chart_data": donut_chart_data
+            }
+
+            return Response(response_data, status=status.HTTP_200_OK)
+
+        except Exception as e:
+            return Response(
+                {'error': f'An error occurred while processing your request: {str(e)}'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
 '''Energy  Overview Cards ,Graphs and Individual line charts and donut charts Ends'''
    
