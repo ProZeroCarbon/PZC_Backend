@@ -126,6 +126,7 @@ class OrganizationSerializer(serializers.ModelSerializer):
         user = self.context['request'].user
         organization = Org_registration.objects.create(user=user, **validated_data)
         return organization
+
 class FacilitySerializer(serializers.ModelSerializer):
     user_id = serializers.IntegerField(source='user.id', read_only=True)  # Include user_id
 
@@ -136,11 +137,18 @@ class FacilitySerializer(serializers.ModelSerializer):
     def validate_facility_name(self, value):
         request = self.context.get('request')
         user = request.user  # Get the current user
-
-        if request and request.method == 'PUT':
-            facility_id = request.parser_context['kwargs'].get('facility_id')
-            if Facility.objects.exclude(facility_id=facility_id).filter(facility_name=value, user=user).exists():
-                raise serializers.ValidationError("A facility with this name already exists for this user.")
+        
+        # For PUT requests, exclude the current instance if it exists
+        if request and request.method in ['PUT', 'PATCH']:
+            # Only exclude the current facility from the query if self.instance exists (indicating update)
+            if self.instance:
+                facility_id = self.instance.facility_id
+                if Facility.objects.exclude(facility_id=facility_id).filter(facility_name=value, user=user).exists():
+                    raise serializers.ValidationError("A facility with this name already exists for this user.")
+            else:
+                if Facility.objects.filter(facility_name=value, user=user).exists():
+                    raise serializers.ValidationError("A facility with this name already exists for this user.")
+        
         else:
             if Facility.objects.filter(facility_name=value, user=user).exists():
                 raise serializers.ValidationError("A facility with this name already exists for this user.")
@@ -152,6 +160,7 @@ class FacilitySerializer(serializers.ModelSerializer):
         validated_data.pop('user', None)  # Ensure user is not explicitly passed
         facility = Facility.objects.create(user=user, **validated_data)
         return facility
+
 
 class WasteSerializer(serializers.ModelSerializer):
     class Meta:

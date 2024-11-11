@@ -16,7 +16,9 @@ from .models import CustomUser,Waste,Energy,Water,Biodiversity,Facility,Logistic
 from django.db.models import Q
 from django_filters.rest_framework import DjangoFilterBackend
 from users_pzc.filters import WasteFilter,EnergyFilter,WaterFilter,BiodiversityFilter,LogisticesFilter,FacilityFilter
+import logging
 
+logger = logging.getLogger(__name__)
 #Register View
 class RegisterView(APIView):
     permission_classes = [AllowAny]
@@ -177,15 +179,15 @@ class WasteCreateView(APIView):
 
 # class WasteView(APIView):
 #     permission_classes = [IsAuthenticated]
-#     filter_backends = [DjangoFilterBackend]
+#     filter_backends = [DjangoFilterBackend]  # Ensure correct filter backends
 #     filterset_class = WasteFilter
 
 #     def get(self, request):
 #         user = request.user
-#         facility_id = request.GET.get('facility_id', 'all')
+#         facility_id = request.GET.get('facility_id', 'all')  # Ensure we are using 'facility_id' here
 #         fiscal_year = request.GET.get('fiscal_year')
 
-#         # Determine the fiscal year date range based on input or current date
+#         # Default to current fiscal year if none provided
 #         try:
 #             if fiscal_year:
 #                 fiscal_year = int(fiscal_year)
@@ -205,27 +207,31 @@ class WasteCreateView(APIView):
 #         # Base queryset filtered by user and fiscal year
 #         waste_data = Waste.objects.filter(user=user, DatePicker__range=(start_date, end_date))
 
-#         # Apply the filter for facility if specified
-#         if facility_id.lower() != 'all':
+#         # Apply the filter for facility_id if specified
+#         if facility_id != 'all':
 #             waste_data = waste_data.filter(facility__facility_id=facility_id)
-        
-#         # Manually apply the filter using WasteFilter
+
+#         # Apply manual filter using WasteFilter
 #         filtered_waste_data = WasteFilter(request.GET, queryset=waste_data).qs
         
-#         # Check if data exists after filtering; if not, return default values
+#         # Check if data exists after filtering; if not, return a clear message
 #         if not filtered_waste_data.exists():
-#             response_data = {
-#                 'email': user.email,
-#                 'fiscal_year': fiscal_year,
-#                 'waste_data': [],
-#                 'overall_waste_total': 0
-#             }
-#             return Response(response_data, status=status.HTTP_200_OK)
+#             return Response(
+#                 {
+#                     "message": "No data available for the selected facility and fiscal year.",
+#                     "email": user.email,
+#                     "fiscal_year": fiscal_year,
+#                     "waste_data": [],
+#                     "overall_waste_total": 0
+#                 },
+#                 status=status.HTTP_200_OK
+#             )
 
 #         # Serialize and calculate overall waste total
 #         waste_serializer = WasteSerializer(filtered_waste_data, many=True)
 #         overall_total = sum(
-#             waste.food_waste + waste.solid_Waste + waste.E_Waste + waste.Biomedical_waste + waste.other_waste
+#             (waste.food_waste or 0) + (waste.solid_Waste or 0) + (waste.E_Waste or 0) + 
+#             (waste.Biomedical_waste or 0) + (waste.other_waste or 0)
 #             for waste in filtered_waste_data
 #         )
 
@@ -237,6 +243,7 @@ class WasteCreateView(APIView):
 #         }
 
 #         return Response(response_data, status=status.HTTP_200_OK)
+
 class WasteView(APIView):
     permission_classes = [IsAuthenticated]
     filter_backends = [DjangoFilterBackend]
@@ -244,56 +251,63 @@ class WasteView(APIView):
 
     def get(self, request):
         user = request.user
-        facility_id = request.GET.get('facility_id', 'all')
-        fiscal_year = request.GET.get('fiscal_year')
+        facility_id = request.GET.get('facility_id', 'all')  # Get facility_id or default to 'all'
+        year = request.GET.get('year')  # Get fiscal year
 
-        # Determine the fiscal year date range based on input or current date
+        # Default fiscal year logic
         try:
-            if fiscal_year:
-                fiscal_year = int(fiscal_year)
+            if year:
+                year = int(year)
             else:
                 current_date = datetime.now()
-                fiscal_year = current_date.year - 1 if current_date.month < 4 else current_date.year
+                year = current_date.year - 1 if current_date.month < 4 else current_date.year
 
             # Set the fiscal year date range (April 1 to March 31)
-            start_date = datetime(fiscal_year, 4, 1)
-            end_date = datetime(fiscal_year + 1, 3, 31)
+            start_date = datetime(year, 4, 1)
+            end_date = datetime(year + 1, 3, 31)
         except ValueError:
             return Response(
                 {"error": "Invalid fiscal year format. Please provide a valid year, e.g., 2023."},
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        # Base queryset filtered by user and fiscal year
+        # Start with base queryset filtered by user and fiscal year
         waste_data = Waste.objects.filter(user=user, DatePicker__range=(start_date, end_date))
 
-        # Apply the filter for facility if specified
+        # Skip facility filter if 'all' is selected
         if facility_id.lower() != 'all':
             waste_data = waste_data.filter(facility__facility_id=facility_id)
-        
-        # Manually apply the filter using WasteFilter
+
+        # Apply the filter using the WasteFilter to refine the results
         filtered_waste_data = WasteFilter(request.GET, queryset=waste_data).qs
         
-        # Check if data exists after filtering; if not, return default values
-        if not filtered_waste_data.exists():
-            response_data = {
-                'email': user.email,
-                'fiscal_year': fiscal_year,
-                'waste_data': [],
-                'overall_waste_total': 0
-            }
-            return Response(response_data, status=status.HTTP_200_OK)
+        # Debug: Print the query being executed to ensure it is correct
+        print("Executing query: ", filtered_waste_data.query)
 
-        # Serialize and calculate overall waste total
+        # Check if data exists after filtering; if not, return a message
+        if not filtered_waste_data.exists():
+            return Response(
+                {
+                    "message": "No data available for the selected facility and fiscal year.",
+                    "email": user.email,
+                    "year": year,
+                    "waste_data": [],
+                    "overall_waste_total": 0
+                },
+                status=status.HTTP_200_OK
+            )
+
+        # Serialize and calculate the overall waste total
         waste_serializer = WasteSerializer(filtered_waste_data, many=True)
         overall_total = sum(
-            waste.food_waste + waste.solid_Waste + waste.E_Waste + waste.Biomedical_waste + waste.other_waste
+            (waste.food_waste or 0) + (waste.solid_Waste or 0) + (waste.E_Waste or 0) + 
+            (waste.Biomedical_waste or 0) + (waste.other_waste or 0)
             for waste in filtered_waste_data
         )
 
         response_data = {
             'email': user.email,
-            'fiscal_year': fiscal_year,
+            'year': year,
             'waste_data': waste_serializer.data,
             'overall_waste_total': overall_total
         }

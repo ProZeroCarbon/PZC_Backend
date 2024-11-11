@@ -130,18 +130,53 @@ class FacilityDateFilterBase(filters.FilterSet):
                 raise ValidationError("Facility with the specified ID does not exist.")
 
         return super().filter_queryset(queryset)
+# class WasteFilter(FacilityDateFilterBase):
+#     class Meta(FacilityDateFilterBase.Meta):
+#         model = Waste
+
+#     def filter_queryset(self, queryset):
+#         # Apply fiscal year filtering based on DatePicker
+#         start_year = self.data.get('start_year')
+#         end_year = self.data.get('end_year')
+
+#         if start_year and end_year:
+#             queryset = queryset.filter(DatePicker__year__gte=start_year, DatePicker__year__lte=end_year)
+
+#         # Apply the facility_id filter if it's not 'all'
+#         facility_id = self.data.get('facility_id', 'all')
+#         if facility_id.lower() != 'all':
+#             queryset = queryset.filter(facility__facility_id=facility_id)
+
+#         return super().filter_queryset(queryset)
+
+class WasteFilter(FacilityDateFilterBase):
+    class Meta(FacilityDateFilterBase.Meta):
+        model = Waste
+
 class WasteFilter(FacilityDateFilterBase):
     class Meta(FacilityDateFilterBase.Meta):
         model = Waste
         
     def filter_queryset(self, queryset):
-        # Remove redundant filtering if facility_id == 'all'
+        # Check for 'facility_id' and handle accordingly
         facility_id = self.data.get('facility_id', 'all')
+        
         if facility_id.lower() != 'all':
+            # Filter by facility if facility_id is not 'all'
             queryset = queryset.filter(facility__facility_id=facility_id)
 
-        # Call the parent filter queryset logic to apply date filters
+        # Apply fiscal year filter using 'DatePicker'
+        start_year = self.data.get('start_year')
+        end_year = self.data.get('end_year')
+
+        if start_year and end_year:
+            queryset = queryset.filter(DatePicker__year__gte=start_year, DatePicker__year__lte=end_year)
+
         return super().filter_queryset(queryset)
+
+
+
+    
 class EnergyFilter(FacilityDateFilterBase):
     class Meta(FacilityDateFilterBase.Meta):
         model = Energy
