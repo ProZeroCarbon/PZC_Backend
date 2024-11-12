@@ -2094,7 +2094,8 @@ class EnergyViewCard_Over(APIView):
             # Define energy fields for aggregation 
             energy_fields = [
                 'hvac', 'production', 'stp', 'admin_block',
-                'utilities', 'others', 'fuel_consumption', 'renewable_solar', 'renewable_other'
+                'utilities', 'others', 'renewable_solar', 'renewable_other','cooking_coal', 'coke_oven_coal', 'natural_gas', 'diesel', 
+            'biomass_wood', 'biomass_other_solid'
             ]
 
 

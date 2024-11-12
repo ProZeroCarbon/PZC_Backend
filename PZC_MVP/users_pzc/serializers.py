@@ -293,126 +293,6 @@ class EnergySerializer(serializers.ModelSerializer):
             'renewable_solar', 'renewable_other', 'overall_usage', 'energy_id'
         ]
 
-# class EnergyCreateSerializer(serializers.ModelSerializer):
-#     facility_id = serializers.CharField(
-#         write_only=True, required=True,
-#         error_messages={
-#             'required': 'Facility ID is required.',
-#             'null': 'Facility ID cannot be null.'
-#         }
-#     )
-#     DatePicker = serializers.DateField(
-#         required=True,
-#         error_messages={
-#             'required': 'Date is required.',
-#             'invalid': 'Invalid date format. Please use YYYY-MM-DD.'
-#         }
-#     )
-#     category = serializers.CharField(
-#         required=True,
-#         error_messages={'required': 'Category is required.'}
-#     )
-
-#     def __init__(self, *args, **kwargs):
-#         super().__init__(*args, **kwargs)
-
-#         energy_fields = [
-#             'hvac', 'production', 'stp', 'admin_block', 'utilities', 
-#             'others','cooking_coal','coke_oven_coal','natural_gas','diesel' ,'biomass_wood','biomass_other_solid', 'renewable_solar', 'renewable_other'
-#         ]
-        
-#         for field in energy_fields:
-#             self.fields[field] = serializers.FloatField(
-#                 required=True,
-#                 min_value=0,
-#                 error_messages={
-#                     'required': f'{field.replace("_", " ").title()} is required.',
-#                     'min_value': f'{field.replace("_", " ").title()} must be a positive number.'
-#                 }
-#             )
-
-#     class Meta:
-#         model = Energy
-#         fields = [
-#             'facility_id', 'category', 'DatePicker', 'hvac', 'production', 'stp', 
-#             'admin_block', 'utilities', 'others', 'fuel_types','cooking_coal','coke_oven_coal','natural_gas','diesel' ,'biomass_wood','biomass_other_solid', 'renewable_solar', 'renewable_other', 'energy_id'
-#         ]
-#         extra_kwargs = {
-#             'facility': {'read_only': True},
-#             'energy_id': {'read_only': True}
-#         }
-
-#     def validate(self, data):
-#         facility_id = data.get('facility_id')
-#         date = data.get('DatePicker')
-        
-#         if not facility_id:
-#             raise serializers.ValidationError({"facility_id": "Facility ID is required."})
-
-#         # Ensure the facility exists
-#         try:
-#             facility = Facility.objects.get(facility_id=facility_id)
-#             data['facility'] = facility  # Set facility object on validated data
-#         except Facility.DoesNotExist:
-#             raise serializers.ValidationError({"facility_id": "The selected facility does not exist."})
-
-#         # Extract the month and year from the provided date
-#         month = date.month
-#         year = date.year
-
-#         if self.instance is None:
-#             if Energy.objects.filter(
-#                 facility=facility,
-#                 DatePicker__year=year,
-#                 DatePicker__month=month
-#             ).exists():
-#                 raise serializers.ValidationError({
-#                     "non_field_errors": _("A Energy entry for this facility already exists for this month.")
-#                 })
-#         else:
-#             existing_entry = Energy.objects.filter(
-#                 facility=facility,
-#                 DatePicker__year=year,
-#                 DatePicker__month=month
-#             ).exclude(energy_id=self.instance.energy_id)  
-
-#             if existing_entry.exists():
-#                 raise serializers.ValidationError({
-#                     "non_field_errors": _("A different Enenrgy entry for this facility already exists for this month.")
-#                 })
-
-#         # Validate waste fields
-#         energy_fields = [
-#             'hvac', 'production', 'stp', 'admin_block', 'utilities', 
-#             'others', 'cooking_coal','coke_oven_coal','natural_gas','diesel' ,'biomass_wood','biomass_other_solid', 'renewable_solar', 'renewable_other'
-#         ]
-#         for field in energy_fields:
-#             value = data.get(field)
-#             if value is None or value < 0:
-#                 raise serializers.ValidationError({
-#                     field: f"{field.replace('_', ' ').title()} must be a positive number and cannot be null."
-#                 })
-
-#         return data
-
-#     def create(self, validated_data):
-#         user = self.context['request'].user
-#         validated_data['user'] = user
-#         validated_data.pop('facility_id', None)
-#         return Energy.objects.create(**validated_data)
-
-#     def to_representation(self, instance):
-#         representation = super().to_representation(instance)
-#         energy_fields_with_zero_default = [
-#             'cooking_coal', 'coke_oven_coal', 'natural_gas', 'diesel', 'biomass_wood', 'biomass_other_solid'
-#         ]
-        
-#         for field in energy_fields_with_zero_default:
-#             if representation.get(field) is None:
-#                 representation[field] = 0
-#         representation['facility_id'] = instance.facility.facility_id
-#         representation.pop('facility', None)
-#         return representation
 class EnergyCreateSerializer(serializers.ModelSerializer):
     facility_id = serializers.CharField(
         write_only=True, required=True,
@@ -431,6 +311,10 @@ class EnergyCreateSerializer(serializers.ModelSerializer):
     category = serializers.CharField(
         required=True,
         error_messages={'required': 'Category is required.'}
+    )
+    fuel_types = serializers.CharField(
+        required=True,
+        error_messages={'required': 'Fuel types are required.'}
     )
 
     def __init__(self, *args, **kwargs):
@@ -456,7 +340,7 @@ class EnergyCreateSerializer(serializers.ModelSerializer):
         # All other energy fields should be required
         energy_fields = [
             'hvac', 'production', 'stp', 'admin_block', 'utilities', 'others',
-            'fuel_types', 'renewable_solar', 'renewable_other'
+            'renewable_solar', 'renewable_other'
         ]
 
         for field in energy_fields:
@@ -485,11 +369,11 @@ class EnergyCreateSerializer(serializers.ModelSerializer):
     def validate(self, data):
         facility_id = data.get('facility_id')
         date = data.get('DatePicker')
-        
+
+        # Ensure the facility exists
         if not facility_id:
             raise serializers.ValidationError({"facility_id": "Facility ID is required."})
 
-        # Ensure the facility exists
         try:
             facility = Facility.objects.get(facility_id=facility_id)
             data['facility'] = facility  # Set facility object on validated data
@@ -500,7 +384,8 @@ class EnergyCreateSerializer(serializers.ModelSerializer):
         month = date.month
         year = date.year
 
-        if self.instance is None:
+        # Check if there is an existing entry for this facility and month
+        if self.instance is None:  # New entry (POST)
             if Energy.objects.filter(
                 facility=facility,
                 DatePicker__year=year,
@@ -509,31 +394,31 @@ class EnergyCreateSerializer(serializers.ModelSerializer):
                 raise serializers.ValidationError({
                     "non_field_errors": _("An Energy entry for this facility already exists for this month.")
                 })
-        else:
+        else:  # Update (PUT)
             existing_entry = Energy.objects.filter(
                 facility=facility,
                 DatePicker__year=year,
                 DatePicker__month=month
-            ).exclude(energy_id=self.instance.energy_id)  
+            ).exclude(energy_id=self.instance.energy_id)  # Exclude the current instance being updated
 
             if existing_entry.exists():
                 raise serializers.ValidationError({
                     "non_field_errors": _("A different Energy entry for this facility already exists for this month.")
                 })
 
-        # Validate required fields
+        # Validate required fields (ensure they are numeric)
         energy_fields = [
             'hvac', 'production', 'stp', 'admin_block', 'utilities', 'others', 
-            'fuel_types', 'renewable_solar', 'renewable_other'
+            'renewable_solar', 'renewable_other'
         ]
         for field in energy_fields:
             value = data.get(field)
-            if value is None or value < 0:
+            if value is None or not self.is_numeric(value):  # Check if value is numeric
                 raise serializers.ValidationError({
-                    field: f"{field.replace('_', ' ').title()} must be a positive number and cannot be null."
+                    field: f"{field.replace('_', ' ').title()} must be a valid number and cannot be null."
                 })
 
-        # Ensure the optional fields default to 0 if missing
+        # Ensure the optional fields default to 0 if missing or invalid
         optional_energy_fields = [
             'cooking_coal', 'coke_oven_coal', 'natural_gas', 'diesel', 
             'biomass_wood', 'biomass_other_solid'
@@ -541,8 +426,17 @@ class EnergyCreateSerializer(serializers.ModelSerializer):
         for field in optional_energy_fields:
             if field not in data:
                 data[field] = 0  # Set missing optional fields to 0
+            elif not self.is_numeric(data[field]):  # Check if value is numeric
+                data[field] = 0  # Set to 0 if not numeric
 
         return data
+
+    def is_numeric(self, value):
+        try:
+            float(value)  # Try to cast to float
+            return True
+        except ValueError:
+            return False
 
     def create(self, validated_data):
         user = self.context['request'].user
