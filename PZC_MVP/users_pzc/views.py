@@ -655,6 +655,91 @@ class LogoutView(APIView):
         return response
     
     
+'''OverViwe of allTotal_Usages '''
+class OverallUsageView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        user = request.user
+        facility_id = request.GET.get('facility_id', 'all')
+        year = request.GET.get('year')
+
+        try:
+            if year:
+                year = int(year)
+            else:
+                current_date = datetime.now()
+                year = current_date.year - 1 if current_date.month < 4 else current_date.year
+
+            start_date = datetime(year, 4, 1)
+            end_date = datetime(year + 1, 3, 31)
+        except ValueError:
+            return Response(
+                {"error": "Invalid fiscal year format. Please provide a valid year, e.g., 2023."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        overall_data = {
+            "waste_usage": 0,
+            "energy_usage": 0,
+            "water_usage": 0,
+            "biodiversity_usage": 0,
+            "logistics_usage": 0,
+        }
+
+        filters = {'user': user, 'DatePicker__range': (start_date, end_date)}
+        if facility_id.lower() != 'all':
+            filters['facility__facility_id'] = facility_id
+
+        waste_data = Waste.objects.filter(**filters)
+        overall_data["waste_usage"] = waste_data.aggregate(
+            total=Sum('food_waste') + Sum('solid_Waste') + Sum('E_Waste') + 
+                  Sum('Biomedical_waste') + Sum('other_waste')
+        )['total'] or 0
+
+        energy_data = Energy.objects.filter(**filters)
+        overall_data["energy_usage"] = energy_data.aggregate(
+            total=Sum('hvac') + Sum('production') + Sum('stp') + 
+                  Sum('admin_block') + Sum('utilities') + Sum('others')
+        )['total'] or 0
+
+        # Water usage
+        water_data = Water.objects.filter(**filters)
+        overall_data["water_usage"] = water_data.aggregate(total=Sum('overall_usage'))['total'] or 0
+
+        # Biodiversity usage
+        biodiversity_data = Biodiversity.objects.filter(**filters)
+        overall_data["biodiversity_usage"] = biodiversity_data.aggregate(total=Sum('overall_Trees'))['total'] or 0
+
+        # Logistics usage
+        logistics_data = Logistices.objects.filter(**filters)
+        overall_data["logistics_usage"] = logistics_data.aggregate(total=Sum('total_fuelconsumption'))['total'] or 0
+
+        # Serialize data for each model
+        waste_serializer = WasteSerializer(waste_data, many=True)
+        energy_serializer = EnergySerializer(energy_data, many=True)
+        water_serializer = WaterSerializer(water_data, many=True)
+        biodiversity_serializer = BiodiversitySerializer(biodiversity_data, many=True)
+        logistics_serializer = LogisticesSerializer(logistics_data, many=True)
+
+        # Format response data
+        response_data = {
+            "email": user.email,
+            "year": year,
+            "facility_id": facility_id,
+            "overall_data": overall_data,
+            "details": {
+                "waste_data": waste_serializer.data,
+                "energy_data": energy_serializer.data,
+                "water_data": water_serializer.data,
+                "biodiversity_data": biodiversity_serializer.data,
+                "logistics_data": logistics_serializer.data
+            }
+        }
+
+        return Response(response_data, status=status.HTTP_200_OK)
+'''OverViwe of allTotal_Usages'''
+    
 '''Waste Overviewgraphs and Individual Line charts and donut charts Starts'''
 
 class WasteViewCard_Over(APIView):
@@ -1632,53 +1717,36 @@ class StackedWasteOverviewView(APIView):
         try:
             filters = {'user': user}
 
-            # Check if year is provided; default to current fiscal year
-            if year:
-                try:
-                    year = int(year)
-                except ValueError:
-                    return Response({'error': 'Invalid year parameter.'}, status=status.HTTP_400_BAD_REQUEST)
-            else:
-                year = datetime.now().year
-
-            # Determine fiscal year range for selected year
+            # Parse year and determine fiscal range
+            year = int(year) if year else datetime.now().year
             today = datetime.now()
-            if today.month >= 4:  # Current year is within this fiscal year
+            if today.month >= 4:
                 start_date = datetime(year, 4, 1)
                 end_date = datetime(year + 1, 3, 31)
-            else:  # Last fiscal year
+            else:
                 start_date = datetime(year - 1, 4, 1)
                 end_date = datetime(year, 3, 31)
-            
             filters['DatePicker__range'] = (start_date, end_date)
 
-            # Validate facility_id if provided
+            # Facility filters if specified
             if facility_id and facility_id.lower() != 'all':
-                try:
-                    Facility.objects.get(facility_id=facility_id)
-                    filters['facility__facility_id'] = facility_id
-                except Facility.DoesNotExist:
-                    return Response({'error': f'Facility with ID {facility_id} does not exist.'}, status=status.HTTP_400_BAD_REQUEST)
-
-            # Validate facility_location if provided
+                filters['facility__facility_id'] = facility_id
             if facility_location and facility_location.lower() != 'all':
-                if not Facility.objects.filter(facility_location__icontains=facility_location).exists():
-                    return Response({'error': f'No facility found with location {facility_location}.'}, status=status.HTTP_400_BAD_REQUEST)
                 filters['facility__facility_location__icontains'] = facility_location
 
-            # Define waste types
             waste_types = [
                 'food_waste', 'solid_Waste', 'E_Waste', 'Biomedical_waste',
-                'liquid_discharge', 'Recycle_waste', 'Landfill_waste','other_waste'
+                'liquid_discharge', 'Recycle_waste', 'Landfill_waste', 'other_waste'
             ]
 
-            # Initialize monthly data with zeros for each month and waste type
+            # Initialize monthly data dictionary
             monthly_data = {month: {waste_type: 0 for waste_type in waste_types} for month in range(1, 13)}
 
-            # Fetch and assign monthly waste data for each waste type
+            # Fetch and aggregate monthly data
             for waste_type in waste_types:
                 queryset = Waste.objects.filter(**filters)
-                
+
+                # Aggregate monthly data with explicit output_field for each waste type
                 monthly_waste = (
                     queryset
                     .values('DatePicker__month')
@@ -1690,23 +1758,21 @@ class StackedWasteOverviewView(APIView):
                     month = entry['DatePicker__month']
                     monthly_data[month][waste_type] = entry['total']
 
-            # Prepare stacked bar chart data with custom month ordering (April to March)
+                # # Specific debug for December to check if values are captured
+                # december_data = queryset.filter(DatePicker__month=12).aggregate(
+                #     total=Coalesce(Sum(waste_type, output_field=FloatField()), Value(0, output_field=FloatField()))
+                # )
+                # print(f"December total for {waste_type}: {december_data['total']}")
+
+            # Prepare response data in fiscal month order (April to March)
             stacked_bar_data = []
             month_order = [4, 5, 6, 7, 8, 9, 10, 11, 12, 1, 2, 3]
             for month in month_order:
                 month_name = datetime(1900, month, 1).strftime('%b')
-                if (year == today.year and month <= today.month) or (year < today.year):
-                    # Include actual data for past months and the current month
-                    stacked_bar_data.append({
-                        "month": month_name,
-                        **monthly_data[month]
-                    })
-                else:
-                    # Set upcoming months to zero
-                    stacked_bar_data.append({
-                        "month": month_name,
-                        **{waste_type: 0 for waste_type in waste_types}
-                    })
+                stacked_bar_data.append({
+                    "month": month_name,
+                    **monthly_data[month]
+                })
 
             response_data = {
                 "facility_id": facility_id,
