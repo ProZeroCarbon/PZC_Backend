@@ -177,73 +177,6 @@ class WasteCreateView(APIView):
             return Response({"message": "Waste data added successfully."}, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-# class WasteView(APIView):
-#     permission_classes = [IsAuthenticated]
-#     filter_backends = [DjangoFilterBackend]  # Ensure correct filter backends
-#     filterset_class = WasteFilter
-
-#     def get(self, request):
-#         user = request.user
-#         facility_id = request.GET.get('facility_id', 'all')  # Ensure we are using 'facility_id' here
-#         fiscal_year = request.GET.get('fiscal_year')
-
-#         # Default to current fiscal year if none provided
-#         try:
-#             if fiscal_year:
-#                 fiscal_year = int(fiscal_year)
-#             else:
-#                 current_date = datetime.now()
-#                 fiscal_year = current_date.year - 1 if current_date.month < 4 else current_date.year
-
-#             # Set the fiscal year date range (April 1 to March 31)
-#             start_date = datetime(fiscal_year, 4, 1)
-#             end_date = datetime(fiscal_year + 1, 3, 31)
-#         except ValueError:
-#             return Response(
-#                 {"error": "Invalid fiscal year format. Please provide a valid year, e.g., 2023."},
-#                 status=status.HTTP_400_BAD_REQUEST
-#             )
-
-#         # Base queryset filtered by user and fiscal year
-#         waste_data = Waste.objects.filter(user=user, DatePicker__range=(start_date, end_date))
-
-#         # Apply the filter for facility_id if specified
-#         if facility_id != 'all':
-#             waste_data = waste_data.filter(facility__facility_id=facility_id)
-
-#         # Apply manual filter using WasteFilter
-#         filtered_waste_data = WasteFilter(request.GET, queryset=waste_data).qs
-        
-#         # Check if data exists after filtering; if not, return a clear message
-#         if not filtered_waste_data.exists():
-#             return Response(
-#                 {
-#                     "message": "No data available for the selected facility and fiscal year.",
-#                     "email": user.email,
-#                     "fiscal_year": fiscal_year,
-#                     "waste_data": [],
-#                     "overall_waste_total": 0
-#                 },
-#                 status=status.HTTP_200_OK
-#             )
-
-#         # Serialize and calculate overall waste total
-#         waste_serializer = WasteSerializer(filtered_waste_data, many=True)
-#         overall_total = sum(
-#             (waste.food_waste or 0) + (waste.solid_Waste or 0) + (waste.E_Waste or 0) + 
-#             (waste.Biomedical_waste or 0) + (waste.other_waste or 0)
-#             for waste in filtered_waste_data
-#         )
-
-#         response_data = {
-#             'email': user.email,
-#             'fiscal_year': fiscal_year,
-#             'waste_data': waste_serializer.data,
-#             'overall_waste_total': overall_total
-#         }
-
-#         return Response(response_data, status=status.HTTP_200_OK)
-
 class WasteView(APIView):
     permission_classes = [IsAuthenticated]
     filter_backends = [DjangoFilterBackend]
@@ -251,10 +184,9 @@ class WasteView(APIView):
 
     def get(self, request):
         user = request.user
-        facility_id = request.GET.get('facility_id', 'all')  # Get facility_id or default to 'all'
-        year = request.GET.get('year')  # Get fiscal year
+        facility_id = request.GET.get('facility_id', 'all')
+        year = request.GET.get('year') 
 
-        # Default fiscal year logic
         try:
             if year:
                 year = int(year)
@@ -262,7 +194,6 @@ class WasteView(APIView):
                 current_date = datetime.now()
                 year = current_date.year - 1 if current_date.month < 4 else current_date.year
 
-            # Set the fiscal year date range (April 1 to March 31)
             start_date = datetime(year, 4, 1)
             end_date = datetime(year + 1, 3, 31)
         except ValueError:
@@ -271,20 +202,15 @@ class WasteView(APIView):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        # Start with base queryset filtered by user and fiscal year
         waste_data = Waste.objects.filter(user=user, DatePicker__range=(start_date, end_date))
 
-        # Skip facility filter if 'all' is selected
         if facility_id.lower() != 'all':
             waste_data = waste_data.filter(facility__facility_id=facility_id)
 
-        # Apply the filter using the WasteFilter to refine the results
         filtered_waste_data = WasteFilter(request.GET, queryset=waste_data).qs
-        
-        # Debug: Print the query being executed to ensure it is correct
-        print("Executing query: ", filtered_waste_data.query)
+    
+        # print("Executing query: ", filtered_waste_data.query)
 
-        # Check if data exists after filtering; if not, return a message
         if not filtered_waste_data.exists():
             return Response(
                 {
@@ -297,7 +223,6 @@ class WasteView(APIView):
                 status=status.HTTP_200_OK
             )
 
-        # Serialize and calculate the overall waste total
         waste_serializer = WasteSerializer(filtered_waste_data, many=True)
         overall_total = sum(
             (waste.food_waste or 0) + (waste.solid_Waste or 0) + (waste.E_Waste or 0) + 
@@ -324,7 +249,6 @@ class WasteEditView(APIView):
         except Waste.DoesNotExist:
             return Response({"error": "Waste data not found."}, status=status.HTTP_404_NOT_FOUND)
 
-        # Update the waste data
         serializer = WasteCreateSerializer(waste, data=request.data, context={'request': request})
         if serializer.is_valid():
             serializer.save()
@@ -357,6 +281,68 @@ class EnergyCreateView(APIView):
             return Response({"messages":"Energy data added Succesfully"},status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+# class EnergyView(APIView):
+#     permission_classes = [IsAuthenticated]
+#     filter_backends = [DjangoFilterBackend]
+#     filterset_class = WasteFilter
+
+#     def get(self, request):
+#         user = request.user
+#         facility_id = request.GET.get('facility_id', 'all')
+#         year = request.GET.get('year') 
+
+#         try:
+#             if year:
+#                 year = int(year)
+#             else:
+#                 current_date = datetime.now()
+#                 year = current_date.year - 1 if current_date.month < 4 else current_date.year
+
+#             start_date = datetime(year, 4, 1)
+#             end_date = datetime(year + 1, 3, 31)
+#         except ValueError:
+#             return Response(
+#                 {"error": "Invalid fiscal year format. Please provide a valid year, e.g., 2023."},
+#                 status=status.HTTP_400_BAD_REQUEST
+#             )
+
+#         energy_data = Energy.objects.filter(user=user, DatePicker__range=(start_date, end_date))
+
+#         if facility_id.lower() != 'all':
+#             energy_data = energy_data.filter(facility__facility_id=facility_id)
+
+#         filtered_energy_data = EnergyFilter(request.GET, queryset=energy_data).qs
+    
+#         # print("Executing query: ", filtered_energy_data.query)
+
+#         if not filtered_energy_data.exists():
+#             return Response(
+#                 {
+#                     "message": "No data available for the selected facility and fiscal year.",
+#                     "email": user.email,
+#                     "year": year,
+#                     "energy_data": [],
+#                     "overall_energy_total": 0
+#                 },
+#                 status=status.HTTP_200_OK
+#             )
+
+#         energy_serializer = EnergySerializer(filtered_energy_data, many=True)
+#         overall_total = sum(
+#             (waste.food_waste or 0) + (waste.solid_Waste or 0) + (waste.E_Waste or 0) + 
+#             (waste.Biomedical_waste or 0) + (waste.other_waste or 0)
+#             for waste in filtered_energy_data
+#         )
+
+#         response_data = {
+#             'email': user.email,
+#             'year': year,
+#             'energy_data': waste_serializer.data,
+#             'overall_waste_total': overall_total
+#         }
+
+#         return Response(response_data, status=status.HTTP_200_OK)
+
 
 class EnergyView(APIView):
     permission_classes = [IsAuthenticated]
@@ -366,55 +352,48 @@ class EnergyView(APIView):
     def get(self, request):
         user = request.user
         facility_id = request.GET.get('facility_id', 'all')
-        fiscal_year = request.GET.get('fiscal_year')
+        year = request.GET.get('year')
 
         try:
-            if fiscal_year:
-                fiscal_year = int(fiscal_year)
+            if year:
+                year = int(year)
             else:
                 current_date = datetime.now()
-                fiscal_year = current_date.year - 1 if current_date.month < 4 else current_date.year
+                year = current_date.year - 1 if current_date.month < 4 else current_date.year
 
-            start_date = datetime(fiscal_year, 4, 1)
-            end_date = datetime(fiscal_year + 1, 3, 31)
+            start_date = datetime(year, 4, 1)
+            end_date = datetime(year + 1, 3, 31)
         except ValueError:
             return Response(
                 {"error": "Invalid fiscal year format. Please provide a valid year, e.g., 2023."},
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        # Filter energy data by user and fiscal year
         energy_data = Energy.objects.filter(user=user, DatePicker__range=(start_date, end_date))
 
-        # Filter by facility_id if specified
         if facility_id.lower() != 'all':
             energy_data = energy_data.filter(facility__facility_id=facility_id)
 
-        # Apply the EnergyFilter to filter the energy data based on other query parameters
         filtered_energy_data = EnergyFilter(request.GET, queryset=energy_data).qs
         
-        # Check if data exists after filtering; if not, return default values
         if not filtered_energy_data.exists():
             response_data = {
                 'email': user.email,
-                'fiscal_year': fiscal_year,
+                'year': year,
                 'energy_data': [],
                 'overall_energy_total': 0
             }
             return Response(response_data, status=status.HTTP_200_OK)
 
-        # Serialize the filtered data
         energy_serializer = EnergySerializer(filtered_energy_data, many=True)
 
-        # Calculate the overall energy total
         overall_total = 0.0
-        for energy in filtered_energy_data:  # Use filtered data, not all data
+        for energy in filtered_energy_data:
             overall_total += (energy.hvac + energy.production + energy.stp + energy.admin_block + energy.utilities + energy.others)
 
-        # Return the response with the serialized data and overall total
         response_data = {
             'email': user.email,
-            'fiscal_year': fiscal_year,
+            'year': year,
             'energy_data': energy_serializer.data,
             'overall_energy_total': overall_total
         }
@@ -1808,12 +1787,12 @@ class WasteOverallDonutChartView(APIView):
             overall_total = sum(waste_totals.values())
 
             # Debugging: print the aggregated totals to verify if the data is correct
-            print(f"Waste Totals: {waste_totals}")
-            print(f"Overall Total: {overall_total}")
+            # print(f"Waste Totals: {waste_totals}")
+            # print(f"Overall Total: {overall_total}")
 
             # Return a 204 No Content response if no data is found
-            if overall_total == 0:
-                return Response({'error': 'No waste data available for the selected year and facility.'}, status=status.HTTP_204_NO_CONTENT)
+            # if overall_total == 0:
+            #     return Response({'error': 'No waste data available for the selected year and facility.'}, status=status.HTTP_204_NO_CONTENT)
 
             # Calculate percentages for each waste type
             waste_percentages = {}
@@ -1893,8 +1872,6 @@ class SentToLandfillOverviewView(APIView):
             # Calculate the remaining waste (excluding Landfill waste)
             remaining_waste_total = overall_total - Landfill_waste_total
 
-            if overall_total == 0:
-                return Response({'error': 'No waste data available for the selected year and facility.'}, status=status.HTTP_204_NO_CONTENT)
 
             # Calculate the landfill and remaining waste percentages
             landfill_percentage = (Landfill_waste_total / overall_total) * 100 if overall_total else 0
@@ -1902,8 +1879,8 @@ class SentToLandfillOverviewView(APIView):
 
             # Prepare the response data
             response_data = {
-                "year": year,
-                "facility_id": facility_id if facility_id else "all",  # Default to "all" if no specific facility is selected
+                # "year": year,
+                # "facility_id": facility_id if facility_id else "all",  # Default to "all" if no specific facility is selected
                 "landfill_percentage": landfill_percentage,
                 "remaining_percentage": remaining_percentage
             }
@@ -1970,8 +1947,6 @@ class SentToRecycledOverviewView(APIView):
             # Calculate the remaining waste (excluding Landfill waste)
             remaining_waste_total = overall_total - Recycle_waste_total
 
-            if overall_total == 0:
-                return Response({'error': 'No waste data available for the selected year and facility.'}, status=status.HTTP_204_NO_CONTENT)
 
             # Calculate the landfill and remaining waste percentages
             Recycle_percentage = (Recycle_waste_total / overall_total) * 100 if overall_total else 0
@@ -1979,8 +1954,8 @@ class SentToRecycledOverviewView(APIView):
 
             # Prepare the response data
             response_data = {
-                "year": year,
-                "facility_id": facility_id if facility_id else "all",  # Default to "all" if no specific facility is selected
+                # "year": year,
+                # "facility_id": facility_id if facility_id else "all",  # Default to "all" if no specific facility is selected
                 "Recycle_percentage": Recycle_percentage,
                 "remaining_percentage": remaining_percentage
             }
@@ -1995,7 +1970,7 @@ class SentToRecycledOverviewView(APIView):
 
 
 '''Energy  Overview Cards ,Graphs and Individual line charts and donut charts Starts'''
-
+#Energy Overview Cards
 class EnergyViewCard_Over(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -2109,7 +2084,6 @@ class EnergyViewCard_Over(APIView):
             # Log the error for debugging purposes
             print(f"An error occurred: {e}")
             return Response({'error': 'An error occurred while processing your request.'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
 #HVAC Line Charts and Donut Chart 
 class HVACOverviewView(APIView):
     permission_classes = [IsAuthenticated]
@@ -2327,7 +2301,6 @@ class ProductionOverviewView(APIView):
                 {'error': f'An error occurred while processing your request: {str(e)}'},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
-
 
 #STP Overview line charts and donut charts
 class StpOverviewView(APIView):
@@ -2659,7 +2632,6 @@ class Utilities_OverviewView(APIView):
 
 
 # Others Overview Linecharts andDonut charts
-
 class Others_OverviewView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -2767,6 +2739,229 @@ class Others_OverviewView(APIView):
                 {'error': f'An error occurred while processing your request: {str(e)}'},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
+
+#Renewable_EnergyOverview Line Charts And Donut Charts
+class Renewable_EnergyOverView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        user = request.user
+        facility_id = request.GET.get('facility_id', None)
+        facility_location = request.GET.get('facility_location', None)
+        year = request.GET.get('year', None)
+
+        try:
+            filters = {'user': user}
+            
+            if year:
+                try:
+                    year = int(year)
+                except ValueError:
+                    return Response({'error': 'Invalid year parameter.'}, status=status.HTTP_400_BAD_REQUEST)
+            else:
+                year = datetime.now().year
+
+            # Define the fiscal year range for the selected year
+            if datetime.now().month >= 4:  # Current fiscal year starts in April
+                start_date = datetime(year, 4, 1)
+                end_date = datetime(year + 1, 3, 31)
+            else:  # Last fiscal year
+                start_date = datetime(year - 1, 4, 1)
+                end_date = datetime(year, 3, 31)
+            
+            filters['DatePicker__range'] = (start_date, end_date)
+
+            # Apply facility filters if provided
+            if facility_id and facility_id.lower() != 'all':
+                filters['facility__facility_id'] = facility_id
+            if facility_location:
+                filters['facility__facility_location__icontains'] = facility_location
+
+            # Query monthly renewable energy data
+            monthly_renewable_energy = (
+                Energy.objects.filter(**filters)
+                .values('DatePicker__month')
+                .annotate(total_renewable_energy=Sum('renewable_solar') + Sum('renewable_other'))
+                .order_by('DatePicker__month')
+            )
+
+            # Prepare line chart data with zero defaults
+            line_chart_data = []
+            renewable_energy = defaultdict(float)
+
+            # Map retrieved data to months
+            for entry in monthly_renewable_energy:
+                renewable_energy[entry['DatePicker__month']] = entry['total_renewable_energy']
+
+            # Define the month order (April to March)
+            month_order = [4, 5, 6, 7, 8, 9, 10, 11, 12, 1, 2, 3]
+            today = datetime.now()
+
+            for month in month_order:
+                month_name = datetime(1900, month, 1).strftime('%b')
+                # Include data up to the current month, set future months to zero
+                if (year == today.year and month <= today.month) or (year < today.year):
+                    line_chart_data.append({
+                        "month": month_name,
+                        "renewable_energy": renewable_energy.get(month, 0)
+                    })
+                else:
+                    line_chart_data.append({
+                        "month": month_name,
+                        "renewable_energy": 0
+                    })
+
+            # Facility-wise renewable energy query for donut chart data
+            facility_filters = {
+                'user': user,
+                'DatePicker__range': (start_date, end_date)
+            }
+            if facility_id and facility_id.lower() != 'all':
+                facility_filters['facility__facility_id'] = facility_id
+            facility_renewable_energy = (
+                Energy.objects.filter(**facility_filters)
+                .values('facility__facility_name')
+                .annotate(total_renewable_energy=Sum('renewable_solar') + Sum('renewable_other'))
+                .order_by('-total_renewable_energy')
+            )
+
+            # Prepare donut chart data
+            total_renewable_energy = sum(entry['total_renewable_energy'] for entry in facility_renewable_energy)
+            donut_chart_data = [
+                {
+                    "facility_name": entry['facility__facility_name'],
+                    "percentage": (entry['total_renewable_energy'] / total_renewable_energy * 100) if total_renewable_energy else 0,
+                }
+                for entry in facility_renewable_energy
+            ]
+
+            response_data = {
+                "line_chart_data": line_chart_data,
+                "donut_chart_data": donut_chart_data
+            }
+
+            return Response(response_data, status=status.HTTP_200_OK)
+
+        except Exception as e:
+            return Response(
+                {'error': f'An error occurred while processing your request: {str(e)}'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+#StackedEnergyOverview 
+class StackedEnergyOverviewView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        user = request.user
+        facility_id = request.GET.get('facility_id', None)
+        facility_location = request.GET.get('facility_location', None)
+        year = request.GET.get('year', None)
+
+        try:
+            filters = {'user': user}
+
+            if year:
+                try:
+                    year = int(year)
+                except ValueError:
+                    return Response({'error': 'Invalid year parameter.'}, status=status.HTTP_400_BAD_REQUEST)
+            else:
+                year = datetime.now().year
+
+            today = datetime.now()
+            if today.month >= 4: 
+                start_date = datetime(year, 4, 1)
+                end_date = datetime(year + 1, 3, 31)
+            else:  
+                start_date = datetime(year - 1, 4, 1)
+                end_date = datetime(year, 3, 31)
+            
+            filters['DatePicker__range'] = (start_date, end_date)
+
+            # Validate facility_id if provided
+            if facility_id and facility_id.lower() != 'all':
+                try:
+                    Facility.objects.get(facility_id=facility_id)
+                    filters['facility__facility_id'] = facility_id
+                except Facility.DoesNotExist:
+                    return Response({'error': f'Facility with ID {facility_id} does not exist.'}, status=status.HTTP_400_BAD_REQUEST)
+
+            # Validate facility_location if provided
+            if facility_location and facility_location.lower() != 'all':
+                if not Facility.objects.filter(facility_location__icontains=facility_location).exists():
+                    return Response({'error': f'No facility found with location {facility_location}.'}, status=status.HTTP_400_BAD_REQUEST)
+                filters['facility__facility_location__icontains'] = facility_location
+
+            # Define energy types, combining renewable sources into 'renewable_energy'
+            energy_types = [
+                'hvac', 'production', 'stp', 'admin_block', 'utilities', 
+                'others', 'fuel_consumption', 'renewable_energy'
+            ]
+
+            # Initialize monthly data with zeros for each month and energy type
+            monthly_data = {month: {energy_type: 0 for energy_type in energy_types} for month in range(1, 13)}
+
+            # Fetch and assign monthly energy data for each energy type
+            for energy_type in energy_types:
+                queryset = Energy.objects.filter(**filters)
+
+                if energy_type == 'renewable_energy':
+                    # Combine renewable_solar and renewable_other for 'renewable_energy'
+                    monthly_energy = (
+                        queryset
+                        .values('DatePicker__month')
+                        .annotate(
+                            total=Coalesce(
+                                Sum('renewable_solar') + Sum('renewable_other'),
+                                Value(0, output_field=FloatField())
+                            )
+                        )
+                        .order_by('DatePicker__month')
+                    )
+                else:
+                    # Sum the individual energy types as usual
+                    monthly_energy = (
+                        queryset
+                        .values('DatePicker__month')
+                        .annotate(total=Coalesce(Sum(energy_type, output_field=FloatField()), Value(0, output_field=FloatField())))
+                        .order_by('DatePicker__month')
+                    )
+
+                for entry in monthly_energy:
+                    month = entry['DatePicker__month']
+                    monthly_data[month][energy_type] = entry['total']
+
+            # Prepare stacked bar chart data with custom month ordering (April to March)
+            stacked_bar_data = []
+            month_order = [4, 5, 6, 7, 8, 9, 10, 11, 12, 1, 2, 3]
+            for month in month_order:
+                month_name = datetime(1900, month, 1).strftime('%b')
+                if (year == today.year and month <= today.month) or (year < today.year):
+                    # Include actual data for past months and the current month
+                    stacked_bar_data.append({
+                        "month": month_name,
+                        **monthly_data[month]
+                    })
+                else:
+                    # Set upcoming months to zero
+                    stacked_bar_data.append({
+                        "month": month_name,
+                        **{energy_type: 0 for energy_type in energy_types}
+                    })
+
+            response_data = {
+                "facility_id": facility_id,
+                "year": year,
+                "facility_location": facility_location,
+                "stacked_bar_data": stacked_bar_data
+            }
+
+            return Response(response_data, status=status.HTTP_200_OK)
+
+        except Exception as e:
+            print(f"Error occurred: {e}") 
+            return Response({'error': f'An error occurred: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 '''Energy  Overview Cards ,Graphs and Individual line charts and donut charts Ends'''
    

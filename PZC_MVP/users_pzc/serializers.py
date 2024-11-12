@@ -197,7 +197,6 @@ class WasteCreateSerializer(serializers.ModelSerializer):
             'liquid_discharge', 'other_waste', 'Recycle_waste', 'Landfill_waste'
         ]
         
-        # Loop through the waste fields and create FloatField for each
         for field in waste_fields:
             self.fields[field] = serializers.FloatField(
                 required=True,
@@ -238,8 +237,7 @@ class WasteCreateSerializer(serializers.ModelSerializer):
         month = date.month
         year = date.year
 
-        # Check for duplicate entry within the same month and year for the facility
-        if self.instance is None:  # If instance is None, it’s a create (POST) request
+        if self.instance is None:
             if Waste.objects.filter(
                 facility=facility,
                 DatePicker__year=year,
@@ -248,12 +246,12 @@ class WasteCreateSerializer(serializers.ModelSerializer):
                 raise serializers.ValidationError({
                     "non_field_errors": _("A Waste entry for this facility already exists for this month.")
                 })
-        else:  # This is an update (PUT) request
+        else:
             existing_entry = Waste.objects.filter(
                 facility=facility,
                 DatePicker__year=year,
                 DatePicker__month=month
-            ).exclude(waste_id=self.instance.waste_id)  # Exclude the current instance to allow updating without duplicate error
+            ).exclude(waste_id=self.instance.waste_id)  
 
             if existing_entry.exists():
                 raise serializers.ValidationError({
@@ -278,13 +276,10 @@ class WasteCreateSerializer(serializers.ModelSerializer):
         # Set the user from context
         user = self.context['request'].user
         validated_data['user'] = user
-
-        # Remove facility_id after facility is set
         validated_data.pop('facility_id', None)
         return Waste.objects.create(**validated_data)
 
     def to_representation(self, instance):
-        # Override representation to only show facility_id
         representation = super().to_representation(instance)
         representation['facility_id'] = instance.facility.facility_id
         representation.pop('facility', None)
@@ -294,7 +289,7 @@ class EnergySerializer(serializers.ModelSerializer):
         model = Energy
         fields = [
             'user_id', 'facility_id', 'category', 'DatePicker', 'hvac', 'production', 'stp', 
-            'admin_block', 'utilities', 'others', 'fuel_used_in_Operations', 'fuel_consumption', 
+            'admin_block', 'utilities', 'others', 'fuel_types','cooking_coal','coke_oven_coal','natural_gas','diesel' ,'biomass_wood','biomass_other_solid',
             'renewable_solar', 'renewable_other', 'overall_usage', 'energy_id'
         ]
 
@@ -317,16 +312,15 @@ class EnergyCreateSerializer(serializers.ModelSerializer):
         required=True,
         error_messages={'required': 'Category is required.'}
     )
-      # Dynamically generated waste fields
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
         energy_fields = [
             'hvac', 'production', 'stp', 'admin_block', 'utilities', 
-            'others', 'fuel_consumption', 'renewable_solar', 'renewable_other'
+            'others', 'fuel_types','cooking_coal','coke_oven_coal','natural_gas','diesel' ,'biomass_wood','biomass_other_solid', 'renewable_solar', 'renewable_other'
         ]
         
-        # Loop through the waste fields and create FloatField for each
         for field in energy_fields:
             self.fields[field] = serializers.FloatField(
                 required=True,
@@ -336,12 +330,12 @@ class EnergyCreateSerializer(serializers.ModelSerializer):
                     'min_value': f'{field.replace("_", " ").title()} must be a positive number.'
                 }
             )
+
     class Meta:
         model = Energy
         fields = [
             'facility_id', 'category', 'DatePicker', 'hvac', 'production', 'stp', 
-            'admin_block', 'utilities', 'others', 'fuel_used_in_Operations', 
-            'fuel_consumption', 'renewable_solar', 'renewable_other', 'energy_id'
+            'admin_block', 'utilities', 'others', 'fuel_types','cooking_coal','coke_oven_coal','natural_gas','diesel' ,'biomass_wood','biomass_other_solid', 'renewable_solar', 'renewable_other', 'energy_id'
         ]
         extra_kwargs = {
             'facility': {'read_only': True},
@@ -366,19 +360,31 @@ class EnergyCreateSerializer(serializers.ModelSerializer):
         month = date.month
         year = date.year
 
-        # Check for duplicate entry within the same month and year for the facility
-        if Energy.objects.filter(
+        if self.instance is None:
+            if Energy.objects.filter(
                 facility=facility,
                 DatePicker__year=year,
                 DatePicker__month=month
-        ).exists():
-            raise serializers.ValidationError({
-                "non_field_errors": "A energy entry for this facility already exists for this month."
-            })
-            
+            ).exists():
+                raise serializers.ValidationError({
+                    "non_field_errors": _("A Energy entry for this facility already exists for this month.")
+                })
+        else:
+            existing_entry = Energy.objects.filter(
+                facility=facility,
+                DatePicker__year=year,
+                DatePicker__month=month
+            ).exclude(energy_id=self.instance.energy_id)  
+
+            if existing_entry.exists():
+                raise serializers.ValidationError({
+                    "non_field_errors": _("A different Enenrgy entry for this facility already exists for this month.")
+                })
+
+        # Validate waste fields
         energy_fields = [
             'hvac', 'production', 'stp', 'admin_block', 'utilities', 
-            'others', 'fuel_consumption', 'renewable_solar', 'renewable_other'
+            'others', 'cooking_coal','coke_oven_coal','natural_gas','diesel' ,'biomass_wood','biomass_other_solid', 'renewable_solar', 'renewable_other'
         ]
         for field in energy_fields:
             value = data.get(field)
@@ -388,17 +394,12 @@ class EnergyCreateSerializer(serializers.ModelSerializer):
                 })
 
         return data
-        # Validate energy-related fields to be positive numbers
 
     def create(self, validated_data):
-        # Associate the current user with the energy record
         user = self.context['request'].user
         validated_data['user'] = user
-        validated_data.pop('facility_id', None)  # Remove the facility_id as it's already set
-
-        # Create and return the energy object
-        energy = Energy.objects.create(**validated_data)
-        return energy
+        validated_data.pop('facility_id', None)
+        return Energy.objects.create(**validated_data)
 
     def to_representation(self, instance):
         representation = super().to_representation(instance)

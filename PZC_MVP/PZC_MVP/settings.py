@@ -39,6 +39,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'rest_framework',
+    'corsheaders',
     'django_filters',
     'rest_framework_simplejwt.token_blacklist',
     'users_pzc',
@@ -64,6 +65,11 @@ REST_FRAMEWORK = {
     ],
 }
 CORS_ALLOW_ALL_ORIGINS = True 
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:3000",  # React development server
+    # Other domains if needed
+]
+
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
@@ -73,6 +79,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'corsheaders.middleware.CorsMiddleware',
 ]
 
 ROOT_URLCONF = 'PZC_MVP.urls'
@@ -102,9 +109,9 @@ WSGI_APPLICATION = 'PZC_MVP.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
-        'NAME' : 'pzc_mani',
+        'NAME' : 'pzc',
         'USER' : 'root',
-        'PASSWORD' : '123456789',
+        'PASSWORD' : 'Pro@co2E',
         'HOST' : 'localhost',
         'PORT' : '3306',
     }

@@ -1,7 +1,7 @@
 
 
 from django.urls import   path
-from .views import RegisterView, LoginView, DashboardView, LogoutView,WasteCreateView,WasteView,WasteEditView,WasteDeleteView,EnergyCreateView,EnergyView,EnergyEditView,EnergyDeleteView,WaterView,WaterCreateView,WaterEditView,WaterDeleteView,BiodiversityCreateView,BiodiversityView,BiodiversityEditView,BiodiversityDeleteView,FacilityCreateView,FacilityView,FacilityEditView,FacilityDeleteView,LogisticesCreateView,LogisticesView,LogisticesEditView,LogisticesDeleteView,OrganizationCreate,OrganizationView,FoodWasteOverviewView,SolidWasteOverviewView,E_WasteOverviewView,Biomedical_WasteOverviewView,Liquid_DischargeOverviewView,OthersOverviewView,Waste_Sent_For_RecycleOverviewView,Waste_Sent_For_LandFillOverviewView,StackedWasteOverviewView,WasteOverallDonutChartView,SentToLandfillOverviewView,SentToRecycledOverviewView,HVACOverviewView,ProductionOverviewView,StpOverviewView,Admin_BlockOverviewView,Utilities_OverviewView,WasteViewCard_Over,EnergyViewCard_Over,Others_OverviewView
+from .views import RegisterView, LoginView, DashboardView, LogoutView,WasteCreateView,WasteView,WasteEditView,WasteDeleteView,EnergyCreateView,EnergyView,EnergyEditView,EnergyDeleteView,WaterView,WaterCreateView,WaterEditView,WaterDeleteView,BiodiversityCreateView,BiodiversityView,BiodiversityEditView,BiodiversityDeleteView,FacilityCreateView,FacilityView,FacilityEditView,FacilityDeleteView,LogisticesCreateView,LogisticesView,LogisticesEditView,LogisticesDeleteView,OrganizationCreate,OrganizationView,FoodWasteOverviewView,SolidWasteOverviewView,E_WasteOverviewView,Biomedical_WasteOverviewView,Liquid_DischargeOverviewView,OthersOverviewView,Waste_Sent_For_RecycleOverviewView,Waste_Sent_For_LandFillOverviewView,StackedWasteOverviewView,WasteOverallDonutChartView,SentToLandfillOverviewView,SentToRecycledOverviewView,HVACOverviewView,ProductionOverviewView,StpOverviewView,Admin_BlockOverviewView,Utilities_OverviewView,WasteViewCard_Over,EnergyViewCard_Over,Others_OverviewView,Renewable_EnergyOverView,StackedEnergyOverviewView
 from rest_framework_simplejwt.views import (
     TokenObtainPairView,
     TokenRefreshView,
@@ -98,5 +98,7 @@ urlpatterns = [
    path('Admin_BlockOverviewView/',Admin_BlockOverviewView.as_view(),name='Admin_BlockOverviewView'),
    path('Utilities_OverviewView/',Utilities_OverviewView.as_view(),name='Utilities_OverviewView'),
    path('Others_OverviewView/',Others_OverviewView.as_view(),name="Others_OverviewView"),
+   path('Renewable_EnergyOverView/',Renewable_EnergyOverView.as_view(),name='Renewable_EnergyOverView'),
+   path('StackedEnergyOverviewView/',StackedEnergyOverviewView.as_view(),name='StackedEnergyOverviewView')
    
 ]
