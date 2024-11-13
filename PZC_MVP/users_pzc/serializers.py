@@ -475,15 +475,14 @@ class WaterCreateSerializer(serializers.ModelSerializer):
         required=True,
         error_messages={'required': 'Category is required.'}
     )
-      # Dynamically generated waste fields
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-
+        
         water_fields = [
             'Generated_Water', 'Recycled_Water', 'Softener_usage', 'Boiler_usage', 'otherUsage'
         ]
         
-        # Loop through the water fields and create FloatField for each
         for field in water_fields:
             self.fields[field] = serializers.FloatField(
                 required=True,
@@ -493,13 +492,16 @@ class WaterCreateSerializer(serializers.ModelSerializer):
                     'min_value': f'{field.replace("_", " ").title()} must be a positive number.'
                 }
             )
+
     class Meta:
         model = Water
-        fields = ['facility_id','DatePicker','category','Generated_Water', 'Recycled_Water', 'Softener_usage', 
-                  'Boiler_usage', 'otherUsage','water_id']
+        fields = [
+            'facility_id', 'DatePicker', 'category', 'Generated_Water', 'Recycled_Water',
+            'Softener_usage', 'Boiler_usage', 'otherUsage', 'water_id'
+        ]
         extra_kwargs = {
             'facility': {'read_only': True},
-            'energy_id': {'read_only': True}
+            'water_id': {'read_only': True}
         }
 
     def validate(self, data):
@@ -511,22 +513,45 @@ class WaterCreateSerializer(serializers.ModelSerializer):
 
         try:
             facility = Facility.objects.get(facility_id=facility_id)
-            data['facility'] = facility 
+            data['facility'] = facility
         except Facility.DoesNotExist:
             raise serializers.ValidationError({"facility_id": "The selected facility does not exist."})
 
         month = date.month
         year = date.year
-        
-        if Water.objects.filter(
+
+        if self.instance is None:
+            if Water.objects.filter(
                 facility=facility,
                 DatePicker__year=year,
                 DatePicker__month=month
-        ).exists():
-            raise serializers.ValidationError({
-                "non_field_errors": "A water entry for this facility already exists for this month."
-            })
-            
+            ).exists():
+                raise serializers.ValidationError({
+                    "non_field_errors": _("A Water entry for this facility already exists for this month.")
+                })
+        else:
+            existing_entry = Water.objects.filter(
+                facility=facility,
+                DatePicker__year=year,
+                DatePicker__month=month
+            ).exclude(water_id=self.instance.water_id)
+
+            if existing_entry.exists():
+                raise serializers.ValidationError({
+                    "non_field_errors": _("A different Water entry for this facility already exists for this month.")
+                })
+
+        # Ensure that Generated_Water is greater than or equal to Recycled_Water
+        generated_water = data.get('Generated_Water')
+        recycled_water = data.get('Recycled_Water')
+
+        if generated_water is not None and recycled_water is not None:
+            if recycled_water > generated_water:
+                raise serializers.ValidationError({
+                    "Recycled_Water": "Recycled Water must be less than or equal to Generated Water."
+                })
+
+        # Validate positive values for all water fields
         water_fields = [
             'Generated_Water', 'Recycled_Water', 'Softener_usage', 'Boiler_usage', 'otherUsage'
         ]
@@ -540,14 +565,13 @@ class WaterCreateSerializer(serializers.ModelSerializer):
         return data
 
     def create(self, validated_data):
-        # Associate the current user with the  record
         user = self.context['request'].user
         validated_data['user'] = user
-        validated_data.pop('facility_id', None)  # Remove the facility_id as it's already set
+        validated_data.pop('facility_id', None)
 
-        # Create and return the  object
         water = Water.objects.create(**validated_data)
         return water
+
 
 # class WaterCreateSerializer(serializers.ModelSerializer):
 #     facility_id = serializers.CharField(
