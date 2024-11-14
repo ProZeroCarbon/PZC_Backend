@@ -1,6 +1,6 @@
 
 from django.urls import   path
-from .views import RegisterView, LoginView, DashboardView, LogoutView,WasteCreateView,WasteView,WasteEditView,WasteDeleteView,EnergyCreateView,EnergyView,EnergyEditView,EnergyDeleteView,WaterView,WaterCreateView,WaterEditView,WaterDeleteView,BiodiversityCreateView,BiodiversityView,BiodiversityEditView,BiodiversityDeleteView,FacilityCreateView,FacilityView,FacilityEditView,FacilityDeleteView,LogisticesCreateView,LogisticesView,LogisticesEditView,LogisticesDeleteView,OrganizationCreate,OrganizationView,FoodWasteOverviewView,SolidWasteOverviewView,E_WasteOverviewView,Biomedical_WasteOverviewView,Liquid_DischargeOverviewView,OthersOverviewView,Waste_Sent_For_RecycleOverviewView,Waste_Sent_For_LandFillOverviewView,StackedWasteOverviewView,WasteOverallDonutChartView,SentToLandfillOverviewView,SentToRecycledOverviewView,HVACOverviewView,ProductionOverviewView,StpOverviewView,Admin_BlockOverviewView,Utilities_OverviewView,WasteViewCard_Over,EnergyViewCard_Over,Others_OverviewView,Renewable_EnergyOverView,StackedEnergyOverviewView,OverallUsageView,Fuel_Used_OperationsOverView,RE_Overview_PieChart,EnergyOverallDonutChartView
+from .views import RegisterView, LoginView, DashboardView, LogoutView,WasteCreateView,WasteView,WasteEditView,WasteDeleteView,EnergyCreateView,EnergyView,EnergyEditView,EnergyDeleteView,WaterView,WaterCreateView,WaterEditView,WaterDeleteView,BiodiversityCreateView,BiodiversityView,BiodiversityEditView,BiodiversityDeleteView,FacilityCreateView,FacilityView,FacilityEditView,FacilityDeleteView,LogisticesCreateView,LogisticesView,LogisticesEditView,LogisticesDeleteView,OrganizationCreate,OrganizationView,FoodWasteOverviewView,SolidWasteOverviewView,E_WasteOverviewView,Biomedical_WasteOverviewView,Liquid_DischargeOverviewView,OthersOverviewView,Waste_Sent_For_RecycleOverviewView,Waste_Sent_For_LandFillOverviewView,StackedWasteOverviewView,WasteOverallDonutChartView,SentToLandfillOverviewView,SentToRecycledOverviewView,HVACOverviewView,ProductionOverviewView,StpOverviewView,Admin_BlockOverviewView,Utilities_OverviewView,WasteViewCard_Over,EnergyViewCard_Over,Others_OverviewView,Renewable_EnergyOverView,StackedEnergyOverviewView,OverallUsageView,Fuel_Used_OperationsOverView,WaterViewCard_Over,Generated_WaterOverviewView,Recycle_WaterOverviewView,Softener_usageOverviewView,Boiler_usageOverviewView,otherUsage_OverviewView,StackedWaterOverviewView,EnergyAnalyticsView,WaterAnalyticsView
 from rest_framework_simplejwt.views import (
     TokenObtainPairView,
     TokenRefreshView,
@@ -100,8 +100,20 @@ urlpatterns = [
    path('Others_OverviewView/',Others_OverviewView.as_view(),name="Others_OverviewView"),
    path('Renewable_EnergyOverView/',Renewable_EnergyOverView.as_view(),name='Renewable_EnergyOverView'),
    path('Fuel_Used_OperationsOverView/',Fuel_Used_OperationsOverView.as_view(),name="Fuel_Used_OperationsOverView"),
+   #Apis For Stacked Graph,donuts Graphs Overview
    path('StackedEnergyOverviewView/',StackedEnergyOverviewView.as_view(),name='StackedEnergyOverviewView'),
-   path('RE_Overview_PieChart/',RE_Overview_PieChart.as_view(),name='RE_Overview_PieChart'),
-   path('EnergyOverallDonutChartView/',EnergyOverallDonutChartView.as_view(),name='EnergyOverallDonutChartView')
+   path('EnergyAnalyticsView/',EnergyAnalyticsView.as_view(),name="EnergyAnalyticsView"),
    
+   
+    #Apis for Water Overview
+    path('WaterViewCard_Over/',WaterViewCard_Over.as_view(),name="WaterViewCard_Over"),
+    path('Generated_WaterOverviewView/',Generated_WaterOverviewView.as_view(),name="Generated_WaterOverviewView"),
+    path('Recycle_WaterOverviewView/',Recycle_WaterOverviewView.as_view(),name="Recycle_WaterOverviewView"),
+    path('Softener_usageOverviewView/',Softener_usageOverviewView.as_view(),name="Softener_usageOverviewView"),
+    path('Boiler_usageOverviewView/',Boiler_usageOverviewView.as_view(),name="Boiler_usageOverviewView"),
+    path('otherUsage_OverviewView/',otherUsage_OverviewView.as_view(),name="otherUsage_OverviewView"),
+    
+    #APis For Stacked Graphs donut Graphs Overview
+    path('StackedWaterOverviewView/',StackedWaterOverviewView.as_view(),name="StackedWaterOverviewView"),
+    path('WaterAnalyticsView/',WaterAnalyticsView.as_view(),name="WaterAnalyticsView"),
 ]

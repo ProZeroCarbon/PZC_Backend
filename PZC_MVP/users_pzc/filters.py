@@ -12,6 +12,7 @@ class FacilityFilter(filters.FilterSet):
     class Meta:
         model = Facility
         fields = ['facility_name', 'facility_id', 'facility_location']
+    
 
 class FacilityDateFilterBase(filters.FilterSet):
     facility_id = filters.CharFilter(field_name="facility__facility_id")
