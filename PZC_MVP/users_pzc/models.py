@@ -111,7 +111,7 @@ class Energy(models.Model):
     utilities = models.FloatField(default=0.0)
     others = models.FloatField(default=0.0)
     fuel_types = models.CharField(max_length=255)
-    cooking_coal = models.FloatField(default=0.0)
+    coking_coal = models.FloatField(default=0.0)
     coke_oven_coal = models.FloatField(default=0.0)
     natural_gas = models.FloatField(default=0.0)
     diesel = models.FloatField(default=0.0)
@@ -173,7 +173,7 @@ class Biodiversity(models.Model):
     def save(self,*args, **kwargs):
         if not self.biodiversity_id:
             self.biodiversity_id = uuid.uuid4().hex[:8].upper()
-        self.overall_Trees = (self.no_of_trees)
+        self.overall_Trees = (self.no_trees)
         super(Biodiversity,self).save(*args, **kwargs)
         
     

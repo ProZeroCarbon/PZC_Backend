@@ -5,6 +5,7 @@ from rest_framework import serializers
 from django.contrib.auth import authenticate
 from django.core.exceptions import ValidationError
 from django.utils.translation import gettext_lazy as _
+from django.utils.translation import gettext as _
 from .models import CustomUser,Waste,Energy,Water,Biodiversity,Facility,Logistices,Org_registration
 
 class UserRegisterSerializer(serializers.ModelSerializer):
@@ -289,7 +290,7 @@ class EnergySerializer(serializers.ModelSerializer):
         model = Energy
         fields = [
             'user_id', 'facility_id', 'category', 'DatePicker', 'hvac', 'production', 'stp', 
-            'admin_block', 'utilities', 'others', 'fuel_types','cooking_coal','coke_oven_coal','natural_gas','diesel' ,'biomass_wood','biomass_other_solid',
+            'admin_block', 'utilities', 'others', 'fuel_types','coking_coal','coke_oven_coal','natural_gas','diesel' ,'biomass_wood','biomass_other_solid',
             'renewable_solar', 'renewable_other', 'overall_usage', 'energy_id'
         ]
 
@@ -322,7 +323,7 @@ class EnergyCreateSerializer(serializers.ModelSerializer):
 
         # Energy fields that should default to 0 if not provided
         optional_energy_fields = [
-            'cooking_coal', 'coke_oven_coal', 'natural_gas', 'diesel',
+            'coking_coal', 'coke_oven_coal', 'natural_gas', 'diesel',
             'biomass_wood', 'biomass_other_solid'
         ]
         
@@ -357,7 +358,7 @@ class EnergyCreateSerializer(serializers.ModelSerializer):
         model = Energy
         fields = [
             'facility_id', 'category', 'DatePicker', 'hvac', 'production', 'stp', 
-            'admin_block', 'utilities', 'others', 'fuel_types', 'cooking_coal', 'coke_oven_coal',
+            'admin_block', 'utilities', 'others', 'fuel_types', 'coking_coal', 'coke_oven_coal',
             'natural_gas', 'diesel', 'biomass_wood', 'biomass_other_solid', 'renewable_solar',
             'renewable_other', 'energy_id'
         ]
@@ -420,7 +421,7 @@ class EnergyCreateSerializer(serializers.ModelSerializer):
 
         # Ensure the optional fields default to 0 if missing or invalid
         optional_energy_fields = [
-            'cooking_coal', 'coke_oven_coal', 'natural_gas', 'diesel', 
+            'coking_coal', 'coke_oven_coal', 'natural_gas', 'diesel', 
             'biomass_wood', 'biomass_other_solid'
         ]
         for field in optional_energy_fields:
@@ -454,7 +455,7 @@ class WaterSerializer(serializers.ModelSerializer):
     class Meta:
         model = Water
         fields = ['DatePicker','category','Generated_Water', 'Recycled_Water', 'Softener_usage', 
-                  'Boiler_usage', 'otherUsage', 'facility','water_id']
+                  'Boiler_usage', 'otherUsage', 'facility_id','water_id']
 
 class WaterCreateSerializer(serializers.ModelSerializer):
     facility_id = serializers.CharField(
@@ -576,26 +577,105 @@ class WaterCreateSerializer(serializers.ModelSerializer):
 class BiodiversitySerializer(serializers.ModelSerializer):
     class Meta:
         model = Biodiversity
-        fields = ['DatePicker','category','no_trees', 'species', 'age', 'height', 'width','totalArea','new_trees_planted','head_count', 'facility','biodiversity_id']
+        fields = ['facility_id','DatePicker','category','no_trees', 'species', 'age', 'height', 'width','totalArea','new_trees_planted','head_count', 'biodiversity_id']
 
 
 class BiodiversityCreateSerializer(serializers.ModelSerializer):
+    facility_id = serializers.CharField(
+        write_only=True, required=True,
+        error_messages={
+            'required': 'Facility ID is required.',
+            'null': 'Facility ID cannot be null.'
+        }
+    )
+    DatePicker = serializers.DateField(
+        required=True,
+        error_messages={
+            'required': 'Date is required.',
+            'invalid': 'Invalid date format. Please use YYYY-MM-DD.'
+        }
+    )
+    category = serializers.CharField(
+        required=True,
+        error_messages={'required': 'Category is required.'}
+    )
+    species = serializers.CharField(
+        required=True,
+        error_messages={'required': 'Species is required.'}
+    )
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        
+        biodiversity_fields = [
+            'no_trees', 'age', 'height', 'width', 'totalArea', 'new_trees_planted', 'head_count'
+        ]
+        
+        for field in biodiversity_fields:
+            self.fields[field] = serializers.FloatField(
+                required=True,
+                min_value=0,
+                error_messages={
+                    'required': f'{field.replace("_", " ").title()} is required.',
+                    'min_value': f'{field.replace("_", " ").title()} must be a positive number.'
+                }
+            )
+    
     class Meta:
         model = Biodiversity
-        fields = ['DatePicker','category','no_trees', 'species', 'age', 'height', 'width','totalArea','new_trees_planted','head_count', 'facility','biodiversity_id']
+        fields = [
+            'facility_id','DatePicker', 'category', 'no_trees', 'species', 'age', 'height', 'width',
+            'totalArea', 'new_trees_planted', 'head_count', 'biodiversity_id'
+        ]
+        extra_kwargs = {
+            'facility': {'read_only': True},
+            'biodiversity_id': {'read_only': True}
+        }
 
-    def validate_no_trees(self, value):
-        if value <= 0:
-            raise serializers.ValidationError("Number of trees must be a positive integer.")
-        return value
+    def validate(self, data):
+        facility_id = data.get('facility_id')
+        date = data.get('DatePicker')
+        try:
+            facility = Facility.objects.get(facility_id=facility_id)
+            data['facility'] = facility
+        except Facility.DoesNotExist:
+            raise serializers.ValidationError({"facility_id": "The selected facility does not exist."})
+
+        month = date.month
+        year = date.year
+
+        # Ensure there’s no existing Biodiversity entry for the same month and year
+        if self.instance is None:
+            if Biodiversity.objects.filter(
+                facility=facility,
+                DatePicker__year=year,
+                DatePicker__month=month
+            ).exists():
+                raise serializers.ValidationError({
+                    "non_field_errors": _("A Biodiversity entry for this facility already exists for this month.")
+                })
+        else:
+            # Exclude the current instance in the check when updating
+            existing_entry = Biodiversity.objects.filter(
+                facility=facility,
+                DatePicker__year=year,
+                DatePicker__month=month
+            ).exclude(biodiversity_id=self.instance.biodiversity_id)
+
+            if existing_entry.exists():
+                raise serializers.ValidationError({
+                    "non_field_errors": _("A different Biodiversity entry for this facility already exists for this month.")
+                })
+        
+        return data
     
     def create(self, validated_data):
         user = self.context['request'].user
-        if 'user' in validated_data:
-            validated_data.pop('user')
-        biodiversity = Biodiversity.objects.create(user=user, **validated_data)
-        return biodiversity
+        validated_data['user'] = user
+        validated_data.pop('facility_id', None)
 
+        biodiversity = Biodiversity.objects.create(**validated_data)
+        return biodiversity
 
 
 class LogisticesSerializer(serializers.ModelSerializer):

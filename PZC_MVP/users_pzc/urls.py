@@ -1,6 +1,6 @@
 
 from django.urls import   path
-from .views import RegisterView, LoginView, DashboardView, LogoutView,WasteCreateView,WasteView,WasteEditView,WasteDeleteView,EnergyCreateView,EnergyView,EnergyEditView,EnergyDeleteView,WaterView,WaterCreateView,WaterEditView,WaterDeleteView,BiodiversityCreateView,BiodiversityView,BiodiversityEditView,BiodiversityDeleteView,FacilityCreateView,FacilityView,FacilityEditView,FacilityDeleteView,LogisticesCreateView,LogisticesView,LogisticesEditView,LogisticesDeleteView,OrganizationCreate,OrganizationView,FoodWasteOverviewView,SolidWasteOverviewView,E_WasteOverviewView,Biomedical_WasteOverviewView,Liquid_DischargeOverviewView,OthersOverviewView,Waste_Sent_For_RecycleOverviewView,Waste_Sent_For_LandFillOverviewView,StackedWasteOverviewView,WasteOverallDonutChartView,SentToLandfillOverviewView,SentToRecycledOverviewView,HVACOverviewView,ProductionOverviewView,StpOverviewView,Admin_BlockOverviewView,Utilities_OverviewView,WasteViewCard_Over,EnergyViewCard_Over,Others_OverviewView,Renewable_EnergyOverView,StackedEnergyOverviewView,OverallUsageView,Fuel_Used_OperationsOverView,WaterViewCard_Over,Generated_WaterOverviewView,Recycle_WaterOverviewView,Softener_usageOverviewView,Boiler_usageOverviewView,otherUsage_OverviewView,StackedWaterOverviewView,EnergyAnalyticsView,WaterAnalyticsView
+from .views import RegisterView, LoginView, DashboardView, LogoutView,WasteCreateView,WasteView,WasteEditView,WasteDeleteView,EnergyCreateView,EnergyView,EnergyEditView,EnergyDeleteView,WaterView,WaterCreateView,WaterEditView,WaterDeleteView,BiodiversityCreateView,BiodiversityView,BiodiversityEditView,BiodiversityDeleteView,FacilityCreateView,FacilityView,FacilityEditView,FacilityDeleteView,LogisticesCreateView,LogisticesView,LogisticesEditView,LogisticesDeleteView,OrganizationCreate,OrganizationView,FoodWasteOverviewView,SolidWasteOverviewView,E_WasteOverviewView,Biomedical_WasteOverviewView,Liquid_DischargeOverviewView,OthersOverviewView,Waste_Sent_For_RecycleOverviewView,Waste_Sent_For_LandFillOverviewView,StackedWasteOverviewView,WasteOverallDonutChartView,SentToLandfillOverviewView,SentToRecycledOverviewView,HVACOverviewView,ProductionOverviewView,StpOverviewView,Admin_BlockOverviewView,Utilities_OverviewView,WasteViewCard_Over,EnergyViewCard_Over,Others_OverviewView,Renewable_EnergyOverView,StackedEnergyOverviewView,OverallUsageView,Fuel_Used_OperationsOverView,WaterViewCard_Over,Generated_WaterOverviewView,Recycle_WaterOverviewView,Softener_usageOverviewView,Boiler_usageOverviewView,otherUsage_OverviewView,StackedWaterOverviewView,EnergyAnalyticsView,WaterAnalyticsView,BiodiversityMetricsView
 from rest_framework_simplejwt.views import (
     TokenObtainPairView,
     TokenRefreshView,
@@ -55,8 +55,8 @@ urlpatterns = [
    #Apis for Biodiversity Crud Operations starts
    path('add_biodiversity/',BiodiversityCreateView.as_view(),name='add_biodiversity'),
    path('view_biodiversity/',BiodiversityView.as_view(),name='view_biodiversity'),
-   path('biodiversity_update/<int:pk>/', BiodiversityEditView.as_view(), name='biodiversity_update'),
-   path('biodiversity/<int:pk>/delete/', BiodiversityDeleteView.as_view(), name='biodiversity_delete'),
+   path('biodiversity_update/<str:biodiversity_id>/', BiodiversityEditView.as_view(), name='biodiversity_update'),
+   path('biodiversity_delete/<str:biodiversity_id>/', BiodiversityDeleteView.as_view(), name='biodiversity_delete'),
    #Apis for Biodiversity Crud Operations Ends
     
    #Apis for Logistices Crud Operations starts
@@ -116,4 +116,5 @@ urlpatterns = [
     #APis For Stacked Graphs donut Graphs Overview
     path('StackedWaterOverviewView/',StackedWaterOverviewView.as_view(),name="StackedWaterOverviewView"),
     path('WaterAnalyticsView/',WaterAnalyticsView.as_view(),name="WaterAnalyticsView"),
+    path('BiodiversityMetricsView/',BiodiversityMetricsView.as_view(),name="BiodiversityMetricsView")
 ]

@@ -1,7 +1,8 @@
 
 from datetime import datetime
 from collections import defaultdict
-from django.db.models import Sum, Value, FloatField
+from django.db.models import Sum, Value, FloatField,Min, Max
+
 from django.db.models.functions import Coalesce, Cast
 from django.utils import timezone
 from django.contrib.auth import authenticate
@@ -15,7 +16,7 @@ from .serializers import UserRegisterSerializer, UserLoginSerializer,WasteSerial
 from .models import CustomUser,Waste,Energy,Water,Biodiversity,Facility,Logistices,Org_registration
 from django.db.models import Q
 from django_filters.rest_framework import DjangoFilterBackend
-from users_pzc.filters import BiodiversityFilter,LogisticesFilter
+from users_pzc.filters import LogisticesFilter
 
 #Register View
 class RegisterView(APIView):
@@ -482,28 +483,66 @@ class BiodiversityCreateView(APIView):
 #biodiversity View
 class BiodiversityView(APIView):
     permission_classes = [IsAuthenticated]
-    filter_backends = [DjangoFilterBackend]
-    filterset_class = BiodiversityFilter
-    def get(self,request):
+    
+    def get(self, request):
         user = request.user
-        biodiversity_data = Biodiversity.objects.filter(user=user)
-        filtered_biodiversity_data = BiodiversityFilter(request.GET,queryset=biodiversity_data).qs
-        biodiversity_serializer = BiodiversitySerializer(filtered_biodiversity_data,many=True)
-        overall_total = sum(biodiversity.no_of_trees for biodiversity in biodiversity_data) 
-        user_data={
-            'email' : user.email,
-            'biodiversity_data':biodiversity_serializer.data,
-            'biodiversity_total':overall_total
+        facility_id = request.GET.get('facility_id', 'all')
+        year = request.GET.get('year')
+        
+        try:
+            if year:
+                year = int(year)
+            else:
+                current_date = datetime.now()
+                year = current_date.year - 1 if current_date.month < 4 else current_date.year
+
+            start_date = datetime(year, 4, 1)
+            end_date = datetime(year + 1, 3, 31)
+        except ValueError:
+            return Response(
+                {"error": "Invalid fiscal year format. Please provide a valid year, e.g., 2023."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        biodiversity_data = Biodiversity.objects.filter(user=user, DatePicker__range=(start_date, end_date))
+        
+        if facility_id.lower() != 'all':
+            biodiversity_data = biodiversity_data.filter(facility__facility_id=facility_id)
+            print(f"Filtered Biodiversity Data Count by Facility: {biodiversity_data.count()}")
+        else:
+            print("Facility ID is 'all'; skipping facility filtering.")
+        
+        if not biodiversity_data.exists():
+            return Response(
+                {
+                    "message": "No data available for the selected facility and fiscal year.",
+                    "email": user.email,
+                    "year": year,
+                    "biodiversity_data": [],
+                    "overall_biodiversity_usage_total": 0
+                },
+                status=status.HTTP_200_OK
+            )
+        
+        biodiversity_serializer = BiodiversitySerializer(biodiversity_data, many=True)
+        overall_total = sum(biodiversity.no_trees for biodiversity in biodiversity_data) 
+        
+        user_data = {
+            "email": user.email,
+            "biodiversity_data": biodiversity_serializer.data,
+            "overall_biodiversity_usage_total": overall_total
         }
-        return Response(user_data,status=status.HTTP_200_OK)
+        
+        return Response(user_data, status=status.HTTP_200_OK)
+
 
 #BiodiversityEdit
 class BiodiversityEditView(APIView):
     permission_classes = [IsAuthenticated]
 
-    def put(self, request, pk):
+    def put(self, request, biodiversity_id):
         try:
-            biodiversity = Biodiversity.objects.get(pk=pk, user=request.user)
+            biodiversity = Biodiversity.objects.get(biodiversity_id=biodiversity_id, user=request.user)
         except Biodiversity.DoesNotExist:
             return Response({"error": "Biodiversity data not found."}, status=status.HTTP_404_NOT_FOUND)
 
@@ -517,9 +556,9 @@ class BiodiversityEditView(APIView):
 class BiodiversityDeleteView(APIView):
     permission_classes = [IsAuthenticated]
 
-    def delete(self, request, pk):
+    def delete(self, request, biodiversity_id):
         try:
-            biodiversity = Biodiversity.objects.get(pk=pk, user=request.user)
+            biodiversity = Biodiversity.objects.get(biodiversity_id=biodiversity_id, user=request.user)
         except Biodiversity.DoesNotExist:
             return Response({"error": "Biodiversity data not found."}, status=status.HTTP_404_NOT_FOUND)
 
@@ -709,65 +748,58 @@ class OverallUsageView(APIView):
 '''OverViwe of allTotal_Usages'''
     
 '''Waste Overviewgraphs and Individual Line charts and donut charts Starts'''
-
 class WasteViewCard_Over(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
         user = request.user
         facility_id = request.GET.get('facility_id', 'all')
-        facility_location = request.GET.get('facility_location', None)
-        year = request.GET.get('year', None)
+        facility_location = request.GET.get('facility_location')
+        year = request.GET.get('year')
 
         try:
-            if facility_id != 'all':
-                if not Facility.objects.filter(facility_id=facility_id).exists():
-                    return Response({'error': 'Invalid facility ID.'}, status=status.HTTP_400_BAD_REQUEST)
+            if facility_id != 'all' and not Facility.objects.filter(facility_id=facility_id).exists():
+                return Response({'error': 'Invalid facility ID.'}, status=status.HTTP_400_BAD_REQUEST)
 
             if year:
                 try:
-                    year = int(year)  # Convert year to integer
-                    if year < 1900 or year > datetime.now().year + 1: 
+                    year = int(year)
+                    if year < 1900 or year > datetime.now().year + 1:
                         return Response({'error': 'Invalid year parameter.'}, status=status.HTTP_400_BAD_REQUEST)
                 except ValueError:
                     return Response({'error': 'Year must be an integer.'}, status=status.HTTP_400_BAD_REQUEST)
 
-            filters = {'user': user}
-            waste_data = Waste.objects.filter(**filters)
-
+            today = datetime.now()
             if year:
-                start_date = datetime(year, 4, 1)  # Start of fiscal year (April 1st)
-                end_date = datetime(year + 1, 3, 31)  # End of fiscal year (March 31st next year)
-                filters['DatePicker__range'] = (start_date, end_date)
-                waste_data = waste_data.filter(**filters)
+                start_date = datetime(year, 4, 1)
+                end_date = datetime(year + 1, 3, 31)
             else:
-                today = datetime.now()
-                if today.month >= 4:  # Current fiscal year
+                if today.month >= 4:
                     start_date = datetime(today.year, 4, 1)
                     end_date = datetime(today.year + 1, 3, 31)
-                else:  # Last fiscal year (if before April)
+                else:
                     start_date = datetime(today.year - 1, 4, 1)
                     end_date = datetime(today.year, 3, 31)
-                filters['DatePicker__range'] = (start_date, end_date)
-                waste_data = waste_data.filter(**filters)
 
-            # Filter by facility_id if provided and valid
+            waste_data = Waste.objects.filter(user=user, DatePicker__range=(start_date, end_date))
+
             if facility_id != 'all':
                 waste_data = waste_data.filter(facility__facility_id=facility_id)
-
-            # Filter by facility_location if provided
             if facility_location:
-                waste_data = waste_data.filter(facility__facility_location__icontains=facility_location)
+                waste_data = waste_data.filter(facility__location__icontains=facility_location)
 
+            # Waste fields to aggregate
             waste_fields = [
                 'food_waste', 'solid_Waste', 'E_Waste', 'Biomedical_waste',
                 'liquid_discharge', 'other_waste', 'Recycle_waste', 'Landfill_waste'
             ]
 
-            # Initialize response data
-            response_data = {'overall_water_totals': {}, 'facility_waste_data': {}}
+            # Initialize response data structure
+            response_data = {'overall_waste_totals': {}, 'facility_waste_data': {}}
 
+            # Calculate totals per facility and overall for each waste type
             for field in waste_fields:
+                # Facility-wise aggregation for each waste type
                 facility_waste_data = (
                     waste_data
                     .values('facility__facility_name')
@@ -775,7 +807,7 @@ class WasteViewCard_Over(APIView):
                     .order_by('-total')
                 )
 
-                # Prepare facility-wise data for each waste type
+                # Populate facility-wise waste data
                 response_data['facility_waste_data'][field] = [
                     {
                         "facility_name": entry['facility__facility_name'],
@@ -784,14 +816,16 @@ class WasteViewCard_Over(APIView):
                     for entry in facility_waste_data
                 ]
 
+                # Calculate overall total for the current waste field
                 overall_total = waste_data.aggregate(total=Sum(field))['total'] or 0
                 response_data['overall_waste_totals'][f"overall_{field}"] = overall_total
 
             return Response(response_data, status=status.HTTP_200_OK)
 
         except Exception as e:
-            print(f"An error occurred: {e}")
-            return Response({'error': 'An error occurred while processing your request.'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            error_message = f"An error occurred: {str(e)}"
+            print(error_message)
+            return Response({'error': error_message}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 class FoodWasteOverviewView(APIView):
     permission_classes = [IsAuthenticated]
@@ -2046,7 +2080,7 @@ class EnergyViewCard_Over(APIView):
 
             energy_fields = [
                 'hvac', 'production', 'stp', 'admin_block',
-                'utilities', 'others', 'renewable_solar', 'renewable_other', 'cooking_coal', 
+                'utilities', 'others', 'renewable_solar', 'renewable_other', 'coking_coal', 
                 'coke_oven_coal', 'natural_gas', 'diesel', 'biomass_wood', 'biomass_other_solid'
             ]
 
@@ -2092,7 +2126,7 @@ class EnergyViewCard_Over(APIView):
 
             # Calculate fuel used in operations total across all facilities
             fuel_used_in_operations_total = energy_data.aggregate(
-                fuel_used_in_operations=Sum('cooking_coal') + Sum('coke_oven_coal') +
+                fuel_used_in_operations=Sum('coking_coal') + Sum('coke_oven_coal') +
                                          Sum('natural_gas') + Sum('diesel') +
                                          Sum('biomass_wood') + Sum('biomass_other_solid')
             )['fuel_used_in_operations'] or 0
@@ -2102,7 +2136,7 @@ class EnergyViewCard_Over(APIView):
             fuel_used_facility_data = (
                 energy_data
                 .values('facility__facility_name')
-                .annotate(fuel_used_in_operations=Sum('cooking_coal') + Sum('coke_oven_coal') +
+                .annotate(fuel_used_in_operations=Sum('coking_coal') + Sum('coke_oven_coal') +
                           Sum('natural_gas') + Sum('diesel') +
                           Sum('biomass_wood') + Sum('biomass_other_solid'))
                 .order_by('-fuel_used_in_operations')
@@ -2924,7 +2958,7 @@ class Fuel_Used_OperationsOverView(APIView):
             monthly_fuel_used_in_operations = (
                 Energy.objects.filter(**filters)
                 .values('DatePicker__month')
-                .annotate(total_fuel_used_in_operations=Sum('cooking_coal') + Sum('coke_oven_coal') + Sum('natural_gas') + Sum('diesel') + Sum('biomass_wood') + Sum('biomass_other_solid'))
+                .annotate(total_fuel_used_in_operations=Sum('coking_coal') + Sum('coke_oven_coal') + Sum('natural_gas') + Sum('diesel') + Sum('biomass_wood') + Sum('biomass_other_solid'))
                 .order_by('DatePicker__month')
             )
 
@@ -2963,7 +2997,7 @@ class Fuel_Used_OperationsOverView(APIView):
             facility_fuel_used_in_operations = (
                 Energy.objects.filter(**facility_filters)
                 .values('facility__facility_name')
-                .annotate(total_fuel_used_in_operations=Sum('cooking_coal') + Sum('coke_oven_coal') + Sum('natural_gas') + Sum('diesel') + Sum('biomass_wood') + Sum('biomass_other_solid'))
+                .annotate(total_fuel_used_in_operations=Sum('coking_coal') + Sum('coke_oven_coal') + Sum('natural_gas') + Sum('diesel') + Sum('biomass_wood') + Sum('biomass_other_solid'))
                 .order_by('-total_fuel_used_in_operations')
             )
 
@@ -3888,7 +3922,6 @@ class WaterAnalyticsView(APIView):
             else:
                 year = today.year
 
-            # Define the fiscal year date range
             if today.month >= 4:
                 start_date = datetime(year, 4, 1)
                 end_date = datetime(year + 1, 3, 31)
@@ -3898,7 +3931,6 @@ class WaterAnalyticsView(APIView):
 
             filters['DatePicker__range'] = (start_date, end_date)
 
-            # Facility filtering
             if facility_id.lower() != 'all':
                 try:
                     Facility.objects.get(facility_id=facility_id)
@@ -3952,5 +3984,362 @@ class WaterAnalyticsView(APIView):
         except Exception as e:
             print(f"Error occurred: {e}")
             return Response({'error': f'An error occurred: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-        
+  
+  
+      
 '''Water Overview Cards ,Graphs and Individual Line Charts and donut Charts Ends'''
+# class BiodiversityMetricsView(APIView):
+#     permission_classes = [IsAuthenticated]
+
+#     def get(self, request):
+#         user = request.user
+#         facility_id = request.GET.get('facility_id', 'all')
+#         year = request.GET.get('year')
+        
+#         try:
+#             # Validate and parse year
+#             if year:
+#                 try:
+#                     year = int(year)
+#                     if year < 1900 or year > datetime.now().year + 1:
+#                         return Response({'error': 'Invalid year parameter.'}, status=status.HTTP_400_BAD_REQUEST)
+#                 except ValueError:
+#                     return Response({'error': 'Year must be an integer.'}, status=status.HTTP_400_BAD_REQUEST)
+
+#             # Financial year date range
+#             today = datetime.now()
+#             if year:
+#                 start_date = datetime(year, 4, 1)
+#                 end_date = datetime(year + 1, 3, 31)
+#             else:
+#                 if today.month >= 4:
+#                     start_date = datetime(today.year, 4, 1)
+#                     end_date = datetime(today.year + 1, 3, 31)
+#                 else:
+#                     start_date = datetime(today.year - 1, 4, 1)
+#                     end_date = datetime(today.year, 3, 31)
+
+#             # Filter data based on user, facility, and date range
+#             filters = {'user': user, 'DatePicker__range': (start_date, end_date)}
+#             if facility_id != 'all':
+#                 filters['facility__facility_id'] = facility_id
+
+#             biodiversity_data = Biodiversity.objects.filter(**filters)
+
+#             if not biodiversity_data.exists():
+#                 return Response({
+#                     "message": "No biodiversity data available for the selected facility and fiscal year."
+#                 }, status=status.HTTP_200_OK)
+
+#             # Calculating metrics
+#             total_trees = biodiversity_data.aggregate(total_trees=Sum('no_trees'))['total_trees'] or 0
+#             total_new_trees = biodiversity_data.aggregate(total_new_trees=Sum('new_trees_planted'))['total_new_trees'] or 0
+#             total_area = biodiversity_data.aggregate(total_area=Sum('totalArea'))['total_area'] or 0
+#             head_count = biodiversity_data.aggregate(head_count=Sum('head_count'))['head_count'] or 0
+
+#             # Metric calculations
+#             green_belt_density = (total_trees / total_area) * 10000 if total_area else 0
+#             trees_per_capita = total_trees / head_count if head_count else 0
+
+#             # Carbon Offset and CO2 sequestration
+#             carbon_offset = sum(0.00006 * entry.width * entry.width * entry.height * entry.no_trees for entry in biodiversity_data)
+#             biomass = sum(0.0998 * entry.width * entry.width * entry.height for entry in biodiversity_data)
+#             co2_sequestration_rate = carbon_offset # Assuming offset per year
+
+#             # Response data
+#             response_data = {
+#                 "facility_id": facility_id,
+#                 "year": year or today.year,
+#                 "metrics": {
+#                     "total_trees": total_trees,
+#                     "carbon_offset": carbon_offset,
+#                     "green_belt_density": green_belt_density,
+#                     "trees_per_capita": trees_per_capita,
+#                     "total_new_trees": total_new_trees,
+#                     "biomass": biomass,
+#                     "co2_sequestration_rate": co2_sequestration_rate
+#                 }
+#             }
+
+#             return Response(response_data, status=status.HTTP_200_OK)
+
+#         except Exception as e:
+#             return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+
+# # class BiodiversityMetricsView(APIView):
+# #     permission_classes = [IsAuthenticated]
+
+# #     def get(self, request):
+# #         user = request.user
+# #         facility_id = request.GET.get('facility_id', 'all')
+# #         year = request.GET.get('year')
+        
+# #         try:
+# #             # Validate and parse year
+# #             if year:
+# #                 try:
+# #                     year = int(year)
+# #                     if year < 1900 or year > datetime.now().year + 1:
+# #                         return Response({'error': 'Invalid year parameter.'}, status=status.HTTP_400_BAD_REQUEST)
+# #                 except ValueError:
+# #                     return Response({'error': 'Year must be an integer.'}, status=status.HTTP_400_BAD_REQUEST)
+
+# #             # Financial year date range
+# #             today = datetime.now()
+# #             if year:
+# #                 start_date = datetime(year, 4, 1)
+# #                 end_date = datetime(year + 1, 3, 31)
+# #             else:
+# #                 if today.month >= 4:
+# #                     start_date = datetime(today.year, 4, 1)
+# #                     end_date = datetime(today.year + 1, 3, 31)
+# #                 else:
+# #                     start_date = datetime(today.year - 1, 4, 1)
+# #                     end_date = datetime(today.year, 3, 31)
+
+# #             # Filter data based on user, facility, and date range
+# #             filters = {'user': user, 'DatePicker__range': (start_date, end_date)}
+# #             if facility_id != 'all':
+# #                 filters['facility__facility_id'] = facility_id
+
+# #             biodiversity_data = Biodiversity.objects.filter(**filters)
+
+# #             if not biodiversity_data.exists():
+# #                 return Response({
+# #                     "message": "No biodiversity data available for the selected facility and fiscal year."
+# #                 }, status=status.HTTP_200_OK)
+
+# #             # Calculate total metrics
+# #             total_trees = biodiversity_data.aggregate(total_trees=Sum('no_trees'))['total_trees'] or 0
+# #             total_new_trees = biodiversity_data.aggregate(total_new_trees=Sum('new_trees_planted'))['total_new_trees'] or 0
+# #             total_area = biodiversity_data.aggregate(total_area=Sum('totalArea'))['total_area'] or 0
+# #             head_count = biodiversity_data.aggregate(head_count=Sum('head_count'))['head_count'] or 0
+
+# #             # Metric calculations
+# #             green_belt_density = (total_trees / total_area) * 10000 if total_area else 0
+# #             trees_per_capita = total_trees / head_count if head_count else 0
+
+# #             # Calculate year-wise CO2 sequestration and biomass
+# #             year_wise_data = {}
+# #             current_year = start_date.year
+
+# #             while current_year <= end_date.year:
+# #                 year_start = datetime(current_year, 4, 1)
+# #                 year_end = datetime(current_year + 1, 3, 31)
+
+# #                 # Filter for the current fiscal year
+# #                 yearly_data = biodiversity_data.filter(DatePicker__range=(year_start, year_end))
+
+# #                 # Calculate CO2 sequestration and biomass for the current fiscal year
+# #                 carbon_offset = sum(0.00006 * entry.width * entry.width * entry.height * entry.no_trees for entry in yearly_data)
+# #                 biomass = sum(0.0998 * entry.width * entry.width * entry.height for entry in yearly_data)
+
+# #                 year_wise_data[current_year] = {
+# #                     "carbon_offset": carbon_offset,
+# #                     "biomass": biomass,
+# #                     "co2_sequestration_rate": carbon_offset  # Assuming offset per year
+# #                 }
+
+# #                 current_year += 1
+
+# #             # Response data
+# #             response_data = {
+# #                 "facility_id": facility_id,
+# #                 "year": year or today.year,
+# #                 "metrics": {
+# #                     "total_trees": total_trees,
+# #                     "green_belt_density": green_belt_density,
+# #                     "trees_per_capita": trees_per_capita,
+# #                     "total_new_trees": total_new_trees
+# #                 },
+# #                 "year_wise_data": year_wise_data
+# #             }
+
+# #             return Response(response_data, status=status.HTTP_200_OK)
+
+# #         except Exception as e:
+# #             error_message = f"An error occurred: {str(e)}"
+# #             print(error_message)
+# #             return Response({'error': error_message}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+# class BiodiversityMetricsView(APIView):
+#     permission_classes = [IsAuthenticated]
+
+#     def get(self, request):
+#         user = request.user
+#         facility_id = request.GET.get('facility_id', 'all')
+#         year = request.GET.get('year')
+        
+#         try:
+#             # Validate and parse the year
+#             if year:
+#                 try:
+#                     year = int(year)
+#                     if year < 1900 or year > datetime.now().year + 1:
+#                         return Response({'error': 'Invalid year parameter.'}, status=status.HTTP_400_BAD_REQUEST)
+#                 except ValueError:
+#                     return Response({'error': 'Year must be an integer.'}, status=status.HTTP_400_BAD_REQUEST)
+
+#             # Set fiscal year date range
+#             today = datetime.now()
+#             if year:
+#                 start_date = datetime(year, 4, 1)
+#                 end_date = datetime(year + 1, 3, 31)
+#             else:
+#                 if today.month >= 4:
+#                     start_date = datetime(today.year, 4, 1)
+#                     end_date = datetime(today.year + 1, 3, 31)
+#                 else:
+#                     start_date = datetime(today.year - 1, 4, 1)
+#                     end_date = datetime(today.year, 3, 31)
+
+#             # Filter biodiversity data based on user, facility, and date range
+#             filters = {'user': user, 'DatePicker__range': (start_date, end_date)}
+#             if facility_id != 'all':
+#                 filters['facility__facility_id'] = facility_id
+
+#             biodiversity_data = Biodiversity.objects.filter(**filters)
+
+#             if not biodiversity_data.exists():
+#                 return Response({
+#                     "message": "No biodiversity data available for the selected facility and fiscal year."
+#                 }, status=status.HTTP_200_OK)
+
+#             # Calculate metrics
+#             total_trees = biodiversity_data.aggregate(total_trees=Sum('no_trees'))['total_trees'] or 0
+#             total_new_trees = biodiversity_data.aggregate(total_new_trees=Sum('new_trees_planted'))['total_new_trees'] or 0
+#             total_area = biodiversity_data.aggregate(total_area=Sum('totalArea'))['total_area'] or 0
+#             head_count = biodiversity_data.aggregate(head_count=Sum('head_count'))['head_count'] or 0
+
+#             # Metric calculations
+#             green_belt_density = (total_trees / total_area) * 10000 if total_area else 0
+#             trees_per_capita = total_trees / head_count if head_count else 0
+
+#             # Find initial and final years for the CO2 sequestration calculation
+#             initial_year = biodiversity_data.aggregate(Min('DatePicker'))['DatePicker__min'].year
+#             final_year = biodiversity_data.aggregate(Max('DatePicker'))['DatePicker__max'].year
+
+#             # Calculate carbon offset and CO2 sequestration rate
+#             carbon_offset = sum(0.00006 * entry.width * entry.width * entry.height * entry.no_trees for entry in biodiversity_data)
+#             biomass = sum(0.0998 * entry.width * entry.width * entry.height for entry in biodiversity_data)
+
+#             # Calculate cumulative CO2 sequestration rate across years
+#             co2_sequestration_rate = 0
+#             for entry in biodiversity_data:
+#                 entry_year = entry.DatePicker.year
+#                 year_difference = entry_year - initial_year + 1  # Avoid division by zero
+#                 co2_sequestration_rate += (0.00006 * entry.width * entry.width * entry.height * entry.no_trees) / year_difference
+
+#             # Prepare response data
+#             response_data = {
+#                 "facility_id": facility_id,
+#                 "year": year or today.year,
+#                 "metrics": {
+#                     "total_trees": total_trees,
+#                     "carbon_offset": carbon_offset,
+#                     "green_belt_density": green_belt_density,
+#                     "trees_per_capita": trees_per_capita,
+#                     "total_new_trees": total_new_trees,
+#                     "biomass": biomass,
+#                     "co2_sequestration_rate": co2_sequestration_rate
+#                 }
+#             }
+
+#             return Response(response_data, status=status.HTTP_200_OK)
+
+#         except Exception as e:
+#             error_message = f"An error occurred while processing biodiversity metrics: {str(e)}"
+#             return Response({'error': error_message}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+class BiodiversityMetricsView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        user = request.user
+        facility_id = request.GET.get('facility_id', 'all')
+        year = request.GET.get('year')
+        
+        try:
+            # Validate and parse the year
+            if year:
+                try:
+                    year = int(year)
+                    if year < 1900 or year > datetime.now().year + 1:
+                        return Response({'error': 'Invalid year parameter.'}, status=status.HTTP_400_BAD_REQUEST)
+                except ValueError:
+                    return Response({'error': 'Year must be an integer.'}, status=status.HTTP_400_BAD_REQUEST)
+
+            # Set fiscal year date range
+            today = datetime.now()
+            if year:
+                start_date = datetime(year, 4, 1)
+                end_date = datetime(year + 1, 3, 31)
+            else:
+                if today.month >= 4:
+                    start_date = datetime(today.year, 4, 1)
+                    end_date = datetime(today.year + 1, 3, 31)
+                else:
+                    start_date = datetime(today.year - 1, 4, 1)
+                    end_date = datetime(today.year, 3, 31)
+
+            # Filter biodiversity data based on user, facility, and date range
+            filters = {'user': user, 'DatePicker__range': (start_date, end_date)}
+            if facility_id != 'all':
+                filters['facility__facility_id'] = facility_id
+
+            biodiversity_data = Biodiversity.objects.filter(**filters)
+
+            if not biodiversity_data.exists():
+                return Response({
+                    "message": "No biodiversity data available for the selected facility and fiscal year."
+                }, status=status.HTTP_200_OK)
+
+            # Calculate metrics
+            total_trees = biodiversity_data.aggregate(total_trees=Sum('no_trees'))['total_trees'] or 0
+            total_new_trees = biodiversity_data.aggregate(total_new_trees=Sum('new_trees_planted'))['total_new_trees'] or 0
+            total_area = biodiversity_data.aggregate(total_area=Sum('totalArea'))['total_area'] or 0
+            head_count = biodiversity_data.aggregate(head_count=Sum('head_count'))['head_count'] or 0
+
+            # Metric calculations
+            green_belt_density = (total_trees / total_area) * 10000 if total_area else 0
+            trees_per_capita = total_trees / head_count if head_count else 0
+
+            # Find the final year for the CO2 sequestration calculation
+            final_year = biodiversity_data.aggregate(Max('DatePicker'))['DatePicker__max'].year
+
+            # Find the previous year
+            previous_year = final_year - 1
+
+            # Get the CO2 sequestration values for the final year and previous year
+            co2_final_year = 0
+            co2_previous_year = 0
+            for entry in biodiversity_data:
+                if entry.DatePicker.year == final_year:
+                    co2_final_year += 0.00006 * entry.width * entry.width * entry.height * entry.no_trees
+                elif entry.DatePicker.year == previous_year:
+                    co2_previous_year += 0.00006 * entry.width * entry.width * entry.height * entry.no_trees
+
+            # Calculate the CO2 sequestration difference
+            co2_sequestration_rate = co2_final_year - co2_previous_year
+
+            # Prepare response data
+            response_data = {
+                "facility_id": facility_id,
+                "year": year or today.year,
+                "metrics": {
+                    "total_trees": total_trees,
+                    "carbon_offset": co2_final_year,
+                    "green_belt_density": green_belt_density,
+                    "trees_per_capita": trees_per_capita,
+                    "total_new_trees": total_new_trees,
+                    "biomass": sum(0.0998 * entry.width * entry.width * entry.height for entry in biodiversity_data),
+                    "co2_sequestration_rate": co2_sequestration_rate
+                }
+            }
+
+            return Response(response_data, status=status.HTTP_200_OK)
+
+        except Exception as e:
+            error_message = f"An error occurred while processing biodiversity metrics: {str(e)}"
+            return Response({'error': error_message}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
