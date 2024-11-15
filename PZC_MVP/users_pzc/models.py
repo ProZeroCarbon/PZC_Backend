@@ -110,7 +110,6 @@ class Energy(models.Model):
     admin_block = models.FloatField(default=0.0)
     utilities = models.FloatField(default=0.0)
     others = models.FloatField(default=0.0)
-    fuel_types = models.CharField(max_length=255)
     coking_coal = models.FloatField(default=0.0)
     coke_oven_coal = models.FloatField(default=0.0)
     natural_gas = models.FloatField(default=0.0)

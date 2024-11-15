@@ -116,5 +116,5 @@ urlpatterns = [
     #APis For Stacked Graphs donut Graphs Overview
     path('StackedWaterOverviewView/',StackedWaterOverviewView.as_view(),name="StackedWaterOverviewView"),
     path('WaterAnalyticsView/',WaterAnalyticsView.as_view(),name="WaterAnalyticsView"),
-    path('BiodiversityMetricsView/',BiodiversityMetricsView.as_view(),name="BiodiversityMetricsView")
+    path('BiodiversityMetricsView/',BiodiversityMetricsView.as_view(),name="BiodiversityMetricsView"),
 ]

@@ -290,7 +290,7 @@ class EnergySerializer(serializers.ModelSerializer):
         model = Energy
         fields = [
             'user_id', 'facility_id', 'category', 'DatePicker', 'hvac', 'production', 'stp', 
-            'admin_block', 'utilities', 'others', 'fuel_types','coking_coal','coke_oven_coal','natural_gas','diesel' ,'biomass_wood','biomass_other_solid',
+            'admin_block', 'utilities', 'others','coking_coal','coke_oven_coal','natural_gas','diesel' ,'biomass_wood','biomass_other_solid',
             'renewable_solar', 'renewable_other', 'overall_usage', 'energy_id'
         ]
 
@@ -312,10 +312,6 @@ class EnergyCreateSerializer(serializers.ModelSerializer):
     category = serializers.CharField(
         required=True,
         error_messages={'required': 'Category is required.'}
-    )
-    fuel_types = serializers.CharField(
-        required=True,
-        error_messages={'required': 'Fuel types are required.'}
     )
 
     def __init__(self, *args, **kwargs):
@@ -358,7 +354,7 @@ class EnergyCreateSerializer(serializers.ModelSerializer):
         model = Energy
         fields = [
             'facility_id', 'category', 'DatePicker', 'hvac', 'production', 'stp', 
-            'admin_block', 'utilities', 'others', 'fuel_types', 'coking_coal', 'coke_oven_coal',
+            'admin_block', 'utilities', 'others', 'coking_coal', 'coke_oven_coal',
             'natural_gas', 'diesel', 'biomass_wood', 'biomass_other_solid', 'renewable_solar',
             'renewable_other', 'energy_id'
         ]
