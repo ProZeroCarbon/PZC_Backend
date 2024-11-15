@@ -464,124 +464,6 @@ class WaterCreateView(APIView):
         return Response(serializer.errors,status=status.HTTP_400_BAD_REQUEST)
 
 #WaterView
-# class WaterView(APIView):
-#     permission_classes = [IsAuthenticated]
-    
-#     def get(self, request):
-#         user = request.user
-#         facility_id = request.GET.get('facility_id', 'all')
-#         year = request.GET.get('year')
-#         try:
-#             if year:
-#                 year = int(year)
-#             else:
-#                 current_date = datetime.now()
-#                 year = current_date.year - 1 if current_date.month < 4 else current_date.year
-
-#             start_date = datetime(year, 4, 1)
-#             end_date = datetime(year + 1, 3, 31)
-#         except ValueError:
-#             return Response(
-#                 {"error": "Invalid fiscal year format. Please provide a valid year, e.g., 2023."},
-#                 status=status.HTTP_400_BAD_REQUEST
-#             )
-#         water_data = Water.objects.filter(user=user, DatePicker__range=(start_date, end_date))
-#         if facility_id.lower() != 'all':
-#             water_data = water_data.filter(facility__facility_id=facility_id)
-#             print(f"Filtered Water Data Count by Facility: {water_data.count()}")
-#         else:
-#             print("Facility ID is 'all'; skipping facility filtering.")
-        
-#         if not water_data.exists():
-#             return Response(
-#                 {
-#                     "message": "No data available for the selected facility and fiscal year.",
-#                     "email": user.email,
-#                     "year": year,
-#                     "water_data": [],
-#                     "overall_water_usage_total": 0
-#                 },
-#                 status=status.HTTP_200_OK
-#             )
-        
-#         water_serializer = WaterSerializer(water_data, many=True)
-#         overall_total = sum(water.overall_usage for water in water_data)
-        
-#         user_data = {
-#             "email": user.email,
-#             "water_data": water_serializer.data,
-#             "overall_water_usage_total": overall_total
-#         }
-        
-#         return Response(user_data, status=status.HTTP_200_OK)
-
-
-# class WaterView(APIView):
-#     permission_classes = [IsAuthenticated]
-    
-#     def get(self, request):
-#         user = request.user
-#         facility_id = request.GET.get('facility_id', 'all')
-#         year = request.GET.get('year')
-        
-#         try:
-#             if year:
-#                 year = int(year)
-#             else:
-#                 current_date = datetime.now()
-#                 year = current_date.year - 1 if current_date.month < 4 else current_date.year
-
-#             start_date = datetime(year, 4, 1)
-#             end_date = datetime(year + 1, 3, 31)
-#         except ValueError:
-#             return Response(
-#                 {"error": "Invalid fiscal year format. Please provide a valid year, e.g., 2023."},
-#                 status=status.HTTP_400_BAD_REQUEST
-#             )
-        
-#         water_data = Water.objects.filter(user=user, DatePicker__range=(start_date, end_date))
-#         if not water_data.exists() and not request.GET.get('year'):
-#             latest_year = year
-#             while not water_data.exists() and latest_year > 2000:
-#                 latest_year -= 1
-#                 start_date = datetime(latest_year, 4, 1)
-#                 end_date = datetime(latest_year + 1, 3, 31)
-#                 water_data = Water.objects.filter(user=user, DatePicker__range=(start_date, end_date))
-#             year = latest_year
-        
-#         if facility_id.lower() != 'all':
-#             water_data = water_data.filter(facility__facility_id=facility_id)
-#             print(f"Filtered water Data Count by Facility: {water_data.count()}")
-#         else:
-#             print("Facility ID is 'all'; skipping facility filtering.")
-        
-#         if not water_data.exists():
-#             return Response(
-#                 {
-#                     "message": "No data available for the selected facility and fiscal year.",
-#                     "email": user.email,
-#                     "year": year,
-#                     "water_data": [],
-#                     "overall_water_usage_total": 0
-#                 },
-#                 status=status.HTTP_200_OK
-#             )
-        
-#         # Use the correct serializer (waterSerializer)
-#         water_serializer = WaterSerializer(water_data, many=True)
-        
-#         # Calculate overall total
-#         overall_total = sum(water.overall_usage for water in water_data)
-        
-#         user_data = {
-#             "year":year,
-#             "email": user.email,
-#             "energy_data": water_serializer.data,
-#             "overall_energy_usage_total": overall_total
-#         }
-        
-#         return Response(user_data, status=status.HTTP_200_OK)
-
 
 class WaterView(APIView):
     permission_classes = [IsAuthenticated]
@@ -595,7 +477,7 @@ class WaterView(APIView):
             if year:
                 year = int(year)
             else:
-                latest_date = Waste.objects.filter(user=user).aggregate(latest_date=Max('DatePicker'))['latest_date']
+                latest_date = Water.objects.filter(user=user).aggregate(latest_date=Max('DatePicker'))['latest_date']
                 
                 if latest_date:
                     year = latest_date.year if latest_date.month >= 4 else latest_date.year - 1
@@ -633,6 +515,7 @@ class WaterView(APIView):
         
         water_serializer = WaterSerializer(water_data, many=True)
         overall_total = sum(water.overall_usage for water in water_data)
+        
         
         user_data = {
             "email": user.email,
@@ -870,21 +753,107 @@ class LogoutView(APIView):
     
     
 '''OverViwe of allTotal_Usages '''
+# class OverallUsageView(APIView):
+#     permission_classes = [IsAuthenticated]
+
+#     def get(self, request):
+#         user = request.user
+#         facility_id = request.GET.get('facility_id', 'all')
+#         year = request.GET.get('year')
+
+#         try:
+#             if year:
+#                 year = int(year)
+#             else:
+#                 current_date = datetime.now()
+#                 year = current_date.year - 1 if current_date.month < 4 else current_date.year
+
+#             start_date = datetime(year, 4, 1)
+#             end_date = datetime(year + 1, 3, 31)
+#         except ValueError:
+#             return Response(
+#                 {"error": "Invalid fiscal year format. Please provide a valid year, e.g., 2023."},
+#                 status=status.HTTP_400_BAD_REQUEST
+#             )
+
+#         overall_data = {
+#             "waste_usage": 0,
+#             "energy_usage": 0,
+#             "water_usage": 0,
+#             "biodiversity_usage": 0,
+#             "logistics_usage": 0,
+#         }
+
+#         filters = {'user': user, 'DatePicker__range': (start_date, end_date)}
+#         if facility_id.lower() != 'all':
+#             filters['facility__facility_id'] = facility_id
+
+#         waste_data = Waste.objects.filter(**filters)
+#         overall_data["waste_usage"] = waste_data.aggregate(
+#             total=Sum('food_waste') + Sum('solid_Waste') + Sum('E_Waste') + 
+#                   Sum('Biomedical_waste') + Sum('other_waste')
+#         )['total'] or 0
+
+#         energy_data = Energy.objects.filter(**filters)
+#         overall_data["energy_usage"] = energy_data.aggregate(
+#             total=Sum('hvac') + Sum('production') + Sum('stp') + 
+#                   Sum('admin_block') + Sum('utilities') + Sum('others')
+#         )['total'] or 0
+
+#         # Water usage
+#         water_data = Water.objects.filter(**filters)
+#         overall_data["water_usage"] = water_data.aggregate(total=Sum('overall_usage'))['total'] or 0
+
+#         # Biodiversity usage
+#         biodiversity_data = Biodiversity.objects.filter(**filters)
+#         overall_data["biodiversity_usage"] = biodiversity_data.aggregate(total=Sum('overall_Trees'))['total'] or 0
+
+#         # Logistics usage
+#         logistics_data = Logistices.objects.filter(**filters)
+#         overall_data["logistics_usage"] = logistics_data.aggregate(total=Sum('total_fuelconsumption'))['total'] or 0
+
+#         # Serialize data for each model
+#         waste_serializer = WasteSerializer(waste_data, many=True)
+#         energy_serializer = EnergySerializer(energy_data, many=True)
+#         water_serializer = WaterSerializer(water_data, many=True)
+#         biodiversity_serializer = BiodiversitySerializer(biodiversity_data, many=True)
+#         logistics_serializer = LogisticesSerializer(logistics_data, many=True)
+
+#         # Format response data
+#         response_data = {
+#             "email": user.email,
+#             "year": year,
+#             "facility_id": facility_id,
+#             "overall_data": overall_data,
+#             "details": {
+#                 "waste_data": waste_serializer.data,
+#                 "energy_data": energy_serializer.data,
+#                 "water_data": water_serializer.data,
+#                 "biodiversity_data": biodiversity_serializer.data,
+#                 "logistics_data": logistics_serializer.data
+#             }
+#         }
+
+#         return Response(response_data, status=status.HTTP_200_OK)
+
 class OverallUsageView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
         user = request.user
-        facility_id = request.GET.get('facility_id', 'all')
+        facility_id = request.GET.get('facility_id', 'all').lower()
         year = request.GET.get('year')
 
         try:
+            # If year is provided, use it; otherwise, default to current fiscal year or last year
             if year:
                 year = int(year)
             else:
+                # Default year handling (based on current date)
                 current_date = datetime.now()
                 year = current_date.year - 1 if current_date.month < 4 else current_date.year
 
+            # Define start and end of fiscal year
             start_date = datetime(year, 4, 1)
             end_date = datetime(year + 1, 3, 31)
         except ValueError:
@@ -901,57 +870,92 @@ class OverallUsageView(APIView):
             "logistics_usage": 0,
         }
 
+        # Filters based on user and date range
         filters = {'user': user, 'DatePicker__range': (start_date, end_date)}
-        if facility_id.lower() != 'all':
+        if facility_id != 'all':
             filters['facility__facility_id'] = facility_id
 
+        # Fetch data for each category and aggregate usage
         waste_data = Waste.objects.filter(**filters)
         overall_data["waste_usage"] = waste_data.aggregate(
-            total=Sum('food_waste') + Sum('solid_Waste') + Sum('E_Waste') + 
+            total=Sum('food_waste') + Sum('solid_Waste') + Sum('E_Waste') +
                   Sum('Biomedical_waste') + Sum('other_waste')
         )['total'] or 0
 
         energy_data = Energy.objects.filter(**filters)
         overall_data["energy_usage"] = energy_data.aggregate(
-            total=Sum('hvac') + Sum('production') + Sum('stp') + 
+            total=Sum('hvac') + Sum('production') + Sum('stp') +
                   Sum('admin_block') + Sum('utilities') + Sum('others')
         )['total'] or 0
 
-        # Water usage
         water_data = Water.objects.filter(**filters)
         overall_data["water_usage"] = water_data.aggregate(total=Sum('overall_usage'))['total'] or 0
 
-        # Biodiversity usage
         biodiversity_data = Biodiversity.objects.filter(**filters)
         overall_data["biodiversity_usage"] = biodiversity_data.aggregate(total=Sum('overall_Trees'))['total'] or 0
 
-        # Logistics usage
         logistics_data = Logistices.objects.filter(**filters)
         overall_data["logistics_usage"] = logistics_data.aggregate(total=Sum('total_fuelconsumption'))['total'] or 0
 
-        # Serialize data for each model
+        # If no data is found for the selected filters (year/facility), fetch the latest available data
+        if not waste_data.exists() and facility_id == 'all':
+            # Fetch the most recent data available from any year, including future years
+            waste_data = Waste.objects.filter(user=user).order_by('-DatePicker').first()
+            energy_data = Energy.objects.filter(user=user).order_by('-DatePicker').first()
+            water_data = Water.objects.filter(user=user).order_by('-DatePicker').first()
+            biodiversity_data = Biodiversity.objects.filter(user=user).order_by('-DatePicker').first()
+            logistics_data = Logistices.objects.filter(user=user).order_by('-DatePicker').first()
+
+            # Handle None cases and return zero values when no data is found
+            if not waste_data:
+                waste_data = []
+            else:
+                waste_data = [waste_data]  # Wrap in a list if data is found
+
+            if not energy_data:
+                energy_data = []
+            else:
+                energy_data = [energy_data]
+
+            if not water_data:
+                water_data = []
+            else:
+                water_data = [water_data]
+
+            if not biodiversity_data:
+                biodiversity_data = []
+            else:
+                biodiversity_data = [biodiversity_data]
+
+            if not logistics_data:
+                logistics_data = []
+            else:
+                logistics_data = [logistics_data]
+
+        # Serialize the data
         waste_serializer = WasteSerializer(waste_data, many=True)
         energy_serializer = EnergySerializer(energy_data, many=True)
         water_serializer = WaterSerializer(water_data, many=True)
         biodiversity_serializer = BiodiversitySerializer(biodiversity_data, many=True)
         logistics_serializer = LogisticesSerializer(logistics_data, many=True)
 
-        # Format response data
+        # Format the response data
         response_data = {
             "email": user.email,
             "year": year,
-            "facility_id": facility_id,
+            "facility_id": facility_id if facility_id != 'all' else "All facilities",
             "overall_data": overall_data,
             "details": {
-                "waste_data": waste_serializer.data,
-                "energy_data": energy_serializer.data,
-                "water_data": water_serializer.data,
-                "biodiversity_data": biodiversity_serializer.data,
-                "logistics_data": logistics_serializer.data
+                "waste_data": waste_serializer.data if waste_data else [],
+                "energy_data": energy_serializer.data if energy_data else [],
+                "water_data": water_serializer.data if water_data else [],
+                "biodiversity_data": biodiversity_serializer.data if biodiversity_data else [],
+                "logistics_data": logistics_serializer.data if logistics_data else []
             }
         }
 
         return Response(response_data, status=status.HTTP_200_OK)
+
 '''OverViwe of allTotal_Usages'''
     
 '''Waste Overviewgraphs and Individual Line charts and donut charts Starts'''
@@ -1049,6 +1053,8 @@ class WasteViewCard_Over(APIView):
             error_message = f"An error occurred: {str(e)}"
             print(error_message)
             return Response({'error': error_message}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
 #FoodWaste
 class FoodWasteOverviewView(APIView):
     permission_classes = [IsAuthenticated]
@@ -3466,81 +3472,89 @@ class WaterViewCard_Over(APIView):
     def get(self, request):
         user = request.user
         facility_id = request.GET.get('facility_id', 'all')
-        facility_location = request.GET.get('facility_location', None)
-        year = request.GET.get('year', None)
+        facility_location = request.GET.get('facility_location')
+        year = request.GET.get('year')
 
         try:
-            if facility_id != 'all':
-                if not Facility.objects.filter(facility_id=facility_id).exists():
-                    return Response({'error': 'Invalid facility ID.'}, status=status.HTTP_400_BAD_REQUEST)
+            if facility_id != 'all' and not Facility.objects.filter(facility_id=facility_id, user=user).exists():
+                return Response({'error': 'Invalid facility ID or not associated with the logged-in user.'}, status=status.HTTP_400_BAD_REQUEST)
 
             if year:
                 try:
-                    year = int(year)  # Convert year to integer
-                    if year < 1900 or year > datetime.now().year + 1: 
+                    year = int(year)
+                    if year < 1900 or year > datetime.now().year + 10:  # Allow future years up to 10 years ahead
                         return Response({'error': 'Invalid year parameter.'}, status=status.HTTP_400_BAD_REQUEST)
                 except ValueError:
                     return Response({'error': 'Year must be an integer.'}, status=status.HTTP_400_BAD_REQUEST)
-
-            filters = {'user': user}
-            water_data = Water.objects.filter(**filters)
-
             if year:
-                start_date = datetime(year, 4, 1) 
-                end_date = datetime(year + 1, 3, 31) 
-                filters['DatePicker__range'] = (start_date, end_date)
-                water_data = water_data.filter(**filters)
+                start_date = datetime(year, 4, 1)
+                end_date = datetime(year + 1, 3, 31)
             else:
-                today = datetime.now()
-                if today.month >= 4:  # Current fiscal year
-                    start_date = datetime(today.year, 4, 1)
-                    end_date = datetime(today.year + 1, 3, 31)
-                else:  # Last fiscal year (if before April)
-                    start_date = datetime(today.year - 1, 4, 1)
-                    end_date = datetime(today.year, 3, 31)
-                filters['DatePicker__range'] = (start_date, end_date)
-                water_data = water_data.filter(**filters)
 
-            # Filter by facility_id if provided and valid
+                latest_entry = Water.objects.filter(user=user).order_by('-DatePicker').first()
+                if latest_entry:
+                    latest_year = latest_entry.DatePicker.year
+                    year = latest_year if latest_entry.DatePicker.month >= 4 else latest_year - 1
+                else:
+                    today = datetime.now()
+                    year = today.year - 1 if today.month < 4 else today.year
+
+                start_date = datetime(year, 4, 1)
+                end_date = datetime(year + 1, 3, 31)
+
+            # Query energy data
+            water_data = Water.objects.filter(user=user, DatePicker__range=(start_date, end_date))
+
             if facility_id != 'all':
                 water_data = water_data.filter(facility__facility_id=facility_id)
 
-            # Filter by facility_location if provided
             if facility_location:
-                water_data = water_data.filter(facility__facility_location__icontains=facility_location)
+                water_data = water_data.filter(facility__location__icontains=facility_location)
 
             water_fields = [
             'Generated_Water', 'Recycled_Water', 'Softener_usage', 'Boiler_usage', 'otherUsage'
             ]
+            
 
-            # Initialize response data
-            response_data = {'overall_water_totals': {}, 'facility_water_data': {}}
+            response_data = {
+                'year': year,
+                'overall_water_totals': {},
+                'facility_water_data': {}
+            }
 
-            for field in water_fields:
-                facility_water_data = (
-                    water_data
-                    .values('facility__facility_name')
-                    .annotate(total=Sum(field))
-                    .order_by('-total')
-                )
+            if not water_data.exists():
+                # Populate zero values when no data exists
+                for field in water_fields:
+                    response_data['overall_water_totals'][f"overall_{field}"] = 0
+                    response_data['facility_water_data'][field] = []
+            else:
+                for field in water_fields:
+                    # Facility-specific totals
+                    facility_water_data = (
+                        water_data
+                        .values('facility__facility_name')
+                        .annotate(total=Sum(field))
+                        .order_by('-total')
+                    )
 
-                # Prepare facility-wise data for each water type
-                response_data['facility_water_data'][field] = [
-                    {
-                        "facility_name": entry['facility__facility_name'],
-                        f"total_{field}": entry['total']
-                    }
-                    for entry in facility_water_data
-                ]
+                    response_data['facility_water_data'][field] = [
+                        {
+                            "facility_name": entry['facility__facility_name'],
+                            f"total_{field}": entry['total']
+                        }
+                        for entry in facility_water_data
+                    ]
 
-                overall_total = water_data.aggregate(total=Sum(field))['total'] or 0
-                response_data['overall_water_totals'][f"overall_{field}"] = overall_total
+                    # Overall totals
+                    overall_total = water_data.aggregate(total=Sum(field))['total'] or 0
+                    response_data['overall_water_totals'][f"overall_{field}"] = overall_total
 
             return Response(response_data, status=status.HTTP_200_OK)
 
         except Exception as e:
-            print(f"An error occurred: {e}")
-            return Response({'error': 'An error occurred while processing your request.'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            error_message = f"An error occurred: {str(e)}"
+            print(error_message)
+            return Response({'error': error_message}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 #GeneratedWater Overview Line Charts and Donut Chart
 class Generated_WaterOverviewView(APIView):
@@ -3553,72 +3567,56 @@ class Generated_WaterOverviewView(APIView):
         year = request.GET.get('year', None)
 
         try:
-            filters = {'user': user}
-            if year:
-                try:
-                    year = int(year)
-                except ValueError:
-                    return Response({'error': 'Invalid year parameter.'}, status=status.HTTP_400_BAD_REQUEST)
-            else:
-                year = datetime.now().year
-            
-            if datetime.now().month >= 4:
-                start_date = datetime(year, 4, 1)
-                end_date = datetime(year + 1, 3, 31)
-            else:  # Last fiscal year
-                start_date = datetime(year - 1, 4, 1)
-                end_date = datetime(year, 3, 31)
-            
-            filters['DatePicker__range'] = (start_date, end_date)
+            if not year:
+                year = self.get_latest_available_year(user)
 
+            try:
+                year = int(year)
+            except ValueError:
+                return Response({'error': 'Invalid year parameter.'}, status=status.HTTP_400_BAD_REQUEST)
+
+            start_date, end_date = self.get_fiscal_year_range(year)
+
+            filters = {
+                'user': user,
+                'DatePicker__range': (start_date.date(), end_date.date())
+            }
             if facility_id and facility_id.lower() != 'all':
                 filters['facility__facility_id'] = facility_id
             if facility_location:
-                filters['facility__facility_location__icontains'] = facility_location
+                filters['facility__location__icontains'] = facility_location
+
+            water_data = Water.objects.filter(**filters)
+            if not water_data.exists():
+                return self.get_empty_response(year)
 
             monthly_Generated_Water = (
-                Water.objects.filter(**filters)
+                water_data
                 .values('DatePicker__month')
                 .annotate(total_Generated_Water=Sum('Generated_Water'))
-                .order_by('DatePicker__month')
             )
 
-            line_chart_data = []
-            Generated_Water = defaultdict(float)
-
+            Generated_Water = {month: 0 for month in range(1, 13)}
             for entry in monthly_Generated_Water:
                 Generated_Water[entry['DatePicker__month']] = entry['total_Generated_Water']
 
             month_order = [4, 5, 6, 7, 8, 9, 10, 11, 12, 1, 2, 3]
-            today = datetime.now()
+            line_chart_data = [
+                {
+                    "month": datetime(1900, month, 1).strftime('%b'),
+                    "Generated_Water": Generated_Water[month]
+                }
+                for month in month_order
+            ]
 
-            for month in month_order:
-                month_name = datetime(1900, month, 1).strftime('%b')
-                if (year == today.year and month <= today.month) or (year < today.year):
-                    line_chart_data.append({
-                        "month": month_name,
-                        "Generated_Water": Generated_Water.get(month, 0)
-                    })
-                else:
-                    line_chart_data.append({
-                        "month": month_name,
-                        "Generated_Water": 0
-                    })
-
-            facility_filters = {
-                'user': user,
-                'DatePicker__range': (start_date, end_date)
-            }
-            if facility_id and facility_id.lower() != 'all':
-                facility_filters['facility__facility_id'] = facility_id
+            # Prepare facility data for donut chart
             facility_Generated_Water = (
-                Water.objects.filter(**facility_filters)
+                water_data
                 .values('facility__facility_name')
                 .annotate(total_Generated_Water=Sum('Generated_Water'))
                 .order_by('-total_Generated_Water')
             )
 
-            # Prepare donut chart data
             total_Generated_Water = sum(entry['total_Generated_Water'] for entry in facility_Generated_Water)
             donut_chart_data = [
                 {
@@ -3629,6 +3627,7 @@ class Generated_WaterOverviewView(APIView):
             ]
 
             response_data = {
+                "year": year,
                 "line_chart_data": line_chart_data,
                 "donut_chart_data": donut_chart_data
             }
@@ -3636,10 +3635,36 @@ class Generated_WaterOverviewView(APIView):
             return Response(response_data, status=status.HTTP_200_OK)
 
         except Exception as e:
+            import traceback
+            print(f"Error: {str(e)}")
+            print("Traceback:", traceback.format_exc())
             return Response(
                 {'error': f'An error occurred while processing your request: {str(e)}'},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
+
+    def get_latest_available_year(self, user):
+        latest_water = Water.objects.filter(user=user).order_by('-DatePicker').first()
+        if latest_water:
+            return latest_water.DatePicker.year
+        return datetime.now().year  # Default to current year if no data is available
+
+    def get_fiscal_year_range(self, year):
+        start_date = datetime(year, 4, 1)
+        end_date = datetime(year + 1, 3, 31)
+        return start_date, end_date
+
+    def get_empty_response(self, year):
+        month_order = [4, 5, 6, 7, 8, 9, 10, 11, 12, 1, 2, 3]
+        line_chart_data = [{"month": datetime(1900, month, 1).strftime('%b'), "Generated_Water": 0} for month in month_order]
+        donut_chart_data = [{"facility_name": "No Facility", "percentage": 0}]
+        return Response({
+            "year": year,
+            "line_chart_data": line_chart_data,
+            "donut_chart_data": donut_chart_data
+        }, status=status.HTTP_200_OK)
+
+
 #Recycle Water Overview line charts and Donut chart
 class Recycle_WaterOverviewView(APIView):
     permission_classes = [IsAuthenticated]
@@ -3651,72 +3676,56 @@ class Recycle_WaterOverviewView(APIView):
         year = request.GET.get('year', None)
 
         try:
-            filters = {'user': user}
-            if year:
-                try:
-                    year = int(year)
-                except ValueError:
-                    return Response({'error': 'Invalid year parameter.'}, status=status.HTTP_400_BAD_REQUEST)
-            else:
-                year = datetime.now().year
-            
-            if datetime.now().month >= 4:
-                start_date = datetime(year, 4, 1)
-                end_date = datetime(year + 1, 3, 31)
-            else:  # Last fiscal year
-                start_date = datetime(year - 1, 4, 1)
-                end_date = datetime(year, 3, 31)
-            
-            filters['DatePicker__range'] = (start_date, end_date)
+            if not year:
+                year = self.get_latest_available_year(user)
 
+            try:
+                year = int(year)
+            except ValueError:
+                return Response({'error': 'Invalid year parameter.'}, status=status.HTTP_400_BAD_REQUEST)
+
+            start_date, end_date = self.get_fiscal_year_range(year)
+
+            filters = {
+                'user': user,
+                'DatePicker__range': (start_date.date(), end_date.date())
+            }
             if facility_id and facility_id.lower() != 'all':
                 filters['facility__facility_id'] = facility_id
             if facility_location:
-                filters['facility__facility_location__icontains'] = facility_location
+                filters['facility__location__icontains'] = facility_location
+
+            water_data = Water.objects.filter(**filters)
+            if not water_data.exists():
+                return self.get_empty_response(year)
 
             monthly_Recycled_Water = (
-                Water.objects.filter(**filters)
+                water_data
                 .values('DatePicker__month')
                 .annotate(total_Recycled_Water=Sum('Recycled_Water'))
-                .order_by('DatePicker__month')
             )
 
-            line_chart_data = []
-            Recycled_Water = defaultdict(float)
-
+            Recycled_Water = {month: 0 for month in range(1, 13)}
             for entry in monthly_Recycled_Water:
                 Recycled_Water[entry['DatePicker__month']] = entry['total_Recycled_Water']
 
             month_order = [4, 5, 6, 7, 8, 9, 10, 11, 12, 1, 2, 3]
-            today = datetime.now()
+            line_chart_data = [
+                {
+                    "month": datetime(1900, month, 1).strftime('%b'),
+                    "Recycled_Water": Recycled_Water[month]
+                }
+                for month in month_order
+            ]
 
-            for month in month_order:
-                month_name = datetime(1900, month, 1).strftime('%b')
-                if (year == today.year and month <= today.month) or (year < today.year):
-                    line_chart_data.append({
-                        "month": month_name,
-                        "Recycled_Water": Recycled_Water.get(month, 0)
-                    })
-                else:
-                    line_chart_data.append({
-                        "month": month_name,
-                        "Recycled_Water": 0
-                    })
-
-            facility_filters = {
-                'user': user,
-                'DatePicker__range': (start_date, end_date)
-            }
-            if facility_id and facility_id.lower() != 'all':
-                facility_filters['facility__facility_id'] = facility_id
+            # Prepare facility data for donut chart
             facility_Recycled_Water = (
-                Water.objects.filter(**facility_filters)
+                water_data
                 .values('facility__facility_name')
                 .annotate(total_Recycled_Water=Sum('Recycled_Water'))
                 .order_by('-total_Recycled_Water')
             )
 
-            # Prepare donut chart data
             total_Recycled_Water = sum(entry['total_Recycled_Water'] for entry in facility_Recycled_Water)
             donut_chart_data = [
                 {
@@ -3727,6 +3736,7 @@ class Recycle_WaterOverviewView(APIView):
             ]
 
             response_data = {
+                "year": year,
                 "line_chart_data": line_chart_data,
                 "donut_chart_data": donut_chart_data
             }
@@ -3734,10 +3744,34 @@ class Recycle_WaterOverviewView(APIView):
             return Response(response_data, status=status.HTTP_200_OK)
 
         except Exception as e:
+            import traceback
+            print(f"Error: {str(e)}")
+            print("Traceback:", traceback.format_exc())
             return Response(
                 {'error': f'An error occurred while processing your request: {str(e)}'},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
+
+    def get_latest_available_year(self, user):
+        latest_water = Water.objects.filter(user=user).order_by('-DatePicker').first()
+        if latest_water:
+            return latest_water.DatePicker.year
+        return datetime.now().year  # Default to current year if no data is available
+
+    def get_fiscal_year_range(self, year):
+        start_date = datetime(year, 4, 1)
+        end_date = datetime(year + 1, 3, 31)
+        return start_date, end_date
+
+    def get_empty_response(self, year):
+        month_order = [4, 5, 6, 7, 8, 9, 10, 11, 12, 1, 2, 3]
+        line_chart_data = [{"month": datetime(1900, month, 1).strftime('%b'), "Recycled_Water": 0} for month in month_order]
+        donut_chart_data = [{"facility_name": "No Facility", "percentage": 0}]
+        return Response({
+            "year": year,
+            "line_chart_data": line_chart_data,
+            "donut_chart_data": donut_chart_data
+        }, status=status.HTTP_200_OK)
 
 #SoftenSoftener_usage overview line chart and donut chart
 class Softener_usageOverviewView(APIView):
@@ -3750,72 +3784,56 @@ class Softener_usageOverviewView(APIView):
         year = request.GET.get('year', None)
 
         try:
-            filters = {'user': user}
-            if year:
-                try:
-                    year = int(year)
-                except ValueError:
-                    return Response({'error': 'Invalid year parameter.'}, status=status.HTTP_400_BAD_REQUEST)
-            else:
-                year = datetime.now().year
-            
-            if datetime.now().month >= 4:
-                start_date = datetime(year, 4, 1)
-                end_date = datetime(year + 1, 3, 31)
-            else:  # Last fiscal year
-                start_date = datetime(year - 1, 4, 1)
-                end_date = datetime(year, 3, 31)
-            
-            filters['DatePicker__range'] = (start_date, end_date)
+            if not year:
+                year = self.get_latest_available_year(user)
 
+            try:
+                year = int(year)
+            except ValueError:
+                return Response({'error': 'Invalid year parameter.'}, status=status.HTTP_400_BAD_REQUEST)
+
+            start_date, end_date = self.get_fiscal_year_range(year)
+
+            filters = {
+                'user': user,
+                'DatePicker__range': (start_date.date(), end_date.date())
+            }
             if facility_id and facility_id.lower() != 'all':
                 filters['facility__facility_id'] = facility_id
             if facility_location:
-                filters['facility__facility_location__icontains'] = facility_location
+                filters['facility__location__icontains'] = facility_location
+
+            water_data = Water.objects.filter(**filters)
+            if not water_data.exists():
+                return self.get_empty_response(year)
 
             monthly_Softener_usage = (
-                Water.objects.filter(**filters)
+                water_data
                 .values('DatePicker__month')
                 .annotate(total_Softener_usage=Sum('Softener_usage'))
-                .order_by('DatePicker__month')
             )
 
-            line_chart_data = []
-            Softener_usage = defaultdict(float)
-
+            Softener_usage = {month: 0 for month in range(1, 13)}
             for entry in monthly_Softener_usage:
                 Softener_usage[entry['DatePicker__month']] = entry['total_Softener_usage']
 
             month_order = [4, 5, 6, 7, 8, 9, 10, 11, 12, 1, 2, 3]
-            today = datetime.now()
+            line_chart_data = [
+                {
+                    "month": datetime(1900, month, 1).strftime('%b'),
+                    "Softener_usage": Softener_usage[month]
+                }
+                for month in month_order
+            ]
 
-            for month in month_order:
-                month_name = datetime(1900, month, 1).strftime('%b')
-                if (year == today.year and month <= today.month) or (year < today.year):
-                    line_chart_data.append({
-                        "month": month_name,
-                        "Softener_usage": Softener_usage.get(month, 0)
-                    })
-                else:
-                    line_chart_data.append({
-                        "month": month_name,
-                        "Softener_usage": 0
-                    })
-
-            facility_filters = {
-                'user': user,
-                'DatePicker__range': (start_date, end_date)
-            }
-            if facility_id and facility_id.lower() != 'all':
-                facility_filters['facility__facility_id'] = facility_id
+            # Prepare facility data for donut chart
             facility_Softener_usage = (
-                Water.objects.filter(**facility_filters)
+                water_data
                 .values('facility__facility_name')
                 .annotate(total_Softener_usage=Sum('Softener_usage'))
                 .order_by('-total_Softener_usage')
             )
 
-            # Prepare donut chart data
             total_Softener_usage = sum(entry['total_Softener_usage'] for entry in facility_Softener_usage)
             donut_chart_data = [
                 {
@@ -3826,6 +3844,7 @@ class Softener_usageOverviewView(APIView):
             ]
 
             response_data = {
+                "year": year,
                 "line_chart_data": line_chart_data,
                 "donut_chart_data": donut_chart_data
             }
@@ -3833,10 +3852,34 @@ class Softener_usageOverviewView(APIView):
             return Response(response_data, status=status.HTTP_200_OK)
 
         except Exception as e:
+            import traceback
+            print(f"Error: {str(e)}")
+            print("Traceback:", traceback.format_exc())
             return Response(
                 {'error': f'An error occurred while processing your request: {str(e)}'},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
+
+    def get_latest_available_year(self, user):
+        latest_water = Water.objects.filter(user=user).order_by('-DatePicker').first()
+        if latest_water:
+            return latest_water.DatePicker.year
+        return datetime.now().year  # Default to current year if no data is available
+
+    def get_fiscal_year_range(self, year):
+        start_date = datetime(year, 4, 1)
+        end_date = datetime(year + 1, 3, 31)
+        return start_date, end_date
+
+    def get_empty_response(self, year):
+        month_order = [4, 5, 6, 7, 8, 9, 10, 11, 12, 1, 2, 3]
+        line_chart_data = [{"month": datetime(1900, month, 1).strftime('%b'), "Softener_usage": 0} for month in month_order]
+        donut_chart_data = [{"facility_name": "No Facility", "percentage": 0}]
+        return Response({
+            "year": year,
+            "line_chart_data": line_chart_data,
+            "donut_chart_data": donut_chart_data
+        }, status=status.HTTP_200_OK)
 
 #Boiler_usage Overview line chart and Donut Chart
 class Boiler_usageOverviewView(APIView):
@@ -3849,72 +3892,56 @@ class Boiler_usageOverviewView(APIView):
         year = request.GET.get('year', None)
 
         try:
-            filters = {'user': user}
-            if year:
-                try:
-                    year = int(year)
-                except ValueError:
-                    return Response({'error': 'Invalid year parameter.'}, status=status.HTTP_400_BAD_REQUEST)
-            else:
-                year = datetime.now().year
-            
-            if datetime.now().month >= 4:
-                start_date = datetime(year, 4, 1)
-                end_date = datetime(year + 1, 3, 31)
-            else:  # Last fiscal year
-                start_date = datetime(year - 1, 4, 1)
-                end_date = datetime(year, 3, 31)
-            
-            filters['DatePicker__range'] = (start_date, end_date)
+            if not year:
+                year = self.get_latest_available_year(user)
 
+            try:
+                year = int(year)
+            except ValueError:
+                return Response({'error': 'Invalid year parameter.'}, status=status.HTTP_400_BAD_REQUEST)
+
+            start_date, end_date = self.get_fiscal_year_range(year)
+
+            filters = {
+                'user': user,
+                'DatePicker__range': (start_date.date(), end_date.date())
+            }
             if facility_id and facility_id.lower() != 'all':
                 filters['facility__facility_id'] = facility_id
             if facility_location:
-                filters['facility__facility_location__icontains'] = facility_location
+                filters['facility__location__icontains'] = facility_location
+
+            water_data = Water.objects.filter(**filters)
+            if not water_data.exists():
+                return self.get_empty_response(year)
 
             monthly_Boiler_usage = (
-                Water.objects.filter(**filters)
+                water_data
                 .values('DatePicker__month')
                 .annotate(total_Boiler_usage=Sum('Boiler_usage'))
-                .order_by('DatePicker__month')
             )
 
-            line_chart_data = []
-            Boiler_usage = defaultdict(float)
-
+            Boiler_usage = {month: 0 for month in range(1, 13)}
             for entry in monthly_Boiler_usage:
                 Boiler_usage[entry['DatePicker__month']] = entry['total_Boiler_usage']
 
             month_order = [4, 5, 6, 7, 8, 9, 10, 11, 12, 1, 2, 3]
-            today = datetime.now()
+            line_chart_data = [
+                {
+                    "month": datetime(1900, month, 1).strftime('%b'),
+                    "Boiler_usage": Boiler_usage[month]
+                }
+                for month in month_order
+            ]
 
-            for month in month_order:
-                month_name = datetime(1900, month, 1).strftime('%b')
-                if (year == today.year and month <= today.month) or (year < today.year):
-                    line_chart_data.append({
-                        "month": month_name,
-                        "Boiler_usage": Boiler_usage.get(month, 0)
-                    })
-                else:
-                    line_chart_data.append({
-                        "month": month_name,
-                        "Boiler_usage": 0
-                    })
-
-            facility_filters = {
-                'user': user,
-                'DatePicker__range': (start_date, end_date)
-            }
-            if facility_id and facility_id.lower() != 'all':
-                facility_filters['facility__facility_id'] = facility_id
+            # Prepare facility data for donut chart
             facility_Boiler_usage = (
-                Water.objects.filter(**facility_filters)
+                water_data
                 .values('facility__facility_name')
                 .annotate(total_Boiler_usage=Sum('Boiler_usage'))
                 .order_by('-total_Boiler_usage')
             )
 
-            # Prepare donut chart data
             total_Boiler_usage = sum(entry['total_Boiler_usage'] for entry in facility_Boiler_usage)
             donut_chart_data = [
                 {
@@ -3925,6 +3952,7 @@ class Boiler_usageOverviewView(APIView):
             ]
 
             response_data = {
+                "year": year,
                 "line_chart_data": line_chart_data,
                 "donut_chart_data": donut_chart_data
             }
@@ -3932,10 +3960,34 @@ class Boiler_usageOverviewView(APIView):
             return Response(response_data, status=status.HTTP_200_OK)
 
         except Exception as e:
+            import traceback
+            print(f"Error: {str(e)}")
+            print("Traceback:", traceback.format_exc())
             return Response(
                 {'error': f'An error occurred while processing your request: {str(e)}'},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
+
+    def get_latest_available_year(self, user):
+        latest_water = Water.objects.filter(user=user).order_by('-DatePicker').first()
+        if latest_water:
+            return latest_water.DatePicker.year
+        return datetime.now().year  # Default to current year if no data is available
+
+    def get_fiscal_year_range(self, year):
+        start_date = datetime(year, 4, 1)
+        end_date = datetime(year + 1, 3, 31)
+        return start_date, end_date
+
+    def get_empty_response(self, year):
+        month_order = [4, 5, 6, 7, 8, 9, 10, 11, 12, 1, 2, 3]
+        line_chart_data = [{"month": datetime(1900, month, 1).strftime('%b'), "Boiler_usage": 0} for month in month_order]
+        donut_chart_data = [{"facility_name": "No Facility", "percentage": 0}]
+        return Response({
+            "year": year,
+            "line_chart_data": line_chart_data,
+            "donut_chart_data": donut_chart_data
+        }, status=status.HTTP_200_OK)
 
 #otherUsage overview line chart and Donut chart
 class otherUsage_OverviewView(APIView):
@@ -3948,72 +4000,56 @@ class otherUsage_OverviewView(APIView):
         year = request.GET.get('year', None)
 
         try:
-            filters = {'user': user}
-            if year:
-                try:
-                    year = int(year)
-                except ValueError:
-                    return Response({'error': 'Invalid year parameter.'}, status=status.HTTP_400_BAD_REQUEST)
-            else:
-                year = datetime.now().year
-            
-            if datetime.now().month >= 4:
-                start_date = datetime(year, 4, 1)
-                end_date = datetime(year + 1, 3, 31)
-            else:  # Last fiscal year
-                start_date = datetime(year - 1, 4, 1)
-                end_date = datetime(year, 3, 31)
-            
-            filters['DatePicker__range'] = (start_date, end_date)
+            if not year:
+                year = self.get_latest_available_year(user)
 
+            try:
+                year = int(year)
+            except ValueError:
+                return Response({'error': 'Invalid year parameter.'}, status=status.HTTP_400_BAD_REQUEST)
+
+            start_date, end_date = self.get_fiscal_year_range(year)
+
+            filters = {
+                'user': user,
+                'DatePicker__range': (start_date.date(), end_date.date())
+            }
             if facility_id and facility_id.lower() != 'all':
                 filters['facility__facility_id'] = facility_id
             if facility_location:
-                filters['facility__facility_location__icontains'] = facility_location
+                filters['facility__location__icontains'] = facility_location
+
+            water_data = Water.objects.filter(**filters)
+            if not water_data.exists():
+                return self.get_empty_response(year)
 
             monthly_otherUsage = (
-                Water.objects.filter(**filters)
+                water_data
                 .values('DatePicker__month')
                 .annotate(total_otherUsage=Sum('otherUsage'))
-                .order_by('DatePicker__month')
             )
 
-            line_chart_data = []
-            otherUsage = defaultdict(float)
-
+            otherUsage = {month: 0 for month in range(1, 13)}
             for entry in monthly_otherUsage:
                 otherUsage[entry['DatePicker__month']] = entry['total_otherUsage']
 
             month_order = [4, 5, 6, 7, 8, 9, 10, 11, 12, 1, 2, 3]
-            today = datetime.now()
+            line_chart_data = [
+                {
+                    "month": datetime(1900, month, 1).strftime('%b'),
+                    "otherUsage": otherUsage[month]
+                }
+                for month in month_order
+            ]
 
-            for month in month_order:
-                month_name = datetime(1900, month, 1).strftime('%b')
-                if (year == today.year and month <= today.month) or (year < today.year):
-                    line_chart_data.append({
-                        "month": month_name,
-                        "otherUsage": otherUsage.get(month, 0)
-                    })
-                else:
-                    line_chart_data.append({
-                        "month": month_name,
-                        "otherUsage": 0
-                    })
-
-            facility_filters = {
-                'user': user,
-                'DatePicker__range': (start_date, end_date)
-            }
-            if facility_id and facility_id.lower() != 'all':
-                facility_filters['facility__facility_id'] = facility_id
+            # Prepare facility data for donut chart
             facility_otherUsage = (
-                Water.objects.filter(**facility_filters)
+                water_data
                 .values('facility__facility_name')
                 .annotate(total_otherUsage=Sum('otherUsage'))
                 .order_by('-total_otherUsage')
             )
 
-            # Prepare donut chart data
             total_otherUsage = sum(entry['total_otherUsage'] for entry in facility_otherUsage)
             donut_chart_data = [
                 {
@@ -4024,6 +4060,7 @@ class otherUsage_OverviewView(APIView):
             ]
 
             response_data = {
+                "year": year,
                 "line_chart_data": line_chart_data,
                 "donut_chart_data": donut_chart_data
             }
@@ -4031,10 +4068,34 @@ class otherUsage_OverviewView(APIView):
             return Response(response_data, status=status.HTTP_200_OK)
 
         except Exception as e:
+            import traceback
+            print(f"Error: {str(e)}")
+            print("Traceback:", traceback.format_exc())
             return Response(
                 {'error': f'An error occurred while processing your request: {str(e)}'},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
+
+    def get_latest_available_year(self, user):
+        latest_water = Water.objects.filter(user=user).order_by('-DatePicker').first()
+        if latest_water:
+            return latest_water.DatePicker.year
+        return datetime.now().year  # Default to current year if no data is available
+
+    def get_fiscal_year_range(self, year):
+        start_date = datetime(year, 4, 1)
+        end_date = datetime(year + 1, 3, 31)
+        return start_date, end_date
+
+    def get_empty_response(self, year):
+        month_order = [4, 5, 6, 7, 8, 9, 10, 11, 12, 1, 2, 3]
+        line_chart_data = [{"month": datetime(1900, month, 1).strftime('%b'), "otherUsage": 0} for month in month_order]
+        donut_chart_data = [{"facility_name": "No Facility", "percentage": 0}]
+        return Response({
+            "year": year,
+            "line_chart_data": line_chart_data,
+            "donut_chart_data": donut_chart_data
+        }, status=status.HTTP_200_OK)
 
 #Stacked Graph Overview 
 class StackedWaterOverviewView(APIView):
@@ -4049,56 +4110,84 @@ class StackedWaterOverviewView(APIView):
         try:
             filters = {'user': user}
 
-            year = int(year) if year else datetime.now().year
+            if year:
+                try:
+                    year = int(year)
+                except ValueError:
+                    return Response({'error': 'Invalid year parameter.'}, status=status.HTTP_400_BAD_REQUEST)
+            else:
+                latest_water = Water.objects.filter(user=user).aggregate(latest_date=Max('DatePicker'))
+                if latest_water['latest_date']:
+                    year = latest_water['latest_date'].year 
+                else:
+                    year = datetime.now().year
+
             today = datetime.now()
-            if today.month >= 4:
+            if today.month >= 4: 
                 start_date = datetime(year, 4, 1)
                 end_date = datetime(year + 1, 3, 31)
-            else:
+            else: 
                 start_date = datetime(year - 1, 4, 1)
                 end_date = datetime(year, 3, 31)
+
             filters['DatePicker__range'] = (start_date, end_date)
 
+          
             if facility_id and facility_id.lower() != 'all':
-                filters['facility__facility_id'] = facility_id
+                try:
+                    Facility.objects.get(facility_id=facility_id)
+                    filters['facility__facility_id'] = facility_id
+                except Facility.DoesNotExist:
+                    return Response({'error': f'Facility with ID {facility_id} does not exist.'}, status=status.HTTP_400_BAD_REQUEST)
+
+           
             if facility_location and facility_location.lower() != 'all':
+                if not Facility.objects.filter(facility_location__icontains=facility_location).exists():
+                    return Response({'error': f'No facility found with location {facility_location}.'}, status=status.HTTP_400_BAD_REQUEST)
                 filters['facility__facility_location__icontains'] = facility_location
 
             water_types = [
             'Generated_Water', 'Recycled_Water', 'Softener_usage', 'Boiler_usage', 'otherUsage'
             ]
 
+
             monthly_data = {month: {water_type: 0 for water_type in water_types} for month in range(1, 13)}
- 
+
             for water_type in water_types:
                 queryset = Water.objects.filter(**filters)
 
-                # Aggregate monthly data with explicit output_field for each water type
-                monthly_water = (
-                    queryset
-                    .values('DatePicker__month')
-                    .annotate(total=Coalesce(Sum(water_type, output_field=FloatField()), Value(0, output_field=FloatField())))
-                    .order_by('DatePicker__month')
-                )
+                if water_type == 'renewable_water':
+                    monthly_water = (
+                        queryset
+                        .values('DatePicker__month')
+                        .annotate(
+                            total=Coalesce(
+                                Sum('renewable_solar') + Sum('renewable_other'),
+                                Value(0, output_field=FloatField())
+                            )
+                        )
+                        .order_by('DatePicker__month')
+                    )
+                else:
+                    monthly_water = (
+                        queryset
+                        .values('DatePicker__month')
+                        .annotate(total=Coalesce(Sum(water_type, output_field=FloatField()), Value(0, output_field=FloatField())))
+                        .order_by('DatePicker__month')
+                    )
 
                 for entry in monthly_water:
                     month = entry['DatePicker__month']
                     monthly_data[month][water_type] = entry['total']
 
-                # # Specific debug for December to check if values are captured
-                # december_data = queryset.filter(DatePicker__month=12).aggregate(
-                #     total=Coalesce(Sum(water_type, output_field=FloatField()), Value(0, output_field=FloatField()))
-                # )
-                # print(f"December total for {water_type}: {december_data['total']}")
-
-            # Prepare response data in fiscal month order (April to March)
+            
             stacked_bar_data = []
             month_order = [4, 5, 6, 7, 8, 9, 10, 11, 12, 1, 2, 3]
             for month in month_order:
                 month_name = datetime(1900, month, 1).strftime('%b')
                 stacked_bar_data.append({
                     "month": month_name,
-                    **monthly_data[month]
+                    **monthly_data[month] 
                 })
 
             response_data = {
@@ -4113,7 +4202,91 @@ class StackedWaterOverviewView(APIView):
         except Exception as e:
             print(f"Error occurred: {e}") 
             return Response({'error': f'An error occurred: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
 #Water Analytics Donut chart and pie chart Overview
+# class WaterAnalyticsView(APIView):
+#     permission_classes = [IsAuthenticated]
+
+#     def get(self, request):
+#         user = request.user
+#         year = request.GET.get('year', None)
+#         facility_id = request.GET.get('facility_id', 'all')
+#         facility_location = request.GET.get('facility_location', None)
+
+#         try:
+#             filters = {'user': user}
+
+#             today = datetime.now()
+#             if year:
+#                 try:
+#                     year = int(year)
+#                 except ValueError:
+#                     return Response({'error': 'Invalid year parameter.'}, status=status.HTTP_400_BAD_REQUEST)
+#             else:
+#                 year = today.year
+
+#             if today.month >= 4:
+#                 start_date = datetime(year, 4, 1)
+#                 end_date = datetime(year + 1, 3, 31)
+#             else:
+#                 start_date = datetime(year - 1, 4, 1)
+#                 end_date = datetime(year, 3, 31)
+
+#             filters['DatePicker__range'] = (start_date, end_date)
+
+#             if facility_id.lower() != 'all':
+#                 try:
+#                     Facility.objects.get(facility_id=facility_id)
+#                     filters['facility__facility_id'] = facility_id
+#                 except Facility.DoesNotExist:
+#                     return Response({'error': f'Facility with ID {facility_id} does not exist.'}, status=status.HTTP_400_BAD_REQUEST)
+
+#             if facility_location and facility_location.lower() != 'all':
+#                 if not Facility.objects.filter(facility_location__icontains=facility_location).exists():
+#                     return Response({'error': f'No facility found with location {facility_location}.'}, status=status.HTTP_400_BAD_REQUEST)
+#                 filters['facility__facility_location__icontains'] = facility_location
+
+#             # Query water data and aggregate fields
+#             queryset = Water.objects.filter(**filters)
+#             water_totals = queryset.aggregate(
+#                 Softener_usage_total=Coalesce(Sum(Cast('Softener_usage', FloatField())), 0.0),
+#                 Boiler_usage_total=Coalesce(Sum(Cast('Boiler_usage', FloatField())), 0.0),
+#                 otherUsage_total=Coalesce(Sum(Cast('otherUsage', FloatField())), 0.0),
+#                 Generated_Water_total=Coalesce(Sum(Cast('Generated_Water', FloatField())), 0.0),
+#                 Recycled_Water_total=Coalesce(Sum(Cast('Recycled_Water', FloatField())), 0.0)
+#             )
+
+#             generated_recycled_total = water_totals['Generated_Water_total'] + water_totals['Recycled_Water_total']
+
+#             water_percentages = {}
+#             for water_type, total in {
+#                 "Softener Usage": water_totals['Softener_usage_total'],
+#                 "Boiler Usage": water_totals['Boiler_usage_total'],
+#                 "Other Usage": water_totals['otherUsage_total']
+#             }.items():
+#                 water_percentages[water_type] = (total / generated_recycled_total * 100) if generated_recycled_total else 0
+
+#             recycled_water = water_totals['Recycled_Water_total']
+#             remaining_water = generated_recycled_total - recycled_water
+#             recycled_water_percentage = (recycled_water / generated_recycled_total * 100) if generated_recycled_total else 0
+#             remaining_water_percentage = (remaining_water / generated_recycled_total * 100) if generated_recycled_total else 0
+
+#             response_data = {
+#                 "year": year,
+#                 "facility_id": facility_id,
+#                 "facility_location": facility_location,
+#                 "donut_chart_data": water_percentages,
+#                 "pie_chart_data": [
+#                     {"label": "Recycled Water", "value": recycled_water_percentage},
+#                     {"label": "Remaining Water", "value": remaining_water_percentage}
+#                 ]
+#             }
+
+#             return Response(response_data, status=status.HTTP_200_OK)
+
+#         except Exception as e:
+#             print(f"Error occurred: {e}")
+#             return Response({'error': f'An error occurred: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 class WaterAnalyticsView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -4133,7 +4306,11 @@ class WaterAnalyticsView(APIView):
                 except ValueError:
                     return Response({'error': 'Invalid year parameter.'}, status=status.HTTP_400_BAD_REQUEST)
             else:
-                year = today.year
+                latest_water = Water.objects.filter(user=user).aggregate(latest_date=Max('DatePicker'))
+                if latest_water['latest_date']:
+                    year = latest_water['latest_date'].year
+                else:
+                    year = today.year 
 
             if today.month >= 4:
                 start_date = datetime(year, 4, 1)
@@ -4144,6 +4321,7 @@ class WaterAnalyticsView(APIView):
 
             filters['DatePicker__range'] = (start_date, end_date)
 
+            # Apply facility_id filter if specified
             if facility_id.lower() != 'all':
                 try:
                     Facility.objects.get(facility_id=facility_id)
@@ -4151,21 +4329,46 @@ class WaterAnalyticsView(APIView):
                 except Facility.DoesNotExist:
                     return Response({'error': f'Facility with ID {facility_id} does not exist.'}, status=status.HTTP_400_BAD_REQUEST)
 
+            # Apply facility_location filter if specified
             if facility_location and facility_location.lower() != 'all':
                 if not Facility.objects.filter(facility_location__icontains=facility_location).exists():
                     return Response({'error': f'No facility found with location {facility_location}.'}, status=status.HTTP_400_BAD_REQUEST)
                 filters['facility__facility_location__icontains'] = facility_location
 
-            # Query water data and aggregate fields
+            # Query water data
             queryset = Water.objects.filter(**filters)
-            water_totals = queryset.aggregate(
-                Softener_usage_total=Coalesce(Sum(Cast('Softener_usage', FloatField())), 0.0),
-                Boiler_usage_total=Coalesce(Sum(Cast('Boiler_usage', FloatField())), 0.0),
-                otherUsage_total=Coalesce(Sum(Cast('otherUsage', FloatField())), 0.0),
-                Generated_Water_total=Coalesce(Sum(Cast('Generated_Water', FloatField())), 0.0),
-                Recycled_Water_total=Coalesce(Sum(Cast('Recycled_Water', FloatField())), 0.0)
-            )
 
+            if queryset.exists():
+                # Aggregating the water usage data
+                water_totals = queryset.aggregate(
+                    Softener_usage_total=Coalesce(Sum(Cast('Softener_usage', FloatField())), 0.0),
+                    Boiler_usage_total=Coalesce(Sum(Cast('Boiler_usage', FloatField())), 0.0),
+                    otherUsage_total=Coalesce(Sum(Cast('otherUsage', FloatField())), 0.0),
+                    Generated_Water_total=Coalesce(Sum(Cast('Generated_Water', FloatField())), 0.0),
+                    Recycled_Water_total=Coalesce(Sum(Cast('Recycled_Water', FloatField())), 0.0)
+                )
+            else:
+                # If no data found, return zero values and attempt to find latest available data
+                water_totals = {
+                    'Softener_usage_total': 0.0,
+                    'Boiler_usage_total': 0.0,
+                    'otherUsage_total': 0.0,
+                    'Generated_Water_total': 0.0,
+                    'Recycled_Water_total': 0.0
+                }
+
+                # Fetch the latest available data if no data for the selected year/facility
+                latest_water_data = Water.objects.filter(user=user).order_by('-DatePicker').first()
+                if latest_water_data:
+                    water_totals = {
+                        'Softener_usage_total': latest_water_data.Softener_usage or 0.0,
+                        'Boiler_usage_total': latest_water_data.Boiler_usage or 0.0,
+                        'otherUsage_total': latest_water_data.otherUsage or 0.0,
+                        'Generated_Water_total': latest_water_data.Generated_Water or 0.0,
+                        'Recycled_Water_total': latest_water_data.Recycled_Water or 0.0
+                    }
+
+            # Calculate percentages based on available totals
             generated_recycled_total = water_totals['Generated_Water_total'] + water_totals['Recycled_Water_total']
 
             water_percentages = {}
@@ -4181,6 +4384,7 @@ class WaterAnalyticsView(APIView):
             recycled_water_percentage = (recycled_water / generated_recycled_total * 100) if generated_recycled_total else 0
             remaining_water_percentage = (remaining_water / generated_recycled_total * 100) if generated_recycled_total else 0
 
+            # Preparing response data
             response_data = {
                 "year": year,
                 "facility_id": facility_id,
@@ -4197,7 +4401,7 @@ class WaterAnalyticsView(APIView):
         except Exception as e:
             print(f"Error occurred: {e}")
             return Response({'error': f'An error occurred: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-  
+ 
   
       
 '''Water Overview Cards ,Graphs and Individual Line Charts and donut Charts Ends'''
