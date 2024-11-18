@@ -3,7 +3,7 @@ from datetime import datetime
 from collections import defaultdict
 from django.db.models import Sum, Value, FloatField,Min, Max
 
-from django.db.models.functions import Coalesce, Cast
+from django.db.models.functions import Coalesce, Cast, ExtractMonth
 from django.utils import timezone
 from django.contrib.auth import authenticate
 from django.shortcuts import get_object_or_404
@@ -736,54 +736,28 @@ class LogisticesView(APIView):
         
         return Response(user_data, status=status.HTTP_200_OK)
 
-# class LogisticesView(APIView):
-#     permission_classes = [IsAuthenticated]
-#     filter_backends = [DjangoFilterBackend]
-#     filterset_class = LogisticesFilter    
-#     def get(self, request):
-#         user = request.user
-#         logistices_data = Logistices.objects.filter(user=user)
-#         filtered_logistices_data = LogisticesFilter(request.GET,queryset=logistices_data).qs
-#         logistices_serializer = LogisticesSerializer(filtered_logistices_data, many=True)
-#         overall_fuelconsumption = sum(logistices_fuel.fuel_consumption for logistices_fuel in logistices_data)
-#         user_data = {
-#             'email': user.email,
-#             'logistices_data': logistices_serializer.data,
-#             'Fuel_consumption_total':overall_fuelconsumption
-#         }
-#         return Response(user_data, status=status.HTTP_200_OK)
-
 #Edit Logistices
 class LogisticesEditView(APIView):
     permission_classes = [IsAuthenticated]
 
     def put(self, request, logistices_id):
         try:
-            # Fetch the Logistices entry for the user
+            # Retrieve the instance to update
             logistices = Logistices.objects.get(logistices_id=logistices_id, user=request.user)
         except Logistices.DoesNotExist:
-            return Response({"error": "Logistices data not found."}, status=status.HTTP_404_NOT_FOUND)
+            return Response({"error": "Logistics entry not found."}, status=status.HTTP_404_NOT_FOUND)
 
+        # Initialize the serializer with the instance and request data
         serializer = LogisticesSerializer(logistices, data=request.data, context={'request': request})
+
+        # Validate and save
         if serializer.is_valid():
             serializer.save()
             return Response({"message": "Logistices data updated successfully."}, status=status.HTTP_200_OK)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        else:
+            # Return detailed validation errors
+            return Response({"error": serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
 
-# class LogisticesEditView(APIView):
-#     permission_classes = [IsAuthenticated]
-
-#     def put(self, request, logistices_id):
-#         try:
-#             logistices = Logistices.objects.get(logistices_id=logistices_id, user=request.user)
-#         except Logistices.DoesNotExist:
-#             return Response({"error": "Logistices data not found."}, status=status.HTTP_404_NOT_FOUND)
-
-#         serializer = LogisticesSerializer(logistices, data=request.data, context={'request': request})
-#         if serializer.is_valid():
-#             serializer.save()
-#             return Response({"message": "Logistices data updated successfully."}, status=status.HTTP_200_OK)
-#         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 #Delete Logistices
 class LogisticesDeleteView(APIView):
@@ -1240,6 +1214,7 @@ class FoodWasteOverviewView(APIView):
             "line_chart_data": line_chart_data,
             "donut_chart_data": donut_chart_data
         }, status=status.HTTP_200_OK)
+
 #SolidWaste
 class SolidWasteOverviewView(APIView):
     permission_classes = [IsAuthenticated]
@@ -4414,7 +4389,6 @@ class WaterAnalyticsView(APIView):
             return Response({'error': f'An error occurred: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
  
   
-      
 '''Water Overview Cards ,Graphs and Individual Line Charts and donut Charts Ends'''
 
 
@@ -4716,6 +4690,272 @@ class BiodiversityMetricsGraphsView(APIView):
 
 '''LOgistics overview Graphs starts'''
 
+# class LogisticesOverviewCard(APIView):
+#     permission_classes = [IsAuthenticated]
 
+#     def get(self, request):
+#         user = request.user
+#         facility_id = request.GET.get('facility_id', 'all')
+#         year = request.GET.get('year')
 
+#         try:
+#             # Get the latest year if no year is specified
+#             if not year:
+#                 latest_date = Logistices.objects.filter(user=user).aggregate(latest_date=Max('DatePicker'))['latest_date']
+#                 year = latest_date.year if latest_date else datetime.now().year
+#             else:
+#                 year = int(year)
+
+#             # Define fiscal year ranges
+#             start_date = datetime(year, 4, 1)
+#             end_date = datetime(year + 1, 3, 31)
+
+#             # Filters
+#             filters = {'user': user, 'DatePicker__range': (start_date, end_date)}
+#             if facility_id != 'all':
+#                 filters['facility__facility_id'] = facility_id
+
+#             # Query data for current year
+#             current_year_data = Logistices.objects.filter(**filters)
+
+#             # Aggregate totals across all logistics types with zero defaults
+#             total_vehicles = current_year_data.aggregate(
+#                 total_vehicles=Coalesce(Sum('No_Vehicles'), Value(0))
+#             )['total_vehicles']
+
+#             total_trips = current_year_data.aggregate(
+#                 total_trips=Coalesce(Sum('No_Trips'), Value(0))
+#             )['total_trips']
+
+#             total_km_travelled = current_year_data.aggregate(
+#                 total_km_travelled=Coalesce(Sum('km_travelled'), Value(0.0))
+#             )['total_km_travelled']
+
+#             total_fuel_consumed = current_year_data.aggregate(
+#                 total_fuel_consumed=Coalesce(Sum('fuel_consumption'), Value(0.0))
+#             )['total_fuel_consumed']
+
+#             # Structure the response
+#             data = {
+#                 "year": year,
+#                 "facility_id": facility_id,
+#                 "logistics_totals": {
+#                     "total_vehicles": total_vehicles,
+#                     "total_trips": total_trips,
+#                     "total_km_travelled": total_km_travelled,
+#                     "total_fuel_consumed": total_fuel_consumed
+#                 }
+#             }
+
+#             return Response(data, status=200)
+
+#         except ValueError:
+#             return Response({"error": "Invalid year format."}, status=400)
+
+#         except Exception as e:
+#             return Response({"error": str(e)}, status=500)
+# class LogisticesGraphs(APIView):
+#     permission_classes = [IsAuthenticated]
+
+#     def get(self, request):
+#         user = request.user
+#         facility_id = request.GET.get('facility_id', 'all')
+#         year = request.GET.get('year')
+
+#         try:
+#             # Get the latest year if no year is specified
+#             if not year:
+#                 latest_date = Logistices.objects.filter(user=user).aggregate(latest_date=Max('DatePicker'))['latest_date']
+#                 year = latest_date.year if latest_date else datetime.now().year
+#             else:
+#                 year = int(year)
+
+#             # Define fiscal year ranges
+#             start_date = datetime(year, 4, 1)
+#             end_date = datetime(year + 1, 3, 31)
+
+#             # Filters
+#             filters = {'user': user, 'DatePicker__range': (start_date, end_date)}
+#             if facility_id != 'all':
+#                 filters['facility__facility_id'] = facility_id
+
+#             # Query data
+#             current_year_data = Logistices.objects.filter(**filters)
+
+#             # Monthly Fuel Consumption
+#             monthly_data = current_year_data.annotate(month=ExtractMonth('DatePicker')).values('month').annotate(
+#                 total_fuel=Coalesce(Sum('fuel_consumption', output_field=FloatField()), Value(0.0, output_field=FloatField()))
+#             )
+#             monthly_fuel = {d['month']: d['total_fuel'] for d in monthly_data}
+
+#             # Facility-wise Fuel Consumption
+#             facility_data = current_year_data.values('facility__facility_name').annotate(
+#                 total_fuel=Coalesce(Sum('fuel_consumption', output_field=FloatField()), Value(0.0, output_field=FloatField()))
+#             )
+#             facility_fuel = {d['facility__facility_name']: d['total_fuel'] for d in facility_data}
+
+#             # Fuel Consumption for Both Logistics Types
+#             type_month_data = current_year_data.annotate(month=ExtractMonth('DatePicker')).values(
+#                 'month', 'logistices_types'
+#             ).annotate(
+#                 total_fuel=Coalesce(Sum('fuel_consumption', output_field=FloatField()), Value(0.0, output_field=FloatField()))
+#             )
+#             cargo_data = {d['month']: d['total_fuel'] for d in type_month_data if d['logistices_types'] == "cargo"}
+#             staff_data = {d['month']: d['total_fuel'] for d in type_month_data if d['logistices_types'] == "staff_logistices"}
+
+#             # Fill missing months with zeros
+#             all_months = range(1, 13)
+#             monthly_fuel = {month: monthly_fuel.get(month, 0.0) for month in all_months}
+#             cargo_data = {month: cargo_data.get(month, 0.0) for month in all_months}
+#             staff_data = {month: staff_data.get(month, 0.0) for month in all_months}
+
+#             # Define the month order from April to March
+#             month_order = [4, 5, 6, 7, 8, 9, 10, 11, 12, 1, 2, 3]
+            
+#             # Prepare the data for the stacked bar chart with months in order
+#             stacked_bar_data = []
+#             for month in month_order:
+#                 month_name = datetime(1900, month, 1).strftime('%b')
+#                 stacked_bar_data.append({
+#                     "month": month_name,
+#                     "fuel_consumption": monthly_fuel[month]
+#                 })
+
+#             # Prepare the data for the line chart comparing logistics types
+#             cargo_data_with_names = {datetime(1900, month, 1).strftime('%b'): cargo_data[month] for month in month_order}
+#             staff_data_with_names = {datetime(1900, month, 1).strftime('%b'): staff_data[month] for month in month_order}
+
+#             # Response structure
+#             data = {
+#                 "year": year,
+#                 "facility_id": facility_id,
+#                 "monthly_fuel_consumption": stacked_bar_data,  # Bar Graph
+#                 "facility_fuel_distribution": facility_fuel,  # Donut Chart
+#                 "logistics_fuel_comparison": {  # Line Graph
+#                     "cargo": cargo_data_with_names,
+#                     "staff": staff_data_with_names
+#                 }
+#             }
+
+#             return Response(data, status=200)
+
+#         except ValueError:
+#             return Response({"error": "Invalid year format."}, status=400)
+
+#         except Exception as e:
+#             return Response({"error": str(e)}, status=500)
+
+class LogisticesOverviewAndGraphs(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        user = request.user
+        facility_id = request.GET.get('facility_id', 'all')
+        year = request.GET.get('year')
+
+        try:
+            # Get the latest year if no year is specified
+            if not year:
+                latest_date = Logistices.objects.filter(user=user).aggregate(latest_date=Max('DatePicker'))['latest_date']
+                year = latest_date.year if latest_date else datetime.now().year
+            else:
+                year = int(year)
+
+            # Define fiscal year ranges
+            start_date = datetime(year, 4, 1)
+            end_date = datetime(year + 1, 3, 31)
+
+            # Filters
+            filters = {'user': user, 'DatePicker__range': (start_date, end_date)}
+            if facility_id != 'all':
+                filters['facility__facility_id'] = facility_id
+
+            # Query data for current year
+            current_year_data = Logistices.objects.filter(**filters)
+
+            # Aggregating totals for the overview
+            total_vehicles = current_year_data.aggregate(
+                total_vehicles=Coalesce(Sum('No_Vehicles'), Value(0))
+            )['total_vehicles']
+
+            total_trips = current_year_data.aggregate(
+                total_trips=Coalesce(Sum('No_Trips'), Value(0))
+            )['total_trips']
+
+            total_km_travelled = current_year_data.aggregate(
+                total_km_travelled=Coalesce(Sum('km_travelled'), Value(0.0))
+            )['total_km_travelled']
+
+            total_fuel_consumed = current_year_data.aggregate(
+                total_fuel_consumed=Coalesce(Sum('fuel_consumption'), Value(0.0))
+            )['total_fuel_consumed']
+
+            # Monthly Fuel Consumption for the Bar Graph (One Bar per Month)
+            monthly_data = current_year_data.annotate(month=ExtractMonth('DatePicker')).values('month').annotate(
+                total_fuel=Coalesce(Sum('fuel_consumption', output_field=FloatField()), Value(0.0, output_field=FloatField()))
+            )
+            monthly_fuel = {d['month']: d['total_fuel'] for d in monthly_data}
+
+            # Facility-wise Fuel Consumption for the Graph (Bar Graph)
+            facility_data = current_year_data.values('facility__facility_name').annotate(
+                total_fuel=Coalesce(Sum('fuel_consumption', output_field=FloatField()), Value(0.0, output_field=FloatField()))
+            )
+            facility_fuel = {d['facility__facility_name']: d['total_fuel'] for d in facility_data}
+
+            # Fuel Consumption for Both Logistics Types for the Graph (Bar Graph for each type)
+            type_month_data = current_year_data.annotate(month=ExtractMonth('DatePicker')).values(
+                'month', 'logistices_types'
+            ).annotate(
+                total_fuel=Coalesce(Sum('fuel_consumption', output_field=FloatField()), Value(0.0, output_field=FloatField()))
+            )
+            cargo_data = {d['month']: d['total_fuel'] for d in type_month_data if d['logistices_types'] == "cargo"}
+            staff_data = {d['month']: d['total_fuel'] for d in type_month_data if d['logistices_types'] == "staff_logistices"}
+
+            # Fill missing months with zeros for graphs
+            all_months = range(1, 13)
+            monthly_fuel = {month: monthly_fuel.get(month, 0.0) for month in all_months}
+            cargo_data = {month: cargo_data.get(month, 0.0) for month in all_months}
+            staff_data = {month: staff_data.get(month, 0.0) for month in all_months}
+
+            # Define the month order from April to March
+            month_order = [4, 5, 6, 7, 8, 9, 10, 11, 12, 1, 2, 3]
+            
+            # Prepare the data for the bar graph (Monthly Fuel Consumption)
+            monthly_bar_data = []
+            for month in month_order:
+                month_name = datetime(1900, month, 1).strftime('%b')
+                monthly_bar_data.append({
+                    "month": month_name,
+                    "fuel_consumption": monthly_fuel[month]
+                })
+
+            # Prepare the data for the bar graph comparing logistics types (cargo and staff)
+            cargo_data_with_names = {datetime(1900, month, 1).strftime('%b'): cargo_data[month] for month in month_order}
+            staff_data_with_names = {datetime(1900, month, 1).strftime('%b'): staff_data[month] for month in month_order}
+
+            # Structure the final response containing both the overview data and graph data
+            data = {
+                "year": year,
+                "facility_id": facility_id,
+                "logistics_totals": {
+                    "total_vehicles": total_vehicles,
+                    "total_trips": total_trips,
+                    "total_km_travelled": total_km_travelled,
+                    "total_fuel_consumed": total_fuel_consumed
+                },
+                "monthly_fuel_consumption": monthly_bar_data,  # Bar Graph (Monthly Fuel Consumption)
+                "facility_fuel_distribution": facility_fuel,  # Donut Chart (Facility-wise Fuel Consumption)
+                "logistics_fuel_comparison": {  # Bar Graph (Fuel Consumption by Logistics Type)
+                    "cargo": cargo_data_with_names,
+                    "staff": staff_data_with_names
+                }
+            }
+
+            return Response(data, status=200)
+
+        except ValueError:
+            return Response({"error": "Invalid year format."}, status=400)
+
+        except Exception as e:
+            return Response({"error": str(e)}, status=500)
 '''LOgistics overview Graphs ends'''
