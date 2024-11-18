@@ -1,12 +1,15 @@
 
 from datetime import date
 import re
+from venv import logger
 from rest_framework import serializers
 from django.contrib.auth import authenticate
 from django.core.exceptions import ValidationError
 from django.utils.translation import gettext_lazy as _
 from django.utils.translation import gettext as _
 from .models import CustomUser,Waste,Energy,Water,Biodiversity,Facility,Logistices,Org_registration
+import logging
+
 
 class UserRegisterSerializer(serializers.ModelSerializer):
     class Meta:
@@ -674,25 +677,464 @@ class BiodiversityCreateSerializer(serializers.ModelSerializer):
         return biodiversity
 
 
+# class LogisticesSerializer(serializers.ModelSerializer):
+    
+#     facility_id = serializers.CharField(
+#         write_only=True, required=True,
+#         error_messages={
+#             'required': 'Facility ID is required.',
+#             'null': 'Facility ID cannot be null.'
+#         }
+#     )
+#     DatePicker = serializers.DateField(
+#         required=True,
+#         error_messages={
+#             'required': 'Date is required.',
+#             'invalid': 'Invalid date format. Please use YYYY-MM-DD.'
+#         }
+#     )
+#     category = serializers.CharField(
+#         required=True,
+#         error_messages={'required': 'Category is required.'}
+#     )
+#     logistices_types = serializers.CharField(
+#         required=True,
+#         error_messages={'required': 'logistices_types is required.'}
+#     )
+#     Typeof_fuel = serializers.CharField(
+#         required=True,
+#         error_messages={'required': 'Typeof_fuel is required.'}
+#     )
+#     def __init__(self, *args, **kwargs):
+#         super().__init__(*args, **kwargs)
+        
+#         logistices_fields = [
+#             'km_travelled', 'No_Trips', 'fuel_consumption', 'No_Vehicles', 'Spends_on_fuel'
+#         ]
+        
+#         for field in logistices_fields:
+#             self.fields[field] = serializers.FloatField(
+#                 required=True,
+#                 min_value=0,
+#                 error_messages={
+#                     'required': f'{field.replace("_", " ").title()} is required.',
+#                     'min_value': f'{field.replace("_", " ").title()} must be a positive number.'
+#                 }
+#             )
+#     class Meta:
+#         model = Logistices
+#         fields = ['facility_id','DatePicker','category','logistices_types','Typeof_fuel','km_travelled','No_Trips','fuel_consumption','No_Vehicles','Spends_on_fuel','logistices_id']
+
+#         extra_kwargs = {
+#             'facility': {'read_only': True},
+#             'facility_id': {'read_only': True}
+#         }
+        
+#     def validate(self, data):
+#         facility_id = data.get('facility_id')
+#         date = data.get('DatePicker')
+#         try:
+#             facility = Facility.objects.get(facility_id=facility_id)
+#             data['facility'] = facility
+#         except Facility.DoesNotExist:
+#             raise serializers.ValidationError({"facility_id": "The selected facility does not exist."})
+
+#         month = date.month
+#         year = date.year
+
+#         # Ensure there’s no existing Biodiversity entry for the same month and year
+#         if self.instance is None:
+#             if Logistices.objects.filter(
+#                 facility=facility,
+#                 DatePicker__year=year,
+#                 DatePicker__month=month
+#             ).exists():
+#                 raise serializers.ValidationError({
+#                     "non_field_errors": _("A Logistices entry for this facility already exists for this month.")
+#                 })
+#         else:
+#             # Exclude the current instance in the check when updating
+#             existing_entry = Logistices.objects.filter(
+#                 facility=facility,
+#                 DatePicker__year=year,
+#                 DatePicker__month=month
+#             ).exclude(logistices_id=self.instance.logistices_id)
+
+#             if existing_entry.exists():
+#                 raise serializers.ValidationError({
+#                     "non_field_errors": _("A different logistices entry for this facility already exists for this month.")
+#                 })
+        
+#         return data
+    
+    # def create(self, validated_data):
+    #     user = self.context['request'].user
+    #     validated_data['user'] = user
+    #     validated_data.pop('facility_id', None)
+
+    #     logistices = Logistices.objects.create(**validated_data)
+    #     return logistices
+    
+# class LogisticesSerializer(serializers.ModelSerializer):
+#     facility_id = serializers.CharField(
+#         write_only=True, required=True,
+#         error_messages={
+#             'required': 'Facility ID is required.',
+#             'null': 'Facility ID cannot be null.'
+#         }
+#     )
+#     DatePicker = serializers.DateField(
+#         required=True,
+#         error_messages={
+#             'required': 'Date is required.',
+#             'invalid': 'Invalid date format. Please use YYYY-MM-DD.'
+#         }
+#     )
+#     category = serializers.CharField(
+#         required=True,
+#         error_messages={'required': 'Category is required.'}
+#     )
+#     logistices_types = serializers.CharField(
+#         required=True,
+#         error_messages={'required': 'logistices_types is required.'}
+#     )
+#     Typeof_fuel = serializers.CharField(
+#         required=True,
+#         error_messages={'required': 'Typeof_fuel is required.'}
+#     )
+#     def __init__(self, *args, **kwargs):
+#         super().__init__(*args, **kwargs)
+        
+#         logistices_fields = [
+#             'km_travelled', 'No_Trips', 'fuel_consumption', 'No_Vehicles', 'Spends_on_fuel'
+#         ]
+        
+#         for field in logistices_fields:
+#             self.fields[field] = serializers.FloatField(
+#                 required=True,
+#                 min_value=0,
+#                 error_messages={
+#                     'required': f'{field.replace("_", " ").title()} is required.',
+#                     'min_value': f'{field.replace("_", " ").title()} must be a positive number.'
+#                 }
+#             )
+#     class Meta:
+#         model = Logistices
+#         fields = [
+#             'facility_id', 'DatePicker', 'category', 'logistices_types', 'Typeof_fuel',
+#             'km_travelled', 'No_Trips', 'fuel_consumption', 'No_Vehicles',
+#             'Spends_on_fuel', 'logistices_id'
+#         ]
+#         extra_kwargs = {
+#             'facility': {'read_only': True},
+#             'logistices_id': {'read_only': True}
+#         }
+#     def validate(self, data):
+#     facility_id = data.get('facility_id')
+#     date = data.get('DatePicker')
+#     logistices_types = data.get('logistices_types')
+#     Typeof_fuel = data.get('Typeof_fuel')
+
+#     # Verify if the facility exists
+#     try:
+#         facility = Facility.objects.get(facility_id=facility_id)
+#         data['facility'] = facility
+#     except Facility.DoesNotExist:
+#         raise serializers.ValidationError({"facility_id": "The selected facility does not exist."})
+
+#     month = date.month
+#     year = date.year
+
+#     # Check if an entry already exists for the same logistices_types and Typeof_fuel for the same facility, month, and year
+#     existing_entry = Logistices.objects.filter(
+#         facility=facility,
+#         DatePicker__year=year,
+#         DatePicker__month=month,
+#         logistices_types=logistices_types,
+#         Typeof_fuel=Typeof_fuel
+#     )
+
+#     if self.instance is None:  # Create operation
+#         if existing_entry.exists():
+#             raise serializers.ValidationError({
+#                 "non_field_errors": (
+#                     f"An entry for logistices type '{logistices_types}' and fuel type '{Typeof_fuel}' "
+#                     f"already exists for the same facility in the given month and year."
+#                 )
+#             })
+#     else:  # Update operation
+#         # Exclude the current instance in the check
+#         existing_entry = existing_entry.exclude(logistices_id=self.instance.logistices_id)
+#         if existing_entry.exists():
+#             raise serializers.ValidationError({
+#                 "non_field_errors": (
+#                     f"An entry for logistices type '{logistices_types}' and fuel type '{Typeof_fuel}' "
+#                     f"already exists for the same facility in the given month and year."
+#                 )
+#             })
+
+#     return data
+
+#     # def validate(self, data):
+#     #     facility_id = data.get('facility_id')
+#     #     date = data.get('DatePicker')
+#     #     logistices_types = data.get('logistices_types')
+#     #     Typeof_fuel = data.get('Typeof_fuel')
+
+#     #     try:
+#     #         facility = Facility.objects.get(facility_id=facility_id)
+#     #         data['facility'] = facility
+#     #     except Facility.DoesNotExist:
+#     #         raise serializers.ValidationError({"facility_id": "The selected facility does not exist."})
+
+#     #     month = date.month
+#     #     year = date.year
+
+#     #     # Check the count for the selected logistices_types and Typeof_fuel for the same month and facility
+#     #     existing_entries = Logistices.objects.filter(
+#     #         facility=facility,
+#     #         DatePicker__year=year,
+#     #         DatePicker__month=month,
+#     #         logistices_types=logistices_types,
+#     #         Typeof_fuel=Typeof_fuel
+#     #     )
+
+#     #     if self.instance is None:  # Create operation
+#     #         if existing_entries.count() >4:
+#     #             raise serializers.ValidationError({
+#     #                 "non_field_errors": (
+#     #                     f"Only 2 entries are allowed for the combination of "
+#     #                     f"logistices type '{logistices_types}' and fuel type '{Typeof_fuel}' "
+#     #                     f"in the same month."
+#     #                 )
+#     #             })
+#     #     else:  # Update operation
+#     #         # Exclude the current instance in the check
+#     #         existing_entries = existing_entries.exclude(logistices_id=self.instance.logistices_id)
+#     #         if existing_entries.count() >4:
+#     #             raise serializers.ValidationError({
+#     #                 "non_field_errors": (
+#     #                     f"Only 4 entries are allowed for the combination of "
+#     #                     f"logistices type '{logistices_types}' and fuel type '{Typeof_fuel}' "
+#     #                     f"in the same month."
+#     #                 )
+#     #             })
+
+#     #     return data
+#     def create(self, validated_data):
+#         user = self.context['request'].user
+#         validated_data['user'] = user
+#         validated_data.pop('facility_id', None)
+
+#         logistices = Logistices.objects.create(**validated_data)
+#         return logistices
+    
+
+# class LogisticesSerializer(serializers.ModelSerializer):
+#     facility_id = serializers.CharField(
+#         write_only=True,
+#         required=True,
+#         error_messages={
+#             'required': 'Facility ID is required.',
+#             'null': 'Facility ID cannot be null.'
+#         }
+#     )
+#     DatePicker = serializers.DateField(
+#         required=True,
+#         error_messages={
+#             'required': 'Date is required.',
+#             'invalid': 'Invalid date format. Please use YYYY-MM-DD.'
+#         }
+#     )
+#     category = serializers.CharField(
+#         required=True,
+#         error_messages={'required': 'Category is required.'}
+#     )
+#     logistices_types = serializers.CharField(
+#         required=True,
+#         error_messages={'required': 'logistices_types is required.'}
+#     )
+#     Typeof_fuel = serializers.CharField(
+#         required=True,
+#         error_messages={'required': 'Typeof_fuel is required.'}
+#     )
+
+#     def __init__(self, *args, **kwargs):
+#         super().__init__(*args, **kwargs)
+
+#         logistices_fields = [
+#             'km_travelled', 'No_Trips', 'fuel_consumption', 'No_Vehicles', 'Spends_on_fuel'
+#         ]
+
+#         for field in logistices_fields:
+#             self.fields[field] = serializers.FloatField(
+#                 required=True,
+#                 min_value=0,
+#                 error_messages={
+#                     'required': f'{field.replace("_", " ").title()} is required.',
+#                     'min_value': f'{field.replace("_", " ").title()} must be a positive number.'
+#                 }
+#             )
+
+#     class Meta:
+#         model = Logistices
+#         fields = [
+#             'facility_id', 'DatePicker', 'category', 'logistices_types', 'Typeof_fuel',
+#             'km_travelled', 'No_Trips', 'fuel_consumption', 'No_Vehicles',
+#             'Spends_on_fuel', 'logistices_id'
+#         ]
+#         extra_kwargs = {
+#             'facility': {'read_only': True},
+#             'logistices_id': {'read_only': True}
+#         }
+
+#     def validate(self, data):
+#         facility_id = data.get('facility_id')
+#         date = data.get('DatePicker')
+#         logistices_types = data.get('logistices_types')
+#         Typeof_fuel = data.get('Typeof_fuel')
+
+#         # Verify if the facility exists
+#         try:
+#             facility = Facility.objects.get(facility_id=facility_id)
+#             data['facility'] = facility
+#         except Facility.DoesNotExist:
+#             raise serializers.ValidationError({"facility_id": "The selected facility does not exist."})
+
+#         month = date.month
+#         year = date.year
+
+#         # Check if an entry already exists for the same logistices_types and Typeof_fuel
+#         existing_entry = Logistices.objects.filter(
+#             facility=facility,
+#             DatePicker__year=year,
+#             DatePicker__month=month,
+#             logistices_types=logistices_types,
+#             Typeof_fuel=Typeof_fuel
+#         )
+
+#         if self.instance:  # Update operation
+#             existing_entry = existing_entry.exclude(logistices_id=self.instance.logistices_id)
+
+#         if existing_entry.exists():
+#             raise serializers.ValidationError({
+#                 "non_field_errors": (
+#                     f"An entry for logistices type '{logistices_types}' and fuel type '{Typeof_fuel}' "
+#                     f"already exists for the same facility in the given month and year."
+#                 )
+#             })
+
+#         return data
+
+#     def create(self, validated_data):
+#         user = self.context['request'].user
+#         validated_data['user'] = user
+#         validated_data.pop('facility_id', None)
+
+#         logistices = Logistices.objects.create(**validated_data)
+#         return logistices
 class LogisticesSerializer(serializers.ModelSerializer):
+    facility_id = serializers.CharField(
+        write_only=True,
+        required=True,
+        error_messages={
+            'required': 'Facility ID is required.',
+            'null': 'Facility ID cannot be null.'
+        }
+    )
+    DatePicker = serializers.DateField(
+        required=True,
+        error_messages={
+            'required': 'Date is required.',
+            'invalid': 'Invalid date format. Please use YYYY-MM-DD.'
+        }
+    )
+    category = serializers.CharField(
+        required=True,
+        error_messages={'required': 'Category is required.'}
+    )
+    logistices_types = serializers.CharField(
+        required=True,
+        error_messages={'required': 'logistices_types is required.'}
+    )
+    Typeof_fuel = serializers.CharField(
+        required=True,
+        error_messages={'required': 'Typeof_fuel is required.'}
+    )
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        logistices_fields = [
+            'km_travelled', 'No_Trips', 'fuel_consumption', 'No_Vehicles', 'Spends_on_fuel'
+        ]
+
+        for field in logistices_fields:
+            self.fields[field] = serializers.FloatField(
+                required=True,
+                min_value=0,
+                error_messages={
+                    'required': f'{field.replace("_", " ").title()} is required.',
+                    'min_value': f'{field.replace("_", " ").title()} must be a positive number.'
+                }
+            )
+
     class Meta:
         model = Logistices
-        fields = ['DatePicker','category','logistices_types','Typeof_fuel','km_travelled','No_Trips','fuel_consumption','No_Vehicles','Spends_on_fuel','facility','logistices_id']
-    
+        fields = [
+            'facility_id', 'DatePicker', 'category', 'logistices_types', 'Typeof_fuel',
+            'km_travelled', 'No_Trips', 'fuel_consumption', 'No_Vehicles',
+            'Spends_on_fuel', 'logistices_id'
+        ]
+        extra_kwargs = {
+            'facility': {'read_only': True},
+            'logistices_id': {'read_only': True}
+        }
+    logger = logging.getLogger(__name__)
     def validate(self, data):
-        if data['No_Trips'] < 0 or data['fuel_consumption'] < 0 or data['No_Vehicles'] < 0:
-            raise serializers.ValidationError("Trips, fuel consumption, and vehicles must be positive numbers.")
+        facility_id = data.get('facility_id')
+        date = data.get('DatePicker')
+        logistices_types = data.get('logistices_types')
+        Typeof_fuel = data.get('Typeof_fuel')
+
+        # Verify if the facility exists
+        try:
+            facility = Facility.objects.get(facility_id=facility_id)
+            data['facility'] = facility
+        except Facility.DoesNotExist:
+            raise serializers.ValidationError({"facility_id": "The selected facility does not exist."})
+
+        month = date.month
+        year = date.year
+        logger.debug(f"Checking for existing entry with parameters: "
+                 f"facility={facility}, date={date}, types={logistices_types}, fuel={Typeof_fuel}")
+        # Check if an entry already exists for the same logistices_types and Typeof_fuel
+        existing_entry = Logistices.objects.filter(
+            facility=facility,
+            DatePicker__year=year,
+            DatePicker__month=month,
+            logistices_types=logistices_types,
+            Typeof_fuel=Typeof_fuel
+        )
+
+        if self.instance:  # Update operation
+            # Exclude the current instance to allow updating
+            existing_entry = existing_entry.exclude(logistices_id=self.instance.logistices_id)
+
+        if existing_entry.exists():
+            raise serializers.ValidationError({
+                "non_field_errors": (
+                    f"An entry for logistices type '{logistices_types}' and fuel type '{Typeof_fuel}' "
+                    f"already exists for the same facility in the given month and year."
+                )
+            })
+
         return data
-    
+
     def create(self, validated_data):
         user = self.context['request'].user
-        if 'user' in validated_data:
-            validated_data.pop('user')
-        logistices = Logistices.objects.create(user=user, **validated_data)
+        validated_data['user'] = user
+        validated_data.pop('facility_id', None)
+
+        logistices = Logistices.objects.create(**validated_data)
         return logistices
-    
-    
-    
-
-
-

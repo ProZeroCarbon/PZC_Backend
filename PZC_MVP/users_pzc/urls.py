@@ -62,8 +62,8 @@ urlpatterns = [
    #Apis for Logistices Crud Operations starts
    path('add_logistices/',LogisticesCreateView.as_view(),name='add_logistices'),
    path('view_logistices/',LogisticesView.as_view(),name='add_logistices'),
-   path('update_logistices/<int:pk>/update',LogisticesEditView.as_view(),name='add_logistices'),
-   path('delete_logistices/<int:pk>/',LogisticesDeleteView.as_view(),name='add_logistices'),
+   path('update_logistices/<str:logistices_id>/',LogisticesEditView.as_view(),name='add_logistices'),
+   path('delete_logistices/<str:logistices_id>/',LogisticesDeleteView.as_view(),name='add_logistices'),
    #Apis for Logistices Crud Operations Ends
    
    #OverviewCard Total

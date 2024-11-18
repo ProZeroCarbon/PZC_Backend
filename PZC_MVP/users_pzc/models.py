@@ -153,7 +153,7 @@ class Biodiversity(models.Model):
     user = models.ForeignKey(CustomUser,on_delete=models.CASCADE)
     facility = models.ForeignKey(Facility, on_delete=models.CASCADE)
     category = models.CharField(max_length=255)
-    biodiversity_id =  models.CharField(max_length=20, unique=True, editable=False)
+    biodiversity_id =  models.CharField(max_length=20, primary_key=True, editable=False)
     DatePicker = models.DateField(null=True,blank=True)
     no_trees=models.IntegerField(default=0)
     species = models.CharField(max_length=255)
@@ -180,17 +180,16 @@ class Logistices(models.Model):
     user = models.ForeignKey(CustomUser,on_delete=models.CASCADE)
     facility = models.ForeignKey(Facility, on_delete=models.CASCADE)
     LOGISTICES_TYPE_CHOICES=[
-        ('staff_logistices','Staff_Logistices'),
-        ('cargo','Cargo')
+        ('staff_logistices','staff_logistices'),
+        ('cargo','cargo')
     ]
     FUEL_TYPE_CHOICES=[
-        ('diesel','Diesel'),
-        ('petrol','Petrol'),
-        ('LPG','LPG')
+        ('diesel','diesel'),
+        ('petrol','petrol')
     ]
     category = models.CharField(max_length=255)
     DatePicker = models.DateField(null=True,blank=True)
-    logistices_id =  models.CharField(max_length=20, unique=True, editable=False)
+    logistices_id =  models.CharField(max_length=20, primary_key=True, editable=False)
     logistices_types = models.CharField(max_length=255,choices=LOGISTICES_TYPE_CHOICES,default='staff_logistices')
     Typeof_fuel = models.CharField(max_length=255,choices=FUEL_TYPE_CHOICES,default='diesel')
     km_travelled =models.FloatField(default=0.0)

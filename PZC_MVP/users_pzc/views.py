@@ -571,60 +571,6 @@ class BiodiversityCreateView(APIView):
         return Response(serializer.errors,status=status.HTTP_400_BAD_REQUEST)
     
 #biodiversity View
-# class BiodiversityView(APIView):
-#     permission_classes = [IsAuthenticated]
-    
-#     def get(self, request):
-#         user = request.user
-#         facility_id = request.GET.get('facility_id', 'all')
-#         year = request.GET.get('year')
-        
-#         try:
-#             if year:
-#                 year = int(year)
-#             else:
-#                 current_date = datetime.now()
-#                 year = current_date.year - 1 if current_date.month < 4 else current_date.year
-
-#             start_date = datetime(year, 4, 1)
-#             end_date = datetime(year + 1, 3, 31)
-#         except ValueError:
-#             return Response(
-#                 {"error": "Invalid fiscal year format. Please provide a valid year, e.g., 2023."},
-#                 status=status.HTTP_400_BAD_REQUEST
-#             )
-
-#         biodiversity_data = Biodiversity.objects.filter(user=user, DatePicker__range=(start_date, end_date))
-        
-#         if facility_id.lower() != 'all':
-#             biodiversity_data = biodiversity_data.filter(facility__facility_id=facility_id)
-#             print(f"Filtered Biodiversity Data Count by Facility: {biodiversity_data.count()}")
-#         else:
-#             print("Facility ID is 'all'; skipping facility filtering.")
-        
-#         if not biodiversity_data.exists():
-#             return Response(
-#                 {
-#                     "message": "No data available for the selected facility and fiscal year.",
-#                     "email": user.email,
-#                     "year": year,
-#                     "biodiversity_data": [],
-#                     "overall_biodiversity_usage_total": 0
-#                 },
-#                 status=status.HTTP_200_OK
-#             )
-        
-#         biodiversity_serializer = BiodiversitySerializer(biodiversity_data, many=True)
-#         overall_total = sum(biodiversity.no_trees for biodiversity in biodiversity_data) 
-        
-#         user_data = {
-#             "email": user.email,
-#             "biodiversity_data": biodiversity_serializer.data,
-#             "overall_biodiversity_usage_total": overall_total
-#         }
-        
-#         return Response(user_data, status=status.HTTP_200_OK)
-
 class BiodiversityView(APIView):
     permission_classes = [IsAuthenticated]
     
@@ -732,28 +678,89 @@ class LogisticesCreateView(APIView):
 #View Logistices
 class LogisticesView(APIView):
     permission_classes = [IsAuthenticated]
-    filter_backends = [DjangoFilterBackend]
-    filterset_class = LogisticesFilter    
+    
     def get(self, request):
         user = request.user
-        logistices_data = Logistices.objects.filter(user=user)
-        filtered_logistices_data = LogisticesFilter(request.GET,queryset=logistices_data).qs
-        logistices_serializer = LogisticesSerializer(filtered_logistices_data, many=True)
+        facility_id = request.GET.get('facility_id', 'all')
+        year = request.GET.get('year')
+        
+        try:
+            if year:
+                year = int(year)
+            else:
+                latest_date = Biodiversity.objects.filter(user=user).aggregate(latest_date=Max('DatePicker'))['latest_date']
+                
+                if latest_date:
+                    year = latest_date.year if latest_date.month >= 4 else latest_date.year - 1
+                else:
+                    current_date = datetime.now()
+                    year = current_date.year - 1 if current_date.month < 4 else current_date.year
+            
+            start_date = datetime(year, 4, 1)
+            end_date = datetime(year + 1, 3, 31)
+        except ValueError:
+            return Response(
+                {"error": "Invalid fiscal year format. Please provide a valid year, e.g., 2023."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        logistices_data = Logistices.objects.filter(user=user, DatePicker__range=(start_date, end_date))
+
+        if facility_id.lower() != 'all':
+            logistices_data = logistices_data.filter(facility__facility_id=facility_id)
+            print(f"Filtered logistices Data Count by Facility: {logistices_data.count()}")
+        else:
+            print("Facility ID is 'all'; skipping facility filtering.")
+        
+        if not logistices_data.exists():
+            return Response(
+                {
+                    "message": "No data available for the selected facility and fiscal year.",
+                    "email": user.email,
+                    "year": year,
+                    "logistices_data": [],
+                    "overall_logistices_usage_total": 0
+                },
+                status=status.HTTP_200_OK
+            )
+        
+        logistices_serializer = LogisticesSerializer(logistices_data, many=True)
         overall_fuelconsumption = sum(logistices_fuel.fuel_consumption for logistices_fuel in logistices_data)
+        
         user_data = {
-            'email': user.email,
-            'logistices_data': logistices_serializer.data,
-            'Fuel_consumption_total':overall_fuelconsumption
+            "email": user.email,
+            "year": year, 
+            "logistices_data": logistices_serializer.data,
+            "overall_logistices_usage_total": overall_fuelconsumption
         }
+        
         return Response(user_data, status=status.HTTP_200_OK)
+
+# class LogisticesView(APIView):
+#     permission_classes = [IsAuthenticated]
+#     filter_backends = [DjangoFilterBackend]
+#     filterset_class = LogisticesFilter    
+#     def get(self, request):
+#         user = request.user
+#         logistices_data = Logistices.objects.filter(user=user)
+#         filtered_logistices_data = LogisticesFilter(request.GET,queryset=logistices_data).qs
+#         logistices_serializer = LogisticesSerializer(filtered_logistices_data, many=True)
+#         overall_fuelconsumption = sum(logistices_fuel.fuel_consumption for logistices_fuel in logistices_data)
+#         user_data = {
+#             'email': user.email,
+#             'logistices_data': logistices_serializer.data,
+#             'Fuel_consumption_total':overall_fuelconsumption
+#         }
+#         return Response(user_data, status=status.HTTP_200_OK)
 
 #Edit Logistices
 class LogisticesEditView(APIView):
     permission_classes = [IsAuthenticated]
 
-    def put(self, request, pk):
+    def put(self, request, logistices_id):
         try:
-            logistices = Logistices.objects.get(pk=pk, user=request.user)
+            # Fetch the Logistices entry for the user
+            logistices = Logistices.objects.get(logistices_id=logistices_id, user=request.user)
         except Logistices.DoesNotExist:
             return Response({"error": "Logistices data not found."}, status=status.HTTP_404_NOT_FOUND)
 
@@ -763,13 +770,28 @@ class LogisticesEditView(APIView):
             return Response({"message": "Logistices data updated successfully."}, status=status.HTTP_200_OK)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+# class LogisticesEditView(APIView):
+#     permission_classes = [IsAuthenticated]
+
+#     def put(self, request, logistices_id):
+#         try:
+#             logistices = Logistices.objects.get(logistices_id=logistices_id, user=request.user)
+#         except Logistices.DoesNotExist:
+#             return Response({"error": "Logistices data not found."}, status=status.HTTP_404_NOT_FOUND)
+
+#         serializer = LogisticesSerializer(logistices, data=request.data, context={'request': request})
+#         if serializer.is_valid():
+#             serializer.save()
+#             return Response({"message": "Logistices data updated successfully."}, status=status.HTTP_200_OK)
+#         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
 #Delete Logistices
 class LogisticesDeleteView(APIView):
     permission_classes = [IsAuthenticated]
 
-    def delete(self, request, pk):
+    def delete(self, request, logistices_id):
         try:
-            logistices = Logistices.objects.get(pk=pk, user=request.user)
+            logistices = Logistices.objects.get(logistices_id=logistices_id, user=request.user)
         except Logistices.DoesNotExist:
             return Response({"error": "Logistices data not found."}, status=status.HTTP_404_NOT_FOUND)
 
@@ -2345,11 +2367,11 @@ class EnergyViewCard_Over(APIView):
                         return Response({'error': 'Invalid year parameter.'}, status=status.HTTP_400_BAD_REQUEST)
                 except ValueError:
                     return Response({'error': 'Year must be an integer.'}, status=status.HTTP_400_BAD_REQUEST)
+            
             if year:
                 start_date = datetime(year, 4, 1)
                 end_date = datetime(year + 1, 3, 31)
             else:
-
                 latest_entry = Energy.objects.filter(user=user).order_by('-DatePicker').first()
                 if latest_entry:
                     latest_year = latest_entry.DatePicker.year
@@ -2388,6 +2410,10 @@ class EnergyViewCard_Over(APIView):
                     response_data['overall_energy_totals'][f"overall_{field}"] = 0
                     response_data['facility_energy_data'][field] = []
             else:
+                # Calculate overall totals and renewable energy, fuel used in operations
+                renewable_energy_total = 0
+                fuel_used_in_operations_total = 0
+                
                 for field in energy_fields:
                     # Facility-specific totals
                     facility_energy_data = (
@@ -2409,12 +2435,25 @@ class EnergyViewCard_Over(APIView):
                     overall_total = energy_data.aggregate(total=Sum(field))['total'] or 0
                     response_data['overall_energy_totals'][f"overall_{field}"] = overall_total
 
+                    # Calculate renewable energy (renewable_other + renewable_solar)
+                    if field == 'renewable_solar' or field == 'renewable_other':
+                        renewable_energy_total += overall_total
+
+                    # Calculate fuel used in operations (coking_coal + coke_oven_coal + natural_gas + diesel + biomass_wood + biomass_other_solid)
+                    if field in ['coking_coal', 'coke_oven_coal', 'natural_gas', 'diesel', 'biomass_wood', 'biomass_other_solid']:
+                        fuel_used_in_operations_total += overall_total
+
+                # Add renewable energy and fuel used in operations to the response data
+                response_data['overall_energy_totals']['overall_renewable_energy'] = renewable_energy_total
+                response_data['overall_energy_totals']['overall_fuel_used_in_operations'] = fuel_used_in_operations_total
+
             return Response(response_data, status=status.HTTP_200_OK)
 
         except Exception as e:
             error_message = f"An error occurred: {str(e)}"
             print(error_message)
             return Response({'error': error_message}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
 #HVAC Line Charts and Donut Chart 
 class HVACOverviewView(APIView):
     permission_classes = [IsAuthenticated]
@@ -4377,6 +4416,9 @@ class WaterAnalyticsView(APIView):
   
       
 '''Water Overview Cards ,Graphs and Individual Line Charts and donut Charts Ends'''
+
+
+
 '''Biodiversity Overview Cards Starts'''
 
 
@@ -4489,8 +4531,6 @@ class BiodiversityMetricsView(APIView):
         except Exception as e:
             return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         
-        
-
 class BiodiversityMetricsGraphsView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -4672,6 +4712,10 @@ class BiodiversityMetricsGraphsView(APIView):
         # Return the difference, or current_year_co2 if there's no previous year data
         return current_year_co2 - prev_year_co2
 
-
-
 '''Biodiversity Overview Cards Ends'''
+
+'''LOgistics overview Graphs starts'''
+
+
+
+'''LOgistics overview Graphs ends'''
