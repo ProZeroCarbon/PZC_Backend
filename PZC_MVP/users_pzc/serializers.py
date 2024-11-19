@@ -453,8 +453,8 @@ class EnergyCreateSerializer(serializers.ModelSerializer):
 class WaterSerializer(serializers.ModelSerializer):
     class Meta:
         model = Water
-        fields = ['DatePicker','category','Generated_Water', 'Recycled_Water', 'Softener_usage', 
-                  'Boiler_usage', 'otherUsage', 'facility_id','water_id']
+        fields = ['facility_id','DatePicker','category','Generated_Water', 'Recycled_Water', 'Softener_usage', 
+                  'Boiler_usage', 'otherUsage', 'water_id']
 
 class WaterCreateSerializer(serializers.ModelSerializer):
     facility_id = serializers.CharField(

@@ -1,6 +1,6 @@
 
 from django.urls import   path
-from .views import RegisterView, LoginView, DashboardView, LogoutView,WasteCreateView,WasteView,WasteEditView,WasteDeleteView,EnergyCreateView,EnergyView,EnergyEditView,EnergyDeleteView,WaterView,WaterCreateView,WaterEditView,WaterDeleteView,BiodiversityCreateView,BiodiversityView,BiodiversityEditView,BiodiversityDeleteView,FacilityCreateView,FacilityView,FacilityEditView,FacilityDeleteView,LogisticesCreateView,LogisticesView,LogisticesEditView,LogisticesDeleteView,OrganizationCreate,OrganizationView,FoodWasteOverviewView,SolidWasteOverviewView,E_WasteOverviewView,Biomedical_WasteOverviewView,Liquid_DischargeOverviewView,OthersOverviewView,Waste_Sent_For_RecycleOverviewView,Waste_Sent_For_LandFillOverviewView,StackedWasteOverviewView,WasteOverallDonutChartView,SentToLandfillOverviewView,SentToRecycledOverviewView,HVACOverviewView,ProductionOverviewView,StpOverviewView,Admin_BlockOverviewView,Utilities_OverviewView,WasteViewCard_Over,EnergyViewCard_Over,Others_OverviewView,Renewable_EnergyOverView,StackedEnergyOverviewView,OverallUsageView,Fuel_Used_OperationsOverView,WaterViewCard_Over,Generated_WaterOverviewView,Recycle_WaterOverviewView,Softener_usageOverviewView,Boiler_usageOverviewView,otherUsage_OverviewView,StackedWaterOverviewView,EnergyAnalyticsView,WaterAnalyticsView,BiodiversityMetricsView,BiodiversityMetricsGraphsView,LogisticesOverviewAndGraphs
+from .views import RegisterView, LoginView, DashboardView, LogoutView,WasteCreateView,WasteView,WasteEditView,WasteDeleteView,EnergyCreateView,EnergyView,EnergyEditView,EnergyDeleteView,WaterView,WaterCreateView,WaterEditView,WaterDeleteView,BiodiversityCreateView,BiodiversityView,BiodiversityEditView,BiodiversityDeleteView,FacilityCreateView,FacilityView,FacilityEditView,FacilityDeleteView,LogisticesCreateView,LogisticesView,LogisticesEditView,LogisticesDeleteView,OrganizationCreate,OrganizationView,FoodWasteOverviewView,SolidWasteOverviewView,E_WasteOverviewView,Biomedical_WasteOverviewView,Liquid_DischargeOverviewView,OthersOverviewView,Waste_Sent_For_RecycleOverviewView,Waste_Sent_For_LandFillOverviewView,StackedWasteOverviewView,WasteOverallDonutChartView,SentToLandfillOverviewView,SentToRecycledOverviewView,HVACOverviewView,ProductionOverviewView,StpOverviewView,Admin_BlockOverviewView,Utilities_OverviewView,WasteViewCard_Over,EnergyViewCard_Over,Others_OverviewView,Renewable_EnergyOverView,StackedEnergyOverviewView,OverallUsageView,Fuel_Used_OperationsOverView,WaterViewCard_Over,Generated_WaterOverviewView,Recycle_WaterOverviewView,Softener_usageOverviewView,Boiler_usageOverviewView,otherUsage_OverviewView,StackedWaterOverviewView,EnergyAnalyticsView,WaterAnalyticsView,BiodiversityMetricsGraphsView,LogisticesOverviewAndGraphs
 from rest_framework_simplejwt.views import (
     TokenObtainPairView,
     TokenRefreshView,
@@ -70,7 +70,7 @@ urlpatterns = [
    path('OverallUsageView/',OverallUsageView.as_view(),name='OverallUsageView'),
    
    #Apis for Waste overviewgraphs starts
-   #Waste Overview...
+   #Waste Overview
    path('WasteViewCard_Over/',WasteViewCard_Over.as_view(),name='WasteViewCard_Over'),
    path('FoodWasteOverviewView/',FoodWasteOverviewView.as_view(),name="FoodWasteOverview"),
    path('SolidWasteOverviewView/',SolidWasteOverviewView.as_view(),name="SolidWasteOverviewView"),
@@ -116,8 +116,9 @@ urlpatterns = [
     #APis For Stacked Graphs donut Graphs Overview
     path('StackedWaterOverviewView/',StackedWaterOverviewView.as_view(),name="StackedWaterOverviewView"),
     path('WaterAnalyticsView/',WaterAnalyticsView.as_view(),name="WaterAnalyticsView"),
+    
     #Apis For Biodiversity Overview
-    path('BiodiversityMetricsView/',BiodiversityMetricsView.as_view(),name="BiodiversityMetricsView"),
+    # path('BiodiversityMetricsView/',BiodiversityMetricsView.as_view(),name="BiodiversityMetricsView"),
     path('BiodiversityMetricsGraphsView/',BiodiversityMetricsGraphsView.as_view(),name="BiodiversityMetricsGraphsView"),
     
     path('LogisticesOverviewAndGraphs/',LogisticesOverviewAndGraphs.as_view(),name="LogisticesOverviewAndGraphs")

@@ -222,12 +222,23 @@ class WasteView(APIView):
             print("Facility ID is 'all'; skipping facility filtering.")
         
         if not waste_data.exists():
+            empty_fields = {
+                "facility_id":"N/A",
+                "food_waste":0,
+                "solid_Waste":0,
+                "E_Waste":0,
+                "Biomedical_waste":0,
+                "liquid_discharge":0,
+                "other_waste":0,
+                "Recycle_waste":0,
+                "Landfill_waste":0
+            }
             return Response(
                 {
                     "message": "No data available for the selected facility and fiscal year.",
                     "email": user.email,
                     "year": year,
-                    "waste_data": [],
+                    "waste_data": [empty_fields],
                     "overall_waste_usage_total": 0
                 },
                 status=status.HTTP_200_OK
@@ -395,12 +406,28 @@ class EnergyView(APIView):
             print("Facility ID is 'all'; skipping facility filtering.")
         
         if not energy_data.exists():
+            empty_fields = {
+                "facility_id":"N/A",
+                "hvac":0,
+                "production":0,
+                "stp":0,
+                "admin_block":0,
+                "utilities":0,
+                "others":0,
+                "coking_coal":0,
+                "coke_oven_coal":0,
+                "natural_gas":0,
+                "diesel":0,"biomass_wood": 0,
+                "biomass_other_solid": 0,
+                "renewable_solar": 0,
+                "renewable_other": 0,
+            }
             return Response(
                 {
                     "message": "No data available for the selected facility and fiscal year.",
                     "email": user.email,
                     "year": year,
-                    "energy_data": [],
+                    "energy_data": [empty_fields],
                     "overall_energy_usage_total": 0
                 },
                 status=status.HTTP_200_OK
@@ -502,12 +529,20 @@ class WaterView(APIView):
             print("Facility ID is 'all'; skipping facility filtering.")
         
         if not water_data.exists():
+            empty_fields = {
+                "facility_id":"N/A",
+                "Generated_Water": 0,
+                "Recycled_Water": 0,
+                "Softener_usage": 0,
+                "Boiler_usage": 0,
+                "otherUsage": 0
+            }
             return Response(
                 {
                     "message": "No data available for the selected facility and fiscal year.",
                     "email": user.email,
                     "year": year,
-                    "water_data": [],
+                    "water_data": [empty_fields],
                     "overall_water_usage_total": 0
                 },
                 status=status.HTTP_200_OK
@@ -573,24 +608,24 @@ class BiodiversityCreateView(APIView):
 #biodiversity View
 class BiodiversityView(APIView):
     permission_classes = [IsAuthenticated]
-    
+
     def get(self, request):
         user = request.user
         facility_id = request.GET.get('facility_id', 'all')
         year = request.GET.get('year')
-        
+
         try:
             if year:
                 year = int(year)
             else:
                 latest_date = Biodiversity.objects.filter(user=user).aggregate(latest_date=Max('DatePicker'))['latest_date']
-                
+
                 if latest_date:
                     year = latest_date.year if latest_date.month >= 4 else latest_date.year - 1
                 else:
                     current_date = datetime.now()
                     year = current_date.year - 1 if current_date.month < 4 else current_date.year
-            
+
             start_date = datetime(year, 4, 1)
             end_date = datetime(year + 1, 3, 31)
         except ValueError:
@@ -598,7 +633,7 @@ class BiodiversityView(APIView):
                 {"error": "Invalid fiscal year format. Please provide a valid year, e.g., 2023."},
                 status=status.HTTP_400_BAD_REQUEST
             )
-        
+
         biodiversity_data = Biodiversity.objects.filter(user=user, DatePicker__range=(start_date, end_date))
 
         if facility_id.lower() != 'all':
@@ -606,29 +641,37 @@ class BiodiversityView(APIView):
             print(f"Filtered biodiversity Data Count by Facility: {biodiversity_data.count()}")
         else:
             print("Facility ID is 'all'; skipping facility filtering.")
-        
+
         if not biodiversity_data.exists():
+            empty_fields = {
+                "no_trees": 0,
+                "no_plants": 0,
+                "water_bodies": 0,
+                "wildlife_species": 0,
+                "green_cover_area": 0
+            }
+
             return Response(
                 {
                     "message": "No data available for the selected facility and fiscal year.",
                     "email": user.email,
                     "year": year,
-                    "biodiversity_data": [],
+                    "biodiversity_data": [empty_fields],
                     "overall_biodiversity_usage_total": 0
                 },
                 status=status.HTTP_200_OK
             )
-        
+
         biodiversity_serializer = BiodiversitySerializer(biodiversity_data, many=True)
         overall_total = sum(biodiversity.no_trees for biodiversity in biodiversity_data)
-        
+
         user_data = {
             "email": user.email,
             "year": year, 
             "biodiversity_data": biodiversity_serializer.data,
             "overall_biodiversity_usage_total": overall_total
         }
-        
+
         return Response(user_data, status=status.HTTP_200_OK)
 
 #BiodiversityEdit
@@ -678,24 +721,24 @@ class LogisticesCreateView(APIView):
 #View Logistices
 class LogisticesView(APIView):
     permission_classes = [IsAuthenticated]
-    
+
     def get(self, request):
         user = request.user
         facility_id = request.GET.get('facility_id', 'all')
         year = request.GET.get('year')
-        
+
         try:
             if year:
                 year = int(year)
             else:
                 latest_date = Logistices.objects.filter(user=user).aggregate(latest_date=Max('DatePicker'))['latest_date']
-                
+
                 if latest_date:
                     year = latest_date.year if latest_date.month >= 4 else latest_date.year - 1
                 else:
                     current_date = datetime.now()
                     year = current_date.year - 1 if current_date.month < 4 else current_date.year
-            
+
             start_date = datetime(year, 4, 1)
             end_date = datetime(year + 1, 3, 31)
         except ValueError:
@@ -703,7 +746,7 @@ class LogisticesView(APIView):
                 {"error": "Invalid fiscal year format. Please provide a valid year, e.g., 2023."},
                 status=status.HTTP_400_BAD_REQUEST
             )
-        
+
         logistices_data = Logistices.objects.filter(user=user, DatePicker__range=(start_date, end_date))
 
         if facility_id.lower() != 'all':
@@ -711,29 +754,40 @@ class LogisticesView(APIView):
             print(f"Filtered logistices Data Count by Facility: {logistices_data.count()}")
         else:
             print("Facility ID is 'all'; skipping facility filtering.")
-        
+
         if not logistices_data.exists():
+            empty_fields = {
+                "logistices_types": "N/A",
+                "Typeof_fuel": "N/A",
+                "km_travelled": 0,
+                "No_Trips": 0,
+                "fuel_consumption": 0,
+                "No_Vehicles":0,
+                "Spends_on_fuel":0
+            }
+
             return Response(
                 {
                     "message": "No data available for the selected facility and fiscal year.",
                     "email": user.email,
                     "year": year,
-                    "logistices_data": [],
+                    "logistices_data": [empty_fields],
                     "overall_logistices_usage_total": 0
                 },
                 status=status.HTTP_200_OK
             )
-        
+
         logistices_serializer = LogisticesSerializer(logistices_data, many=True)
         overall_fuelconsumption = sum(logistices_fuel.fuel_consumption for logistices_fuel in logistices_data)
-        
+
         user_data = {
             "email": user.email,
             "year": year, 
+            "facility_id": facility_id,
             "logistices_data": logistices_serializer.data,
             "overall_logistices_usage_total": overall_fuelconsumption
         }
-        
+
         return Response(user_data, status=status.HTTP_200_OK)
 
 #Edit Logistices
@@ -2388,24 +2442,29 @@ class EnergyViewCard_Over(APIView):
                 for field in energy_fields:
                     response_data['overall_energy_totals'][f"overall_{field}"] = 0
             else:
-                # Calculate overall totals and renewable energy, fuel used in operations
+                # Initialize counters for renewable energy and fuel usage totals
                 renewable_energy_total = 0
                 fuel_used_in_operations_total = 0
 
                 for field in energy_fields:
-                    # Overall totals
+                    # Aggregate total for each field
                     overall_total = energy_data.aggregate(total=Sum(field))['total'] or 0
-                    response_data['overall_energy_totals'][f"overall_{field}"] = overall_total
 
-                    # Calculate renewable energy (renewable_other + renewable_solar)
+                    # Only include non-zero fields (except renewable_solar and renewable_other which are aggregated)
+                    if overall_total > 0:
+                        # Do not add 'renewable_solar' or 'renewable_other' individually, just add to renewable_energy_total
+                        if field not in ['renewable_solar', 'renewable_other', 'coking_coal', 'coke_oven_coal']:
+                            response_data['overall_energy_totals'][f"overall_{field}"] = overall_total
+
+                    # Add renewable energy (sum of renewable_solar and renewable_other)
                     if field in ['renewable_solar', 'renewable_other']:
                         renewable_energy_total += overall_total
 
-                    # Calculate fuel used in operations (coking_coal + coke_oven_coal + natural_gas + diesel + biomass_wood + biomass_other_solid)
-                    if field in ['coking_coal', 'coke_oven_coal', 'natural_gas', 'diesel', 'biomass_wood', 'biomass_other_solid']:
+                    # Sum for fuel usage fields (this includes 'coking_coal' and 'coke_oven_coal')
+                    if field in ['coke_oven_coal', 'coking_coal', 'natural_gas', 'diesel', 'biomass_wood', 'biomass_other_solid']:
                         fuel_used_in_operations_total += overall_total
 
-                # Add renewable energy and fuel used in operations to the response data
+                # Add the calculated totals for renewable energy and fuel used in operations
                 response_data['overall_energy_totals']['overall_renewable_energy'] = renewable_energy_total
                 response_data['overall_energy_totals']['overall_fuel_used_in_operations'] = fuel_used_in_operations_total
 
@@ -3523,6 +3582,7 @@ class EnergyAnalyticsView(APIView):
 
 '''Water Overview Cards ,Graphs and Individual Line Charts and donut Charts Starts'''
 #Water Card OverView
+
 class WaterViewCard_Over(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -3543,11 +3603,11 @@ class WaterViewCard_Over(APIView):
                         return Response({'error': 'Invalid year parameter.'}, status=status.HTTP_400_BAD_REQUEST)
                 except ValueError:
                     return Response({'error': 'Year must be an integer.'}, status=status.HTTP_400_BAD_REQUEST)
+
             if year:
                 start_date = datetime(year, 4, 1)
                 end_date = datetime(year + 1, 3, 31)
             else:
-
                 latest_entry = Water.objects.filter(user=user).order_by('-DatePicker').first()
                 if latest_entry:
                     latest_year = latest_entry.DatePicker.year
@@ -3559,7 +3619,7 @@ class WaterViewCard_Over(APIView):
                 start_date = datetime(year, 4, 1)
                 end_date = datetime(year + 1, 3, 31)
 
-            # Query energy data
+            # Query water data
             water_data = Water.objects.filter(user=user, DatePicker__range=(start_date, end_date))
 
             if facility_id != 'all':
@@ -3569,42 +3629,33 @@ class WaterViewCard_Over(APIView):
                 water_data = water_data.filter(facility__location__icontains=facility_location)
 
             water_fields = [
-            'Generated_Water', 'Recycled_Water', 'Softener_usage', 'Boiler_usage', 'otherUsage'
+                'Generated_Water', 'Recycled_Water', 'Softener_usage', 'Boiler_usage', 'otherUsage'
             ]
-            
 
             response_data = {
                 'year': year,
-                'overall_water_totals': {},
-                'facility_water_data': {}
+                'overall_water_totals': []
             }
 
             if not water_data.exists():
                 # Populate zero values when no data exists
-                for field in water_fields:
-                    response_data['overall_water_totals'][f"overall_{field}"] = 0
-                    response_data['facility_water_data'][field] = []
+                response_data['overall_water_totals'] = [
+                    {
+                        "facility_id": "N/A",
+                        "facility_name": "N/A",
+                        **{f"overall_{field}": 0 for field in water_fields}
+                    }
+                ]
             else:
-                for field in water_fields:
-                    # Facility-specific totals
-                    facility_water_data = (
-                        water_data
-                        .values('facility__facility_name')
-                        .annotate(total=Sum(field))
-                        .order_by('-total')
-                    )
+                facilities = water_data.values('facility__facility_id', 'facility__facility_name').distinct()
 
-                    response_data['facility_water_data'][field] = [
-                        {
-                            "facility_name": entry['facility__facility_name'],
-                            f"total_{field}": entry['total']
-                        }
-                        for entry in facility_water_data
-                    ]
-
-                    # Overall totals
-                    overall_total = water_data.aggregate(total=Sum(field))['total'] or 0
-                    response_data['overall_water_totals'][f"overall_{field}"] = overall_total
+                for facility in facilities:
+                    facility_totals = {f"overall_{field}": water_data.filter(facility__facility_id=facility['facility__facility_id']).aggregate(total=Sum(field))['total'] or 0 for field in water_fields}
+                    response_data['overall_water_totals'].append({
+                        "facility_id": facility['facility__facility_id'],
+                        "facility_name": facility['facility__facility_name'],
+                        **facility_totals
+                    })
 
             return Response(response_data, status=status.HTTP_200_OK)
 
@@ -4271,8 +4322,9 @@ class WaterAnalyticsView(APIView):
 
         try:
             filters = {'user': user}
-
             today = datetime.now()
+
+            # Year calculation
             if year:
                 try:
                     year = int(year)
@@ -4280,102 +4332,91 @@ class WaterAnalyticsView(APIView):
                     return Response({'error': 'Invalid year parameter.'}, status=status.HTTP_400_BAD_REQUEST)
             else:
                 latest_water = Water.objects.filter(user=user).aggregate(latest_date=Max('DatePicker'))
-                if latest_water['latest_date']:
-                    year = latest_water['latest_date'].year
-                else:
-                    year = today.year 
+                year = latest_water['latest_date'].year if latest_water['latest_date'] else today.year
 
-            if today.month >= 4:
-                start_date = datetime(year, 4, 1)
-                end_date = datetime(year + 1, 3, 31)
-            else:
-                start_date = datetime(year - 1, 4, 1)
-                end_date = datetime(year, 3, 31)
-
+            # Fiscal year range
+            start_date, end_date = (
+                (datetime(year, 4, 1), datetime(year + 1, 3, 31))
+                if today.month >= 4
+                else (datetime(year - 1, 4, 1), datetime(year, 3, 31))
+            )
             filters['DatePicker__range'] = (start_date, end_date)
 
-            # Apply facility_id filter if specified
+            # Facility ID filtering
             if facility_id.lower() != 'all':
-                try:
-                    Facility.objects.get(facility_id=facility_id)
-                    filters['facility__facility_id'] = facility_id
-                except Facility.DoesNotExist:
+                if not Facility.objects.filter(facility_id=facility_id).exists():
                     return Response({'error': f'Facility with ID {facility_id} does not exist.'}, status=status.HTTP_400_BAD_REQUEST)
+                filters['facility__facility_id'] = facility_id
 
-            # Apply facility_location filter if specified
+            # Facility location filtering
             if facility_location and facility_location.lower() != 'all':
                 if not Facility.objects.filter(facility_location__icontains=facility_location).exists():
                     return Response({'error': f'No facility found with location {facility_location}.'}, status=status.HTTP_400_BAD_REQUEST)
                 filters['facility__facility_location__icontains'] = facility_location
 
-            # Query water data
+            # Query Water data
             queryset = Water.objects.filter(**filters)
+            if not queryset.exists():
+                return Response({
+                    "year": year,
+                    "facility_id": facility_id,
+                    "facility_location": facility_location,
+                    "donut_chart_data": {
+                        "Softener Usage": 0,
+                        "Boiler Usage": 0,
+                        "Other Usage": 0
+                    },
+                    "pie_chart_data": [
+                        {"label": "Recycled Water", "value": 0},
+                        {"label": "Remaining Water", "value": 0}
+                    ]
+                }, status=status.HTTP_200_OK)
 
-            if queryset.exists():
-                # Aggregating the water usage data
-                water_totals = queryset.aggregate(
-                    Softener_usage_total=Coalesce(Sum(Cast('Softener_usage', FloatField())), 0.0),
-                    Boiler_usage_total=Coalesce(Sum(Cast('Boiler_usage', FloatField())), 0.0),
-                    otherUsage_total=Coalesce(Sum(Cast('otherUsage', FloatField())), 0.0),
-                    Generated_Water_total=Coalesce(Sum(Cast('Generated_Water', FloatField())), 0.0),
-                    Recycled_Water_total=Coalesce(Sum(Cast('Recycled_Water', FloatField())), 0.0)
-                )
-            else:
-                # If no data found, return zero values and attempt to find latest available data
-                water_totals = {
-                    'Softener_usage_total': 0.0,
-                    'Boiler_usage_total': 0.0,
-                    'otherUsage_total': 0.0,
-                    'Generated_Water_total': 0.0,
-                    'Recycled_Water_total': 0.0
-                }
+            # Aggregations
+            water_totals = queryset.aggregate(
+                Softener_usage_total=Coalesce(Sum(Cast('Softener_usage', FloatField())), 0.0),
+                Boiler_usage_total=Coalesce(Sum(Cast('Boiler_usage', FloatField())), 0.0),
+                otherUsage_total=Coalesce(Sum(Cast('otherUsage', FloatField())), 0.0),
+                Generated_Water_total=Coalesce(Sum(Cast('Generated_Water', FloatField())), 0.0),
+                Recycled_Water_total=Coalesce(Sum(Cast('Recycled_Water', FloatField())), 0.0)
+            )
 
-                # Fetch the latest available data if no data for the selected year/facility
-                latest_water_data = Water.objects.filter(user=user).order_by('-DatePicker').first()
-                if latest_water_data:
-                    water_totals = {
-                        'Softener_usage_total': latest_water_data.Softener_usage or 0.0,
-                        'Boiler_usage_total': latest_water_data.Boiler_usage or 0.0,
-                        'otherUsage_total': latest_water_data.otherUsage or 0.0,
-                        'Generated_Water_total': latest_water_data.Generated_Water or 0.0,
-                        'Recycled_Water_total': latest_water_data.Recycled_Water or 0.0
-                    }
+            # Normalize donut chart percentages
+            total_usage = (
+                water_totals['Softener_usage_total'] +
+                water_totals['Boiler_usage_total'] +
+                water_totals['otherUsage_total']
+            )
+            water_percentages = {
+                "Softener Usage": (water_totals['Softener_usage_total'] / total_usage * 100) if total_usage else 0,
+                "Boiler Usage": (water_totals['Boiler_usage_total'] / total_usage * 100) if total_usage else 0,
+                "Other Usage": (water_totals['otherUsage_total'] / total_usage * 100) if total_usage else 0
+            }
 
-            # Calculate percentages based on available totals
-            generated_recycled_total = water_totals['Generated_Water_total'] + water_totals['Recycled_Water_total']
-
-            water_percentages = {}
-            for water_type, total in {
-                "Softener Usage": water_totals['Softener_usage_total'],
-                "Boiler Usage": water_totals['Boiler_usage_total'],
-                "Other Usage": water_totals['otherUsage_total']
-            }.items():
-                water_percentages[water_type] = (total / generated_recycled_total * 100) if generated_recycled_total else 0
-
+            # Pie chart data
+            generated_recycled_total = (
+                water_totals['Generated_Water_total'] +
+                water_totals['Recycled_Water_total']
+            )
             recycled_water = water_totals['Recycled_Water_total']
             remaining_water = generated_recycled_total - recycled_water
-            recycled_water_percentage = (recycled_water / generated_recycled_total * 100) if generated_recycled_total else 0
-            remaining_water_percentage = (remaining_water / generated_recycled_total * 100) if generated_recycled_total else 0
+            pie_chart_data = [
+                {"label": "Recycled Water", "value": (recycled_water / generated_recycled_total * 100) if generated_recycled_total else 0},
+                {"label": "Remaining Water", "value": (remaining_water / generated_recycled_total * 100) if generated_recycled_total else 0}
+            ]
 
-            # Preparing response data
-            response_data = {
+            return Response({
                 "year": year,
                 "facility_id": facility_id,
                 "facility_location": facility_location,
                 "donut_chart_data": water_percentages,
-                "pie_chart_data": [
-                    {"label": "Recycled Water", "value": recycled_water_percentage},
-                    {"label": "Remaining Water", "value": remaining_water_percentage}
-                ]
-            }
-
-            return Response(response_data, status=status.HTTP_200_OK)
+                "pie_chart_data": pie_chart_data
+            }, status=status.HTTP_200_OK)
 
         except Exception as e:
-            print(f"Error occurred: {e}")
+            logging.error(f"Error in WaterAnalyticsView: {e}")
             return Response({'error': f'An error occurred: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
- 
-  
+
 '''Water Overview Cards ,Graphs and Individual Line Charts and donut Charts Ends'''
 
 
@@ -4383,115 +4424,296 @@ class WaterAnalyticsView(APIView):
 '''Biodiversity Overview Cards Starts'''
 
 
-class BiodiversityMetricsView(APIView):
-    permission_classes = [IsAuthenticated]
+# class BiodiversityMetricsView(APIView):
+#     permission_classes = [IsAuthenticated]
 
-    def get(self, request):
-        user = request.user
-        facility_id = request.GET.get('facility_id', 'all')
-        year = request.GET.get('year')
+#     def get(self, request):
+#         user = request.user
+#         facility_id = request.GET.get('facility_id', 'all')
+#         year = request.GET.get('year')
 
-        try:
-            # Get the latest year if no year is specified
-            if not year:
-                latest_date = Biodiversity.objects.filter(user=user).aggregate(latest_date=Max('DatePicker'))['latest_date']
-                year = latest_date.year if latest_date else datetime.now().year
-            else:
-                year = int(year)
+#         try:
+#             # Get the latest year if no year is specified
+#             if not year:
+#                 latest_date = Biodiversity.objects.filter(user=user).aggregate(latest_date=Max('DatePicker'))['latest_date']
+#                 year = latest_date.year if latest_date else datetime.now().year
+#             else:
+#                 year = int(year)
 
-            # Define fiscal year ranges
-            start_date = datetime(year, 4, 1)
-            end_date = datetime(year + 1, 3, 31)
-            prev_start_date = datetime(year - 1, 4, 1)
-            prev_end_date = datetime(year, 3, 31)
+#             # Define fiscal year ranges
+#             start_date = datetime(year, 4, 1)
+#             end_date = datetime(year + 1, 3, 31)
+#             prev_start_date = datetime(year - 1, 4, 1)
+#             prev_end_date = datetime(year, 3, 31)
 
-            # Filters
-            filters = {'user': user}
-            if facility_id != 'all':
-                filters['facility__facility_id'] = facility_id
+#             # Filters
+#             filters = {'user': user}
+#             if facility_id != 'all':
+#                 filters['facility__facility_id'] = facility_id
 
-            # Query data
-            all_years_data = Biodiversity.objects.filter(**filters)
-            current_year_data = all_years_data.filter(DatePicker__range=(start_date, end_date)).distinct()
-            previous_year_data = all_years_data.filter(DatePicker__range=(prev_start_date, prev_end_date)).distinct()
+#             # Query data
+#             all_years_data = Biodiversity.objects.filter(**filters)
+#             current_year_data = all_years_data.filter(DatePicker__range=(start_date, end_date)).distinct()
+#             previous_year_data = all_years_data.filter(DatePicker__range=(prev_start_date, prev_end_date)).distinct()
 
-            # Define CO2 calculation function
-            def calculate_co2(data):
-                return sum(
-                    0.00006 *
-                    (entry['width'] or 0) ** 2 *
-                    (entry['height'] or 0) *
-                    (entry['no_trees'] or 0)
-                    for entry in data.values('width', 'height', 'no_trees')
-                )
+#             # Define CO2 calculation function
+#             def calculate_co2(data):
+#                 return sum(
+#                     0.00006 *
+#                     (entry['width'] or 0) ** 2 *
+#                     (entry['height'] or 0) *
+#                     (entry['no_trees'] or 0)
+#                     for entry in data.values('width', 'height', 'no_trees')
+#                 )
 
-            # Define Biomass calculation function
-            def calculate_biomass(data):
-                return sum(
-                    0.0998 *
-                    (entry['width'] or 0) ** 2 *
-                    (entry['height'] or 0)
-                    for entry in data.values('width', 'height')
-                )
+#             # Define Biomass calculation function
+#             def calculate_biomass(data):
+#                 return sum(
+#                     0.0998 *
+#                     (entry['width'] or 0) ** 2 *
+#                     (entry['height'] or 0)
+#                     for entry in data.values('width', 'height')
+#                 )
 
-            # Metric calculations
-            def calculate_metrics(data):
-                aggregated = data.aggregate(
-                    total_trees=Sum('no_trees'),
-                    total_area=Sum('totalArea'),
-                    head_count=Sum('head_count'),
-                    new_trees_planted=Sum('new_trees_planted')
-                )
-                total_trees = aggregated.get('total_trees', 0)
-                total_area = aggregated.get('total_area', 0)
-                head_count = aggregated.get('head_count', 0)
-                new_trees_planted = aggregated.get('new_trees_planted', 0)
+#             # Metric calculations
+#             def calculate_metrics(data):
+#                 aggregated = data.aggregate(
+#                     total_trees=Sum('no_trees'),
+#                     total_area=Sum('totalArea'),
+#                     head_count=Sum('head_count'),
+#                     new_trees_planted=Sum('new_trees_planted')
+#                 )
+#                 total_trees = aggregated.get('total_trees', 0)
+#                 total_area = aggregated.get('total_area', 0)
+#                 head_count = aggregated.get('head_count', 0)
+#                 new_trees_planted = aggregated.get('new_trees_planted', 0)
 
-                green_belt_density = (total_trees / total_area) * 10000 if total_area > 0 else 0
-                trees_per_capita = total_trees / head_count if head_count > 0 else 0
+#                 green_belt_density = (total_trees / total_area) * 10000 if total_area > 0 else 0
+#                 trees_per_capita = total_trees / head_count if head_count > 0 else 0
 
-                return total_trees, green_belt_density, trees_per_capita, new_trees_planted
+#                 return total_trees, green_belt_density, trees_per_capita, new_trees_planted
 
-            # If no data, set metrics to zero
-            if not current_year_data.exists():
-                total_trees = 0
-                green_belt_density = 0
-                trees_per_capita = 0
-                new_trees_planted = 0
-                carbon_offset = 0
-                biomass = 0
-                co2_sequestration_rate = 0
-            else:
-                # Calculate metrics for the current year
-                total_trees, green_belt_density, trees_per_capita, new_trees_planted = calculate_metrics(current_year_data)
-                carbon_offset = calculate_co2(current_year_data)
-                biomass = calculate_biomass(current_year_data)
+#             # If no data, set metrics to zero
+#             if not current_year_data.exists():
+#                 total_trees = 0
+#                 green_belt_density = 0
+#                 trees_per_capita = 0
+#                 new_trees_planted = 0
+#                 carbon_offset = 0
+#                 biomass = 0
+#                 co2_sequestration_rate = 0
+#             else:
+#                 # Calculate metrics for the current year
+#                 total_trees, green_belt_density, trees_per_capita, new_trees_planted = calculate_metrics(current_year_data)
+#                 carbon_offset = calculate_co2(current_year_data)
+#                 biomass = calculate_biomass(current_year_data)
 
-                # Calculate CO2 sequestration rate
-                co2_final_year = carbon_offset
-                co2_previous_year = calculate_co2(previous_year_data) if previous_year_data.exists() else 0
-                co2_sequestration_rate = co2_final_year - co2_previous_year
+#                 # Calculate CO2 sequestration rate
+#                 co2_final_year = carbon_offset
+#                 co2_previous_year = calculate_co2(previous_year_data) if previous_year_data.exists() else 0
+#                 co2_sequestration_rate = co2_final_year - co2_previous_year
 
-            # Response structure
-            response_data = {
-                "facility_id": facility_id,
-                "year": year,
-                "current_year_metrics": {
-                    "total_trees": total_trees,  # Sum of number of trees for the facility for the financial year
-                    "carbon_offset": carbon_offset,  # Offset = 0.00006 * width * width * Height * count of tree
-                    "green_belt_density": green_belt_density,  # ((Total number of trees / total area) * 10000)
-                    "trees_per_capita": trees_per_capita,  # (Total number of trees / Head Count)
-                    "new_trees_planted": new_trees_planted,  # Sum of new trees planted in the financial year
-                    "biomass": biomass,  # Biomass = 0.0998 * Width * Width * Height
-                    "co2_sequestration_rate": co2_sequestration_rate,  # Offset final year - Offset previous year
-                },
-            }
+#             # Response structure
+#             response_data = {
+#                 "facility_id": facility_id,
+#                 "year": year,
+#                 "current_year_metrics": {
+#                     "total_trees": total_trees,  # Sum of number of trees for the facility for the financial year
+#                     "carbon_offset": carbon_offset,  # Offset = 0.00006 * width * width * Height * count of tree
+#                     "green_belt_density": green_belt_density,  # ((Total number of trees / total area) * 10000)
+#                     "trees_per_capita": trees_per_capita,  # (Total number of trees / Head Count)
+#                     "new_trees_planted": new_trees_planted,  # Sum of new trees planted in the financial year
+#                     "biomass": biomass,  # Biomass = 0.0998 * Width * Width * Height
+#                     "co2_sequestration_rate": co2_sequestration_rate,  # Offset final year - Offset previous year
+#                 },
+#             }
 
-            return Response(response_data, status=status.HTTP_200_OK)
+#             return Response(response_data, status=status.HTTP_200_OK)
 
-        except Exception as e:
-            return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+#         except Exception as e:
+#             return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         
+# class BiodiversityMetricsGraphsView(APIView):
+#     permission_classes = [IsAuthenticated]
+
+#     def get(self, request):
+#         user = request.user
+#         facility_id = request.GET.get('facility_id', 'all')
+
+#         try:
+#             # Filters for user and facility
+#             filters = {'user': user}
+#             if facility_id != 'all':
+#                 filters['facility__facility_id'] = facility_id
+
+#             # Query all data for the user and facility
+#             all_years_data = Biodiversity.objects.filter(**filters)
+
+#             if not all_years_data.exists():
+#                 return Response(
+#                     {
+#                         "facility_id": facility_id,
+#                         "year": None,
+#                         "current_year_metrics": {
+#                             "total_trees": 0,
+#                             "carbon_offset": 0,
+#                             "green_belt_density": 0,
+#                             "trees_per_capita": 0,
+#                             "new_trees_planted": 0,
+#                             "biomass": 0,
+#                             "co2_sequestration_rate": 0,
+#                         },
+#                         "yearly_metrics": [],
+#                         "chart_data": {
+#                             "years": [],
+#                             "carbon_offset": {"type": "bar", "data": []},
+#                             "green_belt_density": {"type": "line", "data": []},
+#                             "trees_per_capita": {"type": "line", "data": []},
+#                         },
+#                     },
+#                     status=status.HTTP_200_OK,
+#                 )
+
+#             # Get the latest date if no year is specified
+#             latest_date = all_years_data.aggregate(latest_date=Max('DatePicker'))['latest_date']
+#             if not latest_date:
+#                 return Response({'error': 'No data available in the database.'}, status=status.HTTP_404_NOT_FOUND)
+
+#             latest_year = latest_date.year
+#             year = request.GET.get('year', latest_year)
+
+#             try:
+#                 year = int(year)
+#             except ValueError:
+#                 return Response({'error': 'Invalid year provided.'}, status=status.HTTP_400_BAD_REQUEST)
+
+#             # Define fiscal year ranges for filtering
+#             start_date = datetime(year, 4, 1)
+#             end_date = datetime(year + 1, 3, 31)
+
+#             # Filter data for the current year
+#             current_year_data = all_years_data.filter(DatePicker__range=(start_date, end_date))
+
+#             # Aggregate yearly metrics
+#             yearly_data = {}
+#             for entry in all_years_data.values('DatePicker', 'width', 'height', 'no_trees', 'totalArea', 'head_count'):
+#                 entry_year = entry['DatePicker'].year
+#                 if entry_year not in yearly_data:
+#                     yearly_data[entry_year] = {'no_trees': 0, 'width': 0, 'height': 0, 'totalArea': 0, 'head_count': 0}
+#                 yearly_data[entry_year]['no_trees'] += entry['no_trees'] or 0
+#                 yearly_data[entry_year]['width'] += entry['width'] or 0
+#                 yearly_data[entry_year]['height'] += entry['height'] or 0
+#                 yearly_data[entry_year]['totalArea'] += entry['totalArea'] or 0
+#                 yearly_data[entry_year]['head_count'] += entry['head_count'] or 0
+
+#             # Compute metrics for each year
+#             results = []
+#             for entry_year, data in yearly_data.items():
+#                 total_trees = data['no_trees']
+#                 carbon_offset = 0.00006 * (data['width'] ** 2) * data['height'] * total_trees
+#                 green_belt_density = (total_trees / data['totalArea']) * 10000 if data['totalArea'] > 0 else 0
+#                 trees_per_capita = total_trees / data['head_count'] if data['head_count'] > 0 else 0
+#                 results.append({
+#                     'year': entry_year,
+#                     'carbon_offset': carbon_offset,
+#                     'green_belt_density': green_belt_density,
+#                     'trees_per_capita': trees_per_capita,
+#                 })
+
+#             # Sort results by year
+#             results.sort(key=lambda x: x['year'])
+
+#             # Prepare chart data
+#             years = [r['year'] for r in results]
+#             carbon_offsets = [r['carbon_offset'] for r in results]
+#             green_belt_densities = [r['green_belt_density'] for r in results]
+#             trees_per_capitas = [r['trees_per_capita'] for r in results]
+
+#             # Prepare metrics for the current year
+#             total_trees = green_belt_density = trees_per_capita = new_trees_planted = biomass = 0
+#             carbon_offset = co2_sequestration_rate = 0
+
+#             if current_year_data.exists():
+#                 total_trees, green_belt_density, trees_per_capita, new_trees_planted = self.calculate_metrics(current_year_data)
+#                 carbon_offset = self.calculate_co2(current_year_data)
+#                 biomass = self.calculate_biomass(current_year_data)
+#                 co2_sequestration_rate = self.calculate_co2_sequestration_rate(all_years_data, current_year_data)
+
+#             # Response structure
+#             response_data = {
+#                 "facility_id": facility_id,
+#                 "year": year,
+#                 "current_year_metrics": {
+#                     "total_trees": total_trees,
+#                     "carbon_offset": carbon_offset,
+#                     "green_belt_density": green_belt_density,
+#                     "trees_per_capita": trees_per_capita,
+#                     "new_trees_planted": new_trees_planted,
+#                     "biomass": biomass,
+#                     "co2_sequestration_rate": co2_sequestration_rate,
+#                 },
+#                 "yearly_metrics": results,
+#                 "chart_data": {
+#                     "years": years,
+#                     "carbon_offset": {"type": "bar", "data": carbon_offsets},
+#                     "green_belt_density": {"type": "line", "data": green_belt_densities},
+#                     "trees_per_capita": {"type": "line", "data": trees_per_capitas},
+#                 },
+#             }
+
+#             return Response(response_data, status=status.HTTP_200_OK)
+
+#         except Exception as e:
+#             return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+#     def calculate_co2(self, data):
+#         return sum(
+#             0.00006 *
+#             (entry['width'] or 0) ** 2 *
+#             (entry['height'] or 0) *
+#             (entry['no_trees'] or 0)
+#             for entry in data.values('width', 'height', 'no_trees')
+#         )
+
+#     def calculate_biomass(self, data):
+#         return sum(
+#             0.0998 *
+#             (entry['width'] or 0) ** 2 *
+#             (entry['height'] or 0)
+#             for entry in data.values('width', 'height')
+#         )
+
+#     def calculate_metrics(self, data):
+#         aggregated = data.aggregate(
+#             total_trees=Sum('no_trees'),
+#             total_area=Sum('totalArea'),
+#             head_count=Sum('head_count'),
+#             new_trees_planted=Sum('new_trees_planted')
+#         )
+#         total_trees = aggregated.get('total_trees', 0)
+#         total_area = aggregated.get('total_area', 0)
+#         head_count = aggregated.get('head_count', 0)
+#         new_trees_planted = aggregated.get('new_trees_planted', 0)
+
+#         green_belt_density = (total_trees / total_area) * 10000 if total_area > 0 else 0
+#         trees_per_capita = total_trees / head_count if head_count > 0 else 0
+
+#         return total_trees, green_belt_density, trees_per_capita, new_trees_planted
+
+#     def calculate_co2_sequestration_rate(self, all_years_data, current_year_data):
+#         # Get the current year from the current year's data
+#         current_year = current_year_data.first().DatePicker.year
+
+#         # Fetch data for the previous year
+#         prev_year_data = all_years_data.filter(DatePicker__year=current_year - 1)
+
+#         # Calculate CO2 sequestration rate
+#         current_year_co2 = self.calculate_co2(current_year_data)
+#         prev_year_co2 = self.calculate_co2(prev_year_data) if prev_year_data.exists() else 0
+
+#         # Return the difference, or current_year_co2 if there's no previous year data
+#         return current_year_co2 - prev_year_co2
+
 class BiodiversityMetricsGraphsView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -4524,10 +4746,13 @@ class BiodiversityMetricsGraphsView(APIView):
                         },
                         "yearly_metrics": [],
                         "chart_data": {
-                            "years": [],
-                            "carbon_offset": {"type": "bar", "data": []},
-                            "green_belt_density": {"type": "line", "data": []},
-                            "trees_per_capita": {"type": "line", "data": []},
+                            "bar_graph": {
+                                "carbon_offset": {"type": "bar", "data": []},
+                            },
+                            "line_graph": {
+                                "green_belt_density": {"type": "line", "data": []},
+                                "trees_per_capita": {"type": "line", "data": []},
+                            },
                         },
                     },
                     status=status.HTTP_200_OK,
@@ -4613,10 +4838,13 @@ class BiodiversityMetricsGraphsView(APIView):
                 },
                 "yearly_metrics": results,
                 "chart_data": {
-                    "years": years,
-                    "carbon_offset": {"type": "bar", "data": carbon_offsets},
-                    "green_belt_density": {"type": "line", "data": green_belt_densities},
-                    "trees_per_capita": {"type": "line", "data": trees_per_capitas},
+                    "bar_graph": {
+                        "carbon_offset": {"type": "bar", "data": carbon_offsets},
+                    },
+                    "line_graph": {
+                        "green_belt_density": {"type": "line", "data": green_belt_densities},
+                        "trees_per_capita": {"type": "line", "data": trees_per_capitas},
+                    },
                 },
             }
 
@@ -4676,162 +4904,6 @@ class BiodiversityMetricsGraphsView(APIView):
 '''Biodiversity Overview Cards Ends'''
 
 '''LOgistics overview Graphs starts'''
-
-# class LogisticesOverviewCard(APIView):
-#     permission_classes = [IsAuthenticated]
-
-#     def get(self, request):
-#         user = request.user
-#         facility_id = request.GET.get('facility_id', 'all')
-#         year = request.GET.get('year')
-
-#         try:
-#             # Get the latest year if no year is specified
-#             if not year:
-#                 latest_date = Logistices.objects.filter(user=user).aggregate(latest_date=Max('DatePicker'))['latest_date']
-#                 year = latest_date.year if latest_date else datetime.now().year
-#             else:
-#                 year = int(year)
-
-#             # Define fiscal year ranges
-#             start_date = datetime(year, 4, 1)
-#             end_date = datetime(year + 1, 3, 31)
-
-#             # Filters
-#             filters = {'user': user, 'DatePicker__range': (start_date, end_date)}
-#             if facility_id != 'all':
-#                 filters['facility__facility_id'] = facility_id
-
-#             # Query data for current year
-#             current_year_data = Logistices.objects.filter(**filters)
-
-#             # Aggregate totals across all logistics types with zero defaults
-#             total_vehicles = current_year_data.aggregate(
-#                 total_vehicles=Coalesce(Sum('No_Vehicles'), Value(0))
-#             )['total_vehicles']
-
-#             total_trips = current_year_data.aggregate(
-#                 total_trips=Coalesce(Sum('No_Trips'), Value(0))
-#             )['total_trips']
-
-#             total_km_travelled = current_year_data.aggregate(
-#                 total_km_travelled=Coalesce(Sum('km_travelled'), Value(0.0))
-#             )['total_km_travelled']
-
-#             total_fuel_consumed = current_year_data.aggregate(
-#                 total_fuel_consumed=Coalesce(Sum('fuel_consumption'), Value(0.0))
-#             )['total_fuel_consumed']
-
-#             # Structure the response
-#             data = {
-#                 "year": year,
-#                 "facility_id": facility_id,
-#                 "logistics_totals": {
-#                     "total_vehicles": total_vehicles,
-#                     "total_trips": total_trips,
-#                     "total_km_travelled": total_km_travelled,
-#                     "total_fuel_consumed": total_fuel_consumed
-#                 }
-#             }
-
-#             return Response(data, status=200)
-
-#         except ValueError:
-#             return Response({"error": "Invalid year format."}, status=400)
-
-#         except Exception as e:
-#             return Response({"error": str(e)}, status=500)
-# class LogisticesGraphs(APIView):
-#     permission_classes = [IsAuthenticated]
-
-#     def get(self, request):
-#         user = request.user
-#         facility_id = request.GET.get('facility_id', 'all')
-#         year = request.GET.get('year')
-
-#         try:
-#             # Get the latest year if no year is specified
-#             if not year:
-#                 latest_date = Logistices.objects.filter(user=user).aggregate(latest_date=Max('DatePicker'))['latest_date']
-#                 year = latest_date.year if latest_date else datetime.now().year
-#             else:
-#                 year = int(year)
-
-#             # Define fiscal year ranges
-#             start_date = datetime(year, 4, 1)
-#             end_date = datetime(year + 1, 3, 31)
-
-#             # Filters
-#             filters = {'user': user, 'DatePicker__range': (start_date, end_date)}
-#             if facility_id != 'all':
-#                 filters['facility__facility_id'] = facility_id
-
-#             # Query data
-#             current_year_data = Logistices.objects.filter(**filters)
-
-#             # Monthly Fuel Consumption
-#             monthly_data = current_year_data.annotate(month=ExtractMonth('DatePicker')).values('month').annotate(
-#                 total_fuel=Coalesce(Sum('fuel_consumption', output_field=FloatField()), Value(0.0, output_field=FloatField()))
-#             )
-#             monthly_fuel = {d['month']: d['total_fuel'] for d in monthly_data}
-
-#             # Facility-wise Fuel Consumption
-#             facility_data = current_year_data.values('facility__facility_name').annotate(
-#                 total_fuel=Coalesce(Sum('fuel_consumption', output_field=FloatField()), Value(0.0, output_field=FloatField()))
-#             )
-#             facility_fuel = {d['facility__facility_name']: d['total_fuel'] for d in facility_data}
-
-#             # Fuel Consumption for Both Logistics Types
-#             type_month_data = current_year_data.annotate(month=ExtractMonth('DatePicker')).values(
-#                 'month', 'logistices_types'
-#             ).annotate(
-#                 total_fuel=Coalesce(Sum('fuel_consumption', output_field=FloatField()), Value(0.0, output_field=FloatField()))
-#             )
-#             cargo_data = {d['month']: d['total_fuel'] for d in type_month_data if d['logistices_types'] == "cargo"}
-#             staff_data = {d['month']: d['total_fuel'] for d in type_month_data if d['logistices_types'] == "staff_logistices"}
-
-#             # Fill missing months with zeros
-#             all_months = range(1, 13)
-#             monthly_fuel = {month: monthly_fuel.get(month, 0.0) for month in all_months}
-#             cargo_data = {month: cargo_data.get(month, 0.0) for month in all_months}
-#             staff_data = {month: staff_data.get(month, 0.0) for month in all_months}
-
-#             # Define the month order from April to March
-#             month_order = [4, 5, 6, 7, 8, 9, 10, 11, 12, 1, 2, 3]
-            
-#             # Prepare the data for the stacked bar chart with months in order
-#             stacked_bar_data = []
-#             for month in month_order:
-#                 month_name = datetime(1900, month, 1).strftime('%b')
-#                 stacked_bar_data.append({
-#                     "month": month_name,
-#                     "fuel_consumption": monthly_fuel[month]
-#                 })
-
-#             # Prepare the data for the line chart comparing logistics types
-#             cargo_data_with_names = {datetime(1900, month, 1).strftime('%b'): cargo_data[month] for month in month_order}
-#             staff_data_with_names = {datetime(1900, month, 1).strftime('%b'): staff_data[month] for month in month_order}
-
-#             # Response structure
-#             data = {
-#                 "year": year,
-#                 "facility_id": facility_id,
-#                 "monthly_fuel_consumption": stacked_bar_data,  # Bar Graph
-#                 "facility_fuel_distribution": facility_fuel,  # Donut Chart
-#                 "logistics_fuel_comparison": {  # Line Graph
-#                     "cargo": cargo_data_with_names,
-#                     "staff": staff_data_with_names
-#                 }
-#             }
-
-#             return Response(data, status=200)
-
-#         except ValueError:
-#             return Response({"error": "Invalid year format."}, status=400)
-
-#         except Exception as e:
-#             return Response({"error": str(e)}, status=500)
-
 class LogisticesOverviewAndGraphs(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -4931,7 +5003,7 @@ class LogisticesOverviewAndGraphs(APIView):
                     "total_fuel_consumed": total_fuel_consumed
                 },
                 "monthly_fuel_consumption": monthly_bar_data,  # Bar Graph (Monthly Fuel Consumption)
-                "facility_fuel_distribution": facility_fuel,  # Donut Chart (Facility-wise Fuel Consumption)
+                "facility_wise_consumption_donut": facility_fuel,  # Donut Chart (Facility-wise Fuel Consumption)
                 "logistics_fuel_comparison": {  # Bar Graph (Fuel Consumption by Logistics Type)
                     "cargo": cargo_data_with_names,
                     "staff": staff_data_with_names
@@ -4945,4 +5017,5 @@ class LogisticesOverviewAndGraphs(APIView):
 
         except Exception as e:
             return Response({"error": str(e)}, status=500)
+
 '''LOgistics overview Graphs ends'''
