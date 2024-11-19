@@ -688,7 +688,7 @@ class LogisticesView(APIView):
             if year:
                 year = int(year)
             else:
-                latest_date = Biodiversity.objects.filter(user=user).aggregate(latest_date=Max('DatePicker'))['latest_date']
+                latest_date = Logistices.objects.filter(user=user).aggregate(latest_date=Max('DatePicker'))['latest_date']
                 
                 if latest_date:
                     year = latest_date.year if latest_date.month >= 4 else latest_date.year - 1
@@ -898,15 +898,17 @@ class OverallUsageView(APIView):
         year = request.GET.get('year')
 
         try:
-            # If year is provided, use it; otherwise, default to current fiscal year or last year
             if year:
                 year = int(year)
             else:
-                # Default year handling (based on current date)
-                current_date = datetime.now()
-                year = current_date.year - 1 if current_date.month < 4 else current_date.year
-
-            # Define start and end of fiscal year
+                latest_date = Logistices.objects.filter(user=user).aggregate(latest_date=Max('DatePicker'))['latest_date']
+                
+                if latest_date:
+                    year = latest_date.year if latest_date.month >= 4 else latest_date.year - 1
+                else:
+                    current_date = datetime.now()
+                    year = current_date.year - 1 if current_date.month < 4 else current_date.year
+            
             start_date = datetime(year, 4, 1)
             end_date = datetime(year + 1, 3, 31)
         except ValueError:
@@ -998,13 +1000,13 @@ class OverallUsageView(APIView):
             "year": year,
             "facility_id": facility_id if facility_id != 'all' else "All facilities",
             "overall_data": overall_data,
-            "details": {
-                "waste_data": waste_serializer.data if waste_data else [],
-                "energy_data": energy_serializer.data if energy_data else [],
-                "water_data": water_serializer.data if water_data else [],
-                "biodiversity_data": biodiversity_serializer.data if biodiversity_data else [],
-                "logistics_data": logistics_serializer.data if logistics_data else []
-            }
+            # "details": {
+            #     "waste_data": waste_serializer.data if waste_data else [],
+            #     "energy_data": energy_serializer.data if energy_data else [],
+            #     "water_data": water_serializer.data if water_data else [],
+            #     "biodiversity_data": biodiversity_serializer.data if biodiversity_data else [],
+            #     "logistics_data": logistics_serializer.data if logistics_data else []
+            # }
         }
 
         return Response(response_data, status=status.HTTP_200_OK)
@@ -2332,9 +2334,11 @@ class EnergyViewCard_Over(APIView):
         year = request.GET.get('year')
 
         try:
+            # Validate facility_id
             if facility_id != 'all' and not Facility.objects.filter(facility_id=facility_id, user=user).exists():
                 return Response({'error': 'Invalid facility ID or not associated with the logged-in user.'}, status=status.HTTP_400_BAD_REQUEST)
 
+            # Validate year
             if year:
                 try:
                     year = int(year)
@@ -2342,7 +2346,8 @@ class EnergyViewCard_Over(APIView):
                         return Response({'error': 'Invalid year parameter.'}, status=status.HTTP_400_BAD_REQUEST)
                 except ValueError:
                     return Response({'error': 'Year must be an integer.'}, status=status.HTTP_400_BAD_REQUEST)
-            
+
+            # Determine start_date and end_date for the fiscal year
             if year:
                 start_date = datetime(year, 4, 1)
                 end_date = datetime(year + 1, 3, 31)
@@ -2375,43 +2380,25 @@ class EnergyViewCard_Over(APIView):
 
             response_data = {
                 'year': year,
-                'overall_energy_totals': {},
-                'facility_energy_data': {}
+                'overall_energy_totals': {}
             }
 
             if not energy_data.exists():
                 # Populate zero values when no data exists
                 for field in energy_fields:
                     response_data['overall_energy_totals'][f"overall_{field}"] = 0
-                    response_data['facility_energy_data'][field] = []
             else:
                 # Calculate overall totals and renewable energy, fuel used in operations
                 renewable_energy_total = 0
                 fuel_used_in_operations_total = 0
-                
+
                 for field in energy_fields:
-                    # Facility-specific totals
-                    facility_energy_data = (
-                        energy_data
-                        .values('facility__facility_name')
-                        .annotate(total=Sum(field))
-                        .order_by('-total')
-                    )
-
-                    response_data['facility_energy_data'][field] = [
-                        {
-                            "facility_name": entry['facility__facility_name'],
-                            f"total_{field}": entry['total']
-                        }
-                        for entry in facility_energy_data
-                    ]
-
                     # Overall totals
                     overall_total = energy_data.aggregate(total=Sum(field))['total'] or 0
                     response_data['overall_energy_totals'][f"overall_{field}"] = overall_total
 
                     # Calculate renewable energy (renewable_other + renewable_solar)
-                    if field == 'renewable_solar' or field == 'renewable_other':
+                    if field in ['renewable_solar', 'renewable_other']:
                         renewable_energy_total += overall_total
 
                     # Calculate fuel used in operations (coking_coal + coke_oven_coal + natural_gas + diesel + biomass_wood + biomass_other_solid)
