@@ -2442,6 +2442,11 @@ class EnergyViewCard_Over(APIView):
                 'coke_oven_coal', 'natural_gas', 'diesel', 'biomass_wood', 'biomass_other_solid'
             ]
 
+            excluded_fields = [
+                'coke_oven_coal', 'coking_coal', 'natural_gas', 'diesel', 'biomass_wood', 'biomass_other_solid', 
+                'renewable_solar', 'renewable_other'
+            ]
+
             response_data = {
                 'year': year,
                 'overall_energy_totals': {}
@@ -2450,7 +2455,10 @@ class EnergyViewCard_Over(APIView):
             if not energy_data.exists():
                 # Populate zero values when no data exists
                 for field in energy_fields:
-                    response_data['overall_energy_totals'][f"overall_{field}"] = 0
+                    if field not in excluded_fields:
+                        response_data['overall_energy_totals'][f"overall_{field}"] = 0
+                response_data['overall_energy_totals']['overall_renewable_energy'] = 0
+                response_data['overall_energy_totals']['overall_fuel_used_in_operations'] = 0
             else:
                 # Initialize counters for renewable energy and fuel usage totals
                 renewable_energy_total = 0
@@ -2460,19 +2468,16 @@ class EnergyViewCard_Over(APIView):
                     # Aggregate total for each field
                     overall_total = energy_data.aggregate(total=Sum(field))['total'] or 0
 
-                    # Only include non-zero fields (except renewable_solar and renewable_other which are aggregated)
-                    if overall_total > 0:
-                        # Do not add 'renewable_solar' or 'renewable_other' individually, just add to renewable_energy_total
-                        if field not in ['renewable_solar', 'renewable_other', 'coking_coal', 'coke_oven_coal']:
-                            response_data['overall_energy_totals'][f"overall_{field}"] = overall_total
-
                     # Add renewable energy (sum of renewable_solar and renewable_other)
                     if field in ['renewable_solar', 'renewable_other']:
                         renewable_energy_total += overall_total
 
-                    # Sum for fuel usage fields (this includes 'coking_coal' and 'coke_oven_coal')
-                    if field in ['coke_oven_coal', 'coking_coal', 'natural_gas', 'diesel', 'biomass_wood', 'biomass_other_solid']:
+                    # Sum for fuel usage fields (excluded fields)
+                    if field in excluded_fields:
                         fuel_used_in_operations_total += overall_total
+                    elif overall_total > 0:
+                        # Include other fields in the response if they have non-zero values
+                        response_data['overall_energy_totals'][f"overall_{field}"] = overall_total
 
                 # Add the calculated totals for renewable energy and fuel used in operations
                 response_data['overall_energy_totals']['overall_renewable_energy'] = renewable_energy_total
