@@ -1,10 +1,9 @@
-
+import pandas as pd
 from datetime import datetime
 from collections import defaultdict
-from django.db.models import Sum, Value, FloatField,Min, Max
-import pandas as pd
-from rest_framework.parsers import MultiPartParser, FormParser
+from django.db.models import Sum, Value, FloatField,Min, Max,F
 from django.db.models.functions import Coalesce, Cast, ExtractMonth
+from rest_framework.parsers import MultiPartParser, FormParser
 from django.utils import timezone
 from django.contrib.auth import authenticate
 from django.shortcuts import get_object_or_404
@@ -2388,107 +2387,6 @@ class SentToRecycledOverviewView(APIView):
 
 '''Energy  Overview Cards ,Graphs and Individual line charts and donut charts Starts'''
 #Energy Overview Cards
-# class EnergyViewCard_Over(APIView):
-#     permission_classes = [IsAuthenticated]
-
-#     def get(self, request):
-#         user = request.user
-#         facility_id = request.GET.get('facility_id', 'all')
-#         facility_location = request.GET.get('facility_location')
-#         year = request.GET.get('year')
-
-#         try:
-#             # Validate facility_id
-#             if facility_id != 'all' and not Facility.objects.filter(facility_id=facility_id, user=user).exists():
-#                 return Response({'error': 'Invalid facility ID or not associated with the logged-in user.'}, status=status.HTTP_400_BAD_REQUEST)
-
-#             # Validate year
-#             if year:
-#                 try:
-#                     year = int(year)
-#                     if year < 1900 or year > datetime.now().year + 10:  # Allow future years up to 10 years ahead
-#                         return Response({'error': 'Invalid year parameter.'}, status=status.HTTP_400_BAD_REQUEST)
-#                 except ValueError:
-#                     return Response({'error': 'Year must be an integer.'}, status=status.HTTP_400_BAD_REQUEST)
-
-#             # Determine start_date and end_date for the fiscal year
-#             if year:
-#                 start_date = datetime(year, 4, 1)
-#                 end_date = datetime(year + 1, 3, 31)
-#             else:
-#                 latest_entry = Energy.objects.filter(user=user).order_by('-DatePicker').first()
-#                 if latest_entry:
-#                     latest_year = latest_entry.DatePicker.year
-#                     year = latest_year if latest_entry.DatePicker.month >= 4 else latest_year - 1
-#                 else:
-#                     today = datetime.now()
-#                     year = today.year - 1 if today.month < 4 else today.year
-
-#                 start_date = datetime(year, 4, 1)
-#                 end_date = datetime(year + 1, 3, 31)
-
-#             # Query energy data
-#             energy_data = Energy.objects.filter(user=user, DatePicker__range=(start_date, end_date))
-
-#             if facility_id != 'all':
-#                 energy_data = energy_data.filter(facility__facility_id=facility_id)
-
-#             if facility_location:
-#                 energy_data = energy_data.filter(facility__location__icontains=facility_location)
-
-#             energy_fields = [
-#                 'hvac', 'production', 'stp', 'admin_block',
-#                 'utilities', 'others', 'renewable_solar', 'renewable_other', 'coking_coal', 
-#                 'coke_oven_coal', 'natural_gas', 'diesel', 'biomass_wood', 'biomass_other_solid'
-#             ]
-
-#             excluded_fields = [
-#                 'coke_oven_coal', 'coking_coal', 'natural_gas', 'diesel', 'biomass_wood', 'biomass_other_solid', 
-#                 'renewable_solar', 'renewable_other'
-#             ]
-
-#             response_data = {
-#                 'year': year,
-#                 'overall_energy_totals': {}
-#             }
-
-#             if not energy_data.exists():
-#                 # Populate zero values when no data exists
-#                 for field in energy_fields:
-#                     if field not in excluded_fields:
-#                         response_data['overall_energy_totals'][f"overall_{field}"] = 0
-#                 response_data['overall_energy_totals']['overall_renewable_energy'] = 0
-#                 response_data['overall_energy_totals']['overall_fuel_used_in_operations'] = 0
-#             else:
-#                 # Initialize counters for renewable energy and fuel usage totals
-#                 renewable_energy_total = 0
-#                 fuel_used_in_operations_total = 0
-
-#                 for field in energy_fields:
-#                     # Aggregate total for each field
-#                     overall_total = energy_data.aggregate(total=Sum(field))['total'] or 0
-
-#                     # Add renewable energy (sum of renewable_solar and renewable_other)
-#                     if field in ['renewable_solar', 'renewable_other']:
-#                         renewable_energy_total += overall_total
-
-#                     # Sum for fuel usage fields (excluded fields)
-#                     if field in excluded_fields:
-#                         fuel_used_in_operations_total += overall_total
-#                     elif overall_total > 0:
-#                         # Include other fields in the response if they have non-zero values
-#                         response_data['overall_energy_totals'][f"overall_{field}"] = overall_total
-
-#                 # Add the calculated totals for renewable energy and fuel used in operations
-#                 response_data['overall_energy_totals']['overall_renewable_energy'] = renewable_energy_total
-#                 response_data['overall_energy_totals']['overall_fuel_used_in_operations'] = fuel_used_in_operations_total
-
-#             return Response(response_data, status=status.HTTP_200_OK)
-
-#         except Exception as e:
-#             error_message = f"An error occurred: {str(e)}"
-#             print(error_message)
-#             return Response({'error': error_message}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 class EnergyViewCard_Over(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -3758,8 +3656,6 @@ class WaterViewCard_Over(APIView):
                 # Populate zero values when no data exists
                 response_data['overall_water_totals'] = [
                     {
-                        "facility_id": "N/A",
-                        "facility_name": "N/A",
                         **{f"overall_{field}": 0 for field in water_fields}
                     }
                 ]
@@ -3769,8 +3665,6 @@ class WaterViewCard_Over(APIView):
                 for facility in facilities:
                     facility_totals = {f"overall_{field}": water_data.filter(facility__facility_id=facility['facility__facility_id']).aggregate(total=Sum(field))['total'] or 0 for field in water_fields}
                     response_data['overall_water_totals'].append({
-                        "facility_id": facility['facility__facility_id'],
-                        "facility_name": facility['facility__facility_name'],
                         **facility_totals
                     })
 
@@ -5717,3 +5611,364 @@ class ExcelUploadView(APIView):
 #                 )
 
 #         return Response({"message": "File processed successfully!"}, status=status.HTTP_201_CREATED)
+
+
+# class EmissionCalculations(APIView):
+#     permission_classes = [IsAuthenticated]
+
+#     def get(self, request):
+#         user = request.user
+#         year = request.GET.get('year', None)
+#         facility_id = request.GET.get('facility_id', 'all')
+#         facility_location = request.GET.get('facility_location', None)
+
+#         try:
+#             filters = {'user': user}
+#             today = datetime.now()
+
+#             # Year calculation
+#             if year:
+#                 try:
+#                     year = int(year)
+#                 except ValueError:
+#                     return Response({'error': 'Invalid year parameter.'}, status=status.HTTP_400_BAD_REQUEST)
+#             else:
+#                 latest_entry = Energy.objects.filter(user=user).aggregate(latest_date=Max('DatePicker'))
+#                 year = latest_entry['latest_date'].year if latest_entry['latest_date'] else today.year
+
+#             # Fiscal year range
+#             start_date, end_date = (
+#                 (datetime(year, 4, 1), datetime(year + 1, 3, 31))
+#                 if today.month >= 4
+#                 else (datetime(year - 1, 4, 1), datetime(year, 3, 31))
+#             )
+#             filters['DatePicker__range'] = (start_date, end_date)
+
+#             # Facility ID filtering
+#             if facility_id.lower() != 'all':
+#                 if not Facility.objects.filter(facility_id=facility_id).exists():
+#                     return Response({'error': f'Facility with ID {facility_id} does not exist.'}, status=status.HTTP_400_BAD_REQUEST)
+#                 filters['facility__facility_id'] = facility_id
+
+#             # Facility location filtering
+#             if facility_location and facility_location.lower() != 'all':
+#                 if not Facility.objects.filter(facility_location__icontains=facility_location).exists():
+#                     return Response({'error': f'No facility found with location {facility_location}.'}, status=status.HTTP_400_BAD_REQUEST)
+#                 filters['facility__facility_location__icontains'] = facility_location
+
+#             # Fetch energy data
+#             energy_data = Energy.objects.filter(**filters)
+
+#             # Emission factors
+#             electricity_factor = 0.82
+#             fuel_factors = {
+#                 'coking_coal': 2.66,
+#                 'coke_oven_coal': 3.1,
+#                 'natural_gas': 2.7,
+#                 'diesel': 2.91 * 1000,  # Diesel in liters, convert to kg
+#                 'biomass_wood': 1.75,
+#                 'biomass_other_solid': 1.16
+#             }
+
+#             # Monthly totals (ordered by fiscal year: April - March)
+#             month_order = [4, 5, 6, 7, 8, 9, 10, 11, 12, 1, 2, 3]
+#             months = ['Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec', 'Jan', 'Feb', 'Mar']
+#             monthly_total_emissions = {}
+
+#             for month in month_order:  # Loop over fiscal months
+#                 # Filter data for the specific month
+#                 monthly_data = energy_data.filter(DatePicker__month=month)
+
+#                 # Calculate electricity emissions for the month (sum of all relevant fields)
+#                 electricity_emissions = monthly_data.aggregate(
+#                     total_electricity=Sum('hvac') + Sum('production') + Sum('stp') + 
+#                                       Sum('admin_block') + Sum('utilities') + Sum('others')
+#                 )['total_electricity'] or 0
+
+#                 # Calculate fuel emissions for the month (sum of all relevant fields)
+#                 fuel_emissions = sum([
+#                     monthly_data.aggregate(total=Coalesce(Sum('coking_coal'), 0))['total'] * fuel_factors['coking_coal'],
+#                     monthly_data.aggregate(total=Coalesce(Sum('coke_oven_coal'), 0))['total'] * fuel_factors['coke_oven_coal'],
+#                     monthly_data.aggregate(total=Coalesce(Sum('natural_gas'), 0))['total'] * fuel_factors['natural_gas'],
+#                     monthly_data.aggregate(total=Coalesce(Sum('diesel'), 0))['total'] * fuel_factors['diesel'],
+#                     monthly_data.aggregate(total=Coalesce(Sum('biomass_wood'), 0))['total'] * fuel_factors['biomass_wood'],
+#                     monthly_data.aggregate(total=Coalesce(Sum('biomass_other_solid'), 0))['total'] * fuel_factors['biomass_other_solid']
+#                 ])
+
+
+#                 # Calculate the total energy emissions for the month (electricity + fuel)
+#                 total_energy_emissions = electricity_emissions + fuel_emissions
+
+#                 # Store monthly total emissions data
+#                 monthly_total_emissions[month] = total_energy_emissions
+
+#             # Prepare the response data for line chart
+#             line_chart_data = []
+#             for month in month_order:
+#                 month_name = datetime(1900, month, 1).strftime('%b')  # Get month name
+#                 line_chart_data.append({
+#                     "month": month_name,
+#                     "total_energy_emissions": monthly_total_emissions.get(month, 0)
+#                 })
+
+#             response_data = {
+#                 'year': year,
+#                 'line_chart_data': line_chart_data
+#             }
+
+#             return Response(response_data, status=status.HTTP_200_OK)
+
+#         except Exception as e:
+#             error_message = f"An error occurred: {str(e)}"
+#             print(error_message)
+#             return Response({'error': error_message}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+# # class EmissionCalculations(APIView):
+#     permission_classes = [IsAuthenticated]
+
+#     def get(self, request):
+#         user = request.user
+#         year = request.GET.get('year', None)
+#         facility_id = request.GET.get('facility_id', 'all')
+#         facility_location = request.GET.get('facility_location', None)
+
+#         try:
+#             filters = {'user': user}
+#             today = datetime.now()
+
+#             # Year calculation
+#             if year:
+#                 try:
+#                     year = int(year)
+#                 except ValueError:
+#                     return Response({'error': 'Invalid year parameter.'}, status=status.HTTP_400_BAD_REQUEST)
+#             else:
+#                 latest_entry = Energy.objects.filter(user=user).aggregate(latest_date=Max('DatePicker'))
+#                 year = latest_entry['latest_date'].year if latest_entry['latest_date'] else today.year
+
+#             # Fiscal year range
+#             start_date, end_date = (
+#                 (datetime(year, 4, 1), datetime(year + 1, 3, 31))
+#                 if today.month >= 4
+#                 else (datetime(year - 1, 4, 1), datetime(year, 3, 31))
+#             )
+#             filters['DatePicker__range'] = (start_date, end_date)
+
+#             # Facility ID filtering
+#             if facility_id.lower() != 'all':
+#                 if not Facility.objects.filter(facility_id=facility_id).exists():
+#                     return Response({'error': f'Facility with ID {facility_id} does not exist.'}, status=status.HTTP_400_BAD_REQUEST)
+#                 filters['facility__facility_id'] = facility_id
+
+#             # Facility location filtering
+#             if facility_location and facility_location.lower() != 'all':
+#                 if not Facility.objects.filter(facility_location__icontains=facility_location).exists():
+#                     return Response({'error': f'No facility found with location {facility_location}.'}, status=status.HTTP_400_BAD_REQUEST)
+#                 filters['facility__facility_location__icontains'] = facility_location
+
+#             # Fetch energy data
+#             energy_data = Energy.objects.filter(**filters)
+
+#             # Emission factors
+#             electricity_factor = 0.82
+#             fuel_factors = {
+#                 'coking_coal': 2.66,
+#                 'coke_oven_coal': 3.1,
+#                 'natural_gas': 2.7,
+#                 'diesel': 2.91 * 1000,  # Diesel in liters, convert to kg
+#                 'biomass_wood': 1.75,
+#                 'biomass_other_solid': 1.16
+#             }
+
+#             # Monthly totals (ordered by fiscal year: April - March)
+#             month_order = [4, 5, 6, 7, 8, 9, 10, 11, 12, 1, 2, 3]
+#             monthly_total_emissions = {}
+
+#             for month in month_order:  # Loop over fiscal months
+#                 # Filter data for the specific month
+#                 monthly_data = energy_data.filter(DatePicker__month=month)
+
+#                 # Calculate electricity emissions for the month (sum of all relevant fields)
+#                 electricity_emissions = monthly_data.aggregate(
+#                     total_electricity=Coalesce(Sum('hvac'), 0) + Coalesce(Sum('production'), 0) +
+#                                       Coalesce(Sum('stp'), 0) + Coalesce(Sum('admin_block'), 0) + 
+#                                       Coalesce(Sum('utilities'), 0) + Coalesce(Sum('others'), 0)
+#                 )['total_electricity'] or 0
+
+#                 # Calculate fuel emissions for the month (sum of all relevant fields)
+#                 fuel_emissions = sum([
+#                     monthly_data.aggregate(total=Coalesce(Sum('coking_coal'), 0))['total'] * fuel_factors['coking_coal'],
+#                     monthly_data.aggregate(total=Coalesce(Sum('coke_oven_coal'), 0))['total'] * fuel_factors['coke_oven_coal'],
+#                     monthly_data.aggregate(total=Coalesce(Sum('natural_gas'), 0))['total'] * fuel_factors['natural_gas'],
+#                     monthly_data.aggregate(total=Coalesce(Sum('diesel'), 0))['total'] * fuel_factors['diesel'],
+#                     monthly_data.aggregate(total=Coalesce(Sum('biomass_wood'), 0))['total'] * fuel_factors['biomass_wood'],
+#                     monthly_data.aggregate(total=Coalesce(Sum('biomass_other_solid'), 0))['total'] * fuel_factors['biomass_other_solid']
+#                 ])
+
+#                 # Calculate the total energy emissions for the month (electricity + fuel)
+#                 total_energy_emissions = electricity_emissions + fuel_emissions
+
+#                 # Store monthly total emissions data
+#                 monthly_total_emissions[month] = total_energy_emissions
+
+#             # Prepare the response data for line chart
+#             line_chart_data = []
+#             for month in month_order:
+#                 month_name = datetime(1900, month, 1).strftime('%b')  # Get month name
+#                 line_chart_data.append({
+#                     "month": month_name,
+#                     "total_energy_emissions": monthly_total_emissions.get(month, 0)
+#                 })
+
+#             response_data = {
+#                 'year': year,
+#                 'line_chart_data': line_chart_data
+#             }
+
+#             return Response(response_data, status=status.HTTP_200_OK)
+
+#         except Exception as e:
+#             error_message = f"An error occurred: {str(e)}"
+#             print(error_message)
+#             return Response({'error': error_message}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
+
+
+
+class EmissionCalculations(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        user = request.user
+        year = request.GET.get('year', None)
+        facility_id = request.GET.get('facility_id', 'all')
+        facility_location = request.GET.get('facility_location', None)
+
+        try:
+            filters = {'user': user}
+            today = datetime.now()
+
+            # Year calculation
+            if year:
+                try:
+                    year = int(year)
+                except ValueError:
+                    return Response({'error': 'Invalid year parameter.'}, status=status.HTTP_400_BAD_REQUEST)
+            else:
+                latest_entry = Energy.objects.filter(user=user).aggregate(latest_date=Max('DatePicker'))
+                year = latest_entry['latest_date'].year if latest_entry['latest_date'] else today.year
+
+            # Fiscal year range
+            start_date, end_date = (
+                (datetime(year, 4, 1), datetime(year + 1, 3, 31))
+                if today.month >= 4
+                else (datetime(year - 1, 4, 1), datetime(year, 3, 31))
+            )
+            filters['DatePicker__range'] = (start_date, end_date)
+
+            # Facility ID filtering
+            if facility_id.lower() != 'all':
+                if not Facility.objects.filter(facility_id=facility_id).exists():
+                    return Response({'error': f'Facility with ID {facility_id} does not exist.'}, status=status.HTTP_400_BAD_REQUEST)
+                filters['facility__facility_id'] = facility_id
+
+            # Facility location filtering
+            if facility_location and facility_location.lower() != 'all':
+                if not Facility.objects.filter(facility_location__icontains=facility_location).exists():
+                    return Response({'error': f'No facility found with location {facility_location}.'}, status=status.HTTP_400_BAD_REQUEST)
+                filters['facility__facility_location__icontains'] = facility_location
+
+            # Fetch energy data
+            energy_data = Energy.objects.filter(**filters)
+
+            # Emission factors
+            electricity_factor = 0.82
+            fuel_factors = {
+                'coking_coal': 2.66,
+                'coke_oven_coal': 3.1,
+                'natural_gas': 2.7,
+                'diesel': 2.91 * 1000,  # Diesel in liters, convert to kg
+                'biomass_wood': 1.75,
+                'biomass_other_solid': 1.16
+            }
+
+            # Monthly totals (ordered by fiscal year: April - March)
+            month_order = [4, 5, 6, 7, 8, 9, 10, 11, 12, 1, 2, 3]
+            monthly_total_emissions = {}
+
+            for month in month_order:  # Loop over fiscal months
+                # Filter data for the specific month
+                monthly_data = energy_data.filter(DatePicker__month=month)
+
+                # Calculate electricity emissions for the month (sum of all relevant fields)
+                electricity_emissions = monthly_data.aggregate(
+                    total_electricity=Coalesce(Sum(Cast('hvac', FloatField())), 0) + 
+                                      Coalesce(Sum(Cast('production', FloatField())), 0) + 
+                                      Coalesce(Sum(Cast('stp', FloatField())), 0) + 
+                                      Coalesce(Sum(Cast('admin_block', FloatField())), 0) + 
+                                      Coalesce(Sum(Cast('utilities', FloatField())), 0) + 
+                                      Coalesce(Sum(Cast('others', FloatField())), 0)
+                )['total_electricity'] or 0
+
+                # Calculate fuel emissions for the month (sum of all relevant fields)
+                # fuel_emissions = sum([
+                #     monthly_data.aggregate(total=Coalesce(Sum(Cast('coking_coal', FloatField())), 0))['total'] * fuel_factors['coking_coal'],
+                #     monthly_data.aggregate(total=Coalesce(Sum(Cast('coke_oven_coal', FloatField())), 0))['total'] * fuel_factors['coke_oven_coal'],
+                #     monthly_data.aggregate(total=Coalesce(Sum(Cast('natural_gas', FloatField())), 0))['total'] * fuel_factors['natural_gas'],
+                #     monthly_data.aggregate(total=Coalesce(Sum(Cast('diesel', FloatField())), 0))['total'] * fuel_factors['diesel'],
+                #     monthly_data.aggregate(total=Coalesce(Sum(Cast('biomass_wood', FloatField())), 0))['total'] * fuel_factors['biomass_wood'],
+                #     monthly_data.aggregate(total=Coalesce(Sum(Cast('biomass_other_solid', FloatField())), 0))['total'] * fuel_factors['biomass_other_solid']
+                # ])
+                fuel_emissions = sum([
+                    monthly_data.aggregate(
+                        total=Coalesce(Sum('coking_coal'), 0)
+                    )['total'] * fuel_factors['coking_coal'] if monthly_data.aggregate(total=Coalesce(Sum('coking_coal'), 0))['total'] is not None else 0,
+    
+                    monthly_data.aggregate(
+                        total=Coalesce(Sum('coke_oven_coal'), 0)
+                    )['total'] * fuel_factors['coke_oven_coal'] if monthly_data.aggregate(total=Coalesce(Sum('coke_oven_coal'), 0))['total'] is not None else 0,
+    
+    monthly_data.aggregate(
+        total=Coalesce(Sum('natural_gas'), 0)
+    )['total'] * fuel_factors['natural_gas'] if monthly_data.aggregate(total=Coalesce(Sum('natural_gas'), 0))['total'] is not None else 0,
+    
+    monthly_data.aggregate(
+        total=Coalesce(Sum('diesel'), 0)
+    )['total'] * fuel_factors['diesel'] if monthly_data.aggregate(total=Coalesce(Sum('diesel'), 0))['total'] is not None else 0,
+    
+    monthly_data.aggregate(
+        total=Coalesce(Sum('biomass_wood'), 0)
+    )['total'] * fuel_factors['biomass_wood'] if monthly_data.aggregate(total=Coalesce(Sum('biomass_wood'), 0))['total'] is not None else 0,
+    
+    monthly_data.aggregate(
+        total=Coalesce(Sum('biomass_other_solid'), 0)
+    )['total'] * fuel_factors['biomass_other_solid'] if monthly_data.aggregate(total=Coalesce(Sum('biomass_other_solid'), 0))['total'] is not None else 0
+])
+
+                # Calculate the total energy emissions for the month (electricity + fuel)
+                total_energy_emissions = electricity_emissions + fuel_emissions
+
+                # Store monthly total emissions data
+                monthly_total_emissions[month] = total_energy_emissions
+
+            # Prepare the response data for line chart
+            line_chart_data = []
+            for month in month_order:
+                month_name = datetime(1900, month, 1).strftime('%b')  # Get month name
+                line_chart_data.append({
+                    "month": month_name,
+                    "total_energy_emissions": monthly_total_emissions.get(month, 0)
+                })
+
+            response_data = {
+                'year': year,
+                'line_chart_data': line_chart_data
+            }
+
+            return Response(response_data, status=status.HTTP_200_OK)
+
+        except Exception as e:
+            error_message = f"An error occurred: {str(e)}"
+            print(error_message)
+            return Response({'error': error_message}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
