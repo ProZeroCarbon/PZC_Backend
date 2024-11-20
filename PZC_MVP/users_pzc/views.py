@@ -2283,12 +2283,17 @@ class SentToLandfillOverviewView(APIView):
 
             # Prepare the response data
             response_data = {
-                "year":year,
                 "landfill_percentage": landfill_percentage,
                 "remaining_percentage": remaining_percentage
             }
 
-            return Response(response_data, status=status.HTTP_200_OK)
+            return Response(
+                {
+                    "year":year,
+                    "sentToLandFill":response_data
+                },
+                status=status.HTTP_200_OK
+                )
 
         except Exception as e:
             print(f"Error occurred: {e}")
@@ -2363,12 +2368,16 @@ class SentToRecycledOverviewView(APIView):
 
             # Prepare the response data
             response_data = {
-                "year":year,
                 "Recycle_percentage": Recycle_percentage,
                 "remaining_percentage": remaining_percentage
             }
 
-            return Response(response_data, status=status.HTTP_200_OK)
+            return Response(
+                {
+                    "year":year,
+                    "SentToRecycle":response_data
+                },
+                status=status.HTTP_200_OK)
 
         except Exception as e:
             print(f"Error occurred: {e}")
@@ -5189,6 +5198,201 @@ class LogisticesOverviewAndGraphs(APIView):
 
 #         except Exception as e:
 #             return Response({"error": f"Error processing file: {str(e)}"}, status=status.HTTP_400_BAD_REQUEST)
+
+# class ExcelUploadView(APIView):
+#     permission_classes = [IsAuthenticated]
+#     parser_classes = (MultiPartParser, FormParser)
+
+#     def post(self, request):
+#         # Check if files are uploaded
+#         if not request.FILES:
+#             return Response({"error": "No files uploaded."}, status=status.HTTP_400_BAD_REQUEST)
+
+#         for file_key, file_obj in request.FILES.items():
+#             # Validate file format
+#             if not file_obj.name.endswith(('.xls', '.xlsx')):
+#                 return Response(
+#                     {"error": f"Invalid file format for {file_obj.name}. Only .xls and .xlsx files are supported."},
+#                     status=status.HTTP_400_BAD_REQUEST
+#                 )
+
+#             try:
+#                 # Read the Excel file
+#                 df = pd.read_excel(file_obj)
+
+#                 # Process each row in the DataFrame
+#                 for _, row in df.iterrows():
+#                     row = row.to_dict()
+
+#                     # Validate required fields
+#                     required_fields = ['facility', 'category', 'DatePicker']
+#                     for field in required_fields:
+#                         if field not in row or pd.isna(row[field]):
+#                             return Response(
+#                                 {"error": f"Missing required field: {field} in {file_obj.name}."},
+#                                 status=status.HTTP_400_BAD_REQUEST
+#                             )
+
+#                     # Fetch Facility object
+#                     facility_name = row.get('facility')
+#                     try:
+#                         facility = Facility.objects.get(facility_name=facility_name)
+#                     except Facility.DoesNotExist:
+#                         return Response(
+#                             {"error": f"Facility '{facility_name}' does not exist in {file_obj.name}."},
+#                             status=status.HTTP_400_BAD_REQUEST
+#                         )
+
+#                     # Handle categories
+#                     category = row.get('category')
+#                     if category == 'Waste':
+#                         Waste.objects.create(
+#                             user=request.user,
+#                             facility=facility,
+#                             category=category,
+#                             DatePicker=row['DatePicker'],
+#                             food_waste=row.get('food_waste', 0),
+#                             solid_Waste=row.get('solid_Waste', 0),
+#                             E_Waste=row.get('E_Waste', 0),
+#                             Biomedical_waste=row.get('Biomedical_waste', 0),
+#                             liquid_discharge=row.get('liquid_discharge', 0),
+#                             other_waste=row.get('other_waste', 0),
+#                             Recycle_waste=row.get('Recycle_waste', 0),
+#                             Landfill_waste=row.get('Landfill_waste', 0)
+#                         )
+#                     elif category == 'Energy':
+#                         Energy.objects.create(
+#                             user=request.user,
+#                             facility=facility,
+#                             category=row.get('category'),
+#                             DatePicker=row.get('DatePicker'),
+#                             hvac=row.get('hvac', 0),
+#                             production=row.get('production', 0),
+#                             stp=row.get('stp', 0),
+#                             admin_block=row.get('admin_block', 0),
+#                             utilities=row.get('utilities', 0),
+#                             others=row.get('others', 0),
+#                             coking_coal=row.get('coking_coal', 0),
+#                             coke_oven_coal=row.get('coke_oven_coal', 0),
+#                             natural_gas=row.get('natural_gas', 0),
+#                             diesel=row.get('diesel', 0),
+#                             biomass_wood=row.get('biomass_wood', 0),
+#                             biomass_other_solid=row.get('biomass_other_solid', 0),
+#                             renewable_solar=row.get('renewable_solar', 0),
+#                             renewable_other=row.get('renewable_other', 0)
+#                         )
+
+#             except Exception as e:
+#                 return Response(
+#                     {"error": f"Error processing file {file_obj.name}: {str(e)}"},
+#                     status=status.HTTP_400_BAD_REQUEST
+#                 )
+
+#         return Response({"message": "File  processed successfully!"}, status=status.HTTP_201_CREATED)
+
+
+# class ExcelUploadView(APIView):
+#     permission_classes = [IsAuthenticated]
+#     parser_classes = (MultiPartParser, FormParser)
+
+#     def post(self, request):
+#         # Check if files are uploaded
+#         if not request.FILES:
+#             return Response({"error": "No files uploaded."}, status=status.HTTP_400_BAD_REQUEST)
+
+#         for file_key, file_obj in request.FILES.items():
+#             # Validate file format
+#             if not file_obj.name.endswith(('.xls', '.xlsx')):
+#                 return Response(
+#                     {"error": f"Invalid file format for {file_obj.name}. Only .xls and .xlsx files are supported."},
+#                     status=status.HTTP_400_BAD_REQUEST
+#                 )
+
+#             try:
+#                 # Read the Excel file
+#                 df = pd.read_excel(file_obj)
+
+#                 # Process each row in the DataFrame
+#                 for _, row in df.iterrows():
+#                     row = row.to_dict()
+
+#                     # Validate required fields
+#                     required_fields = ['facility', 'category', 'DatePicker']
+#                     for field in required_fields:
+#                         if field not in row or pd.isna(row[field]):
+#                             return Response(
+#                                 {"error": f"Missing required field: {field} in {file_obj.name}."},
+#                                 status=status.HTTP_400_BAD_REQUEST
+#                             )
+
+#                     # Fetch Facility object
+#                     facility_name = row.get('facility')
+#                     try:
+#                         facility = Facility.objects.get(facility_name=facility_name)
+#                     except Facility.DoesNotExist:
+#                         return Response(
+#                             {"error": f"Facility '{facility_name}' does not exist in {file_obj.name}."},
+#                             status=status.HTTP_400_BAD_REQUEST
+#                         )
+
+#                     # Handle categories
+#                     category = row.get('category')
+#                     if category == 'Waste':
+#                         # Check for existing record
+#                         waste_record, created = Waste.objects.update_or_create(
+#                             user=request.user,
+#                             facility=facility,
+#                             category=category,
+#                             DatePicker=row['DatePicker'],
+#                             defaults={
+#                                 'food_waste': row.get('food_waste', 0),
+#                                 'solid_Waste': row.get('solid_Waste', 0),
+#                                 'E_Waste': row.get('E_Waste', 0),
+#                                 'Biomedical_waste': row.get('Biomedical_waste', 0),
+#                                 'liquid_discharge': row.get('liquid_discharge', 0),
+#                                 'other_waste': row.get('other_waste', 0),
+#                                 'Recycle_waste': row.get('Recycle_waste', 0),
+#                                 'Landfill_waste': row.get('Landfill_waste', 0)
+#                             }
+#                         )
+#                         action = "created" if created else "updated"
+#                         print(f"Waste record {action} for {facility_name} on {row['DatePicker']}.")
+
+#                     elif category == 'Energy':
+#                         # Check for existing record
+#                         energy_record, created = Energy.objects.update_or_create(
+#                             user=request.user,
+#                             facility=facility,
+#                             category=row.get('category'),
+#                             DatePicker=row.get('DatePicker'),
+#                             defaults={
+#                                 'hvac': row.get('hvac', 0),
+#                                 'production': row.get('production', 0),
+#                                 'stp': row.get('stp', 0),
+#                                 'admin_block': row.get('admin_block', 0),
+#                                 'utilities': row.get('utilities', 0),
+#                                 'others': row.get('others', 0),
+#                                 'coking_coal': row.get('coking_coal', 0),
+#                                 'coke_oven_coal': row.get('coke_oven_coal', 0),
+#                                 'natural_gas': row.get('natural_gas', 0),
+#                                 'diesel': row.get('diesel', 0),
+#                                 'biomass_wood': row.get('biomass_wood', 0),
+#                                 'biomass_other_solid': row.get('biomass_other_solid', 0),
+#                                 'renewable_solar': row.get('renewable_solar', 0),
+#                                 'renewable_other': row.get('renewable_other', 0)
+#                             }
+#                         )
+#                         action = "created" if created else "updated"
+#                         print(f"Energy record {action} for {facility_name} on {row['DatePicker']}.")
+
+#             except Exception as e:
+#                 return Response(
+#                     {"error": f"Error processing file {file_obj.name}: {str(e)}"},
+#                     status=status.HTTP_400_BAD_REQUEST
+#                 )
+
+#         return Response({"message": "File processed successfully!"}, status=status.HTTP_201_CREATED)
+
 class ExcelUploadView(APIView):
     permission_classes = [IsAuthenticated]
     parser_classes = (MultiPartParser, FormParser)
@@ -5226,50 +5430,68 @@ class ExcelUploadView(APIView):
                     # Fetch Facility object
                     facility_name = row.get('facility')
                     try:
-                        facility = Facility.objects.get(facility_name=facility_name)
-                    except Facility.DoesNotExist:
+                        facilities = Facility.objects.filter(facility_name=facility_name)
+                        if not facilities.exists():
+                            return Response(
+                                {"error": f"Facility '{facility_name}' does not exist in {file_obj.name}."},
+                                status=status.HTTP_400_BAD_REQUEST
+                            )
+                        elif facilities.count() > 1:
+                            return Response(
+                                {"error": f"Multiple facilities found for '{facility_name}'. Please resolve duplicates."},
+                                status=status.HTTP_400_BAD_REQUEST
+                            )
+                        facility = facilities.first()  # Get the first matching facility
+                    except Exception as e:
                         return Response(
-                            {"error": f"Facility '{facility_name}' does not exist in {file_obj.name}."},
+                            {"error": f"Error fetching facility '{facility_name}': {str(e)}"},
                             status=status.HTTP_400_BAD_REQUEST
                         )
 
                     # Handle categories
                     category = row.get('category')
                     if category == 'Waste':
-                        Waste.objects.create(
+                        # Check for existing record or create/update it
+                        Waste.objects.update_or_create(
                             user=request.user,
                             facility=facility,
                             category=category,
                             DatePicker=row['DatePicker'],
-                            food_waste=row.get('food_waste', 0),
-                            solid_Waste=row.get('solid_Waste', 0),
-                            E_Waste=row.get('E_Waste', 0),
-                            Biomedical_waste=row.get('Biomedical_waste', 0),
-                            liquid_discharge=row.get('liquid_discharge', 0),
-                            other_waste=row.get('other_waste', 0),
-                            Recycle_waste=row.get('Recycle_waste', 0),
-                            Landfill_waste=row.get('Landfill_waste', 0)
+                            defaults={
+                                'food_waste': row.get('food_waste', 0),
+                                'solid_Waste': row.get('solid_Waste', 0),
+                                'E_Waste': row.get('E_Waste', 0),
+                                'Biomedical_waste': row.get('Biomedical_waste', 0),
+                                'liquid_discharge': row.get('liquid_discharge', 0),
+                                'other_waste': row.get('other_waste', 0),
+                                'Recycle_waste': row.get('Recycle_waste', 0),
+                                'Landfill_waste': row.get('Landfill_waste', 0)
+                            }
                         )
+
                     elif category == 'Energy':
-                        Energy.objects.create(
+                        # Check for existing record or create/update it
+                        Energy.objects.update_or_create(
                             user=request.user,
                             facility=facility,
                             category=row.get('category'),
                             DatePicker=row.get('DatePicker'),
-                            hvac=row.get('hvac', 0),
-                            production=row.get('production', 0),
-                            stp=row.get('stp', 0),
-                            admin_block=row.get('admin_block', 0),
-                            utilities=row.get('utilities', 0),
-                            others=row.get('others', 0),
-                            coking_coal=row.get('coking_coal', 0),
-                            coke_oven_coal=row.get('coke_oven_coal', 0),
-                            natural_gas=row.get('natural_gas', 0),
-                            diesel=row.get('diesel', 0),
-                            biomass_wood=row.get('biomass_wood', 0),
-                            biomass_other_solid=row.get('biomass_other_solid', 0),
-                            renewable_solar=row.get('renewable_solar', 0),
-                            renewable_other=row.get('renewable_other', 0)
+                            defaults={
+                                'hvac': row.get('hvac', 0),
+                                'production': row.get('production', 0),
+                                'stp': row.get('stp', 0),
+                                'admin_block': row.get('admin_block', 0),
+                                'utilities': row.get('utilities', 0),
+                                'others': row.get('others', 0),
+                                'coking_coal': row.get('coking_coal', 0),
+                                'coke_oven_coal': row.get('coke_oven_coal', 0),
+                                'natural_gas': row.get('natural_gas', 0),
+                                'diesel': row.get('diesel', 0),
+                                'biomass_wood': row.get('biomass_wood', 0),
+                                'biomass_other_solid': row.get('biomass_other_solid', 0),
+                                'renewable_solar': row.get('renewable_solar', 0),
+                                'renewable_other': row.get('renewable_other', 0)
+                            }
                         )
 
             except Exception as e:
@@ -5278,4 +5500,115 @@ class ExcelUploadView(APIView):
                     status=status.HTTP_400_BAD_REQUEST
                 )
 
-        return Response({"message": "File  processed successfully!"}, status=status.HTTP_201_CREATED)
+        return Response({"message": "File processed successfully!"}, status=status.HTTP_201_CREATED)
+
+
+
+# class ExcelUploadView(APIView):
+#     permission_classes = [IsAuthenticated]
+#     parser_classes = (MultiPartParser, FormParser)
+
+#     def post(self, request):
+#         # Check if files are uploaded
+#         if not request.FILES:
+#             return Response({"error": "No files uploaded."}, status=status.HTTP_400_BAD_REQUEST)
+
+#         for file_key, file_obj in request.FILES.items():
+#             # Validate file format
+#             if not file_obj.name.endswith(('.xls', '.xlsx')):
+#                 return Response(
+#                     {"error": f"Invalid file format for {file_obj.name}. Only .xls and .xlsx files are supported."},
+#                     status=status.HTTP_400_BAD_REQUEST
+#                 )
+
+#             try:
+#                 # Read the Excel file
+#                 df = pd.read_excel(file_obj)
+
+#                 # Process each row in the DataFrame
+#                 for _, row in df.iterrows():
+#                     row = row.to_dict()
+
+#                     # Validate required fields
+#                     required_fields = ['facility', 'category', 'DatePicker']
+#                     for field in required_fields:
+#                         if field not in row or pd.isna(row[field]):
+#                             return Response(
+#                                 {"error": f"Missing required field: {field} in {file_obj.name}."},
+#                                 status=status.HTTP_400_BAD_REQUEST
+#                             )
+
+#                     # Fetch Facility object
+#                     facility_name = row.get('facility')
+#                     try:
+#                         facilities = Facility.objects.filter(facility_name=facility_name)
+#                         if not facilities.exists():
+#                             return Response(
+#                                 {"error": f"Facility '{facility_name}' does not exist in {file_obj.name}."},
+#                                 status=status.HTTP_400_BAD_REQUEST
+#                             )
+#                         elif facilities.count() > 1:
+#                             return Response(
+#                                 {"error": f"Multiple facilities found for '{facility_name}'. Please resolve duplicates."},
+#                                 status=status.HTTP_400_BAD_REQUEST
+#                             )
+#                         facility = facilities.first()  # Get the first matching facility
+#                     except Exception as e:
+#                         return Response(
+#                             {"error": f"Error fetching facility '{facility_name}': {str(e)}"},
+#                             status=status.HTTP_400_BAD_REQUEST
+#                         )
+
+#                     # Handle categories
+#                     category = row.get('category')
+#                     if category == 'Waste':
+#                         # Check for existing record or create/update it
+#                         Waste.objects.update_or_create(
+#                             user=request.user,
+#                             facility=facility,
+#                             category=category,
+#                             DatePicker=row['DatePicker'],
+#                             defaults={
+#                                 'food_waste': row.get('food_waste', 0),
+#                                 'solid_Waste': row.get('solid_Waste', 0),
+#                                 'E_Waste': row.get('E_Waste', 0),
+#                                 'Biomedical_waste': row.get('Biomedical_waste', 0),
+#                                 'liquid_discharge': row.get('liquid_discharge', 0),
+#                                 'other_waste': row.get('other_waste', 0),
+#                                 'Recycle_waste': row.get('Recycle_waste', 0),
+#                                 'Landfill_waste': row.get('Landfill_waste', 0)
+#                             }
+#                         )
+
+#                     elif category == 'Energy':
+#                         # Check for existing record or create/update it
+#                         Energy.objects.update_or_create(
+#                             user=request.user,
+#                             facility=facility,
+#                             category=row.get('category'),
+#                             DatePicker=row.get('DatePicker'),
+#                             defaults={
+#                                 'hvac': row.get('hvac', 0),
+#                                 'production': row.get('production', 0),
+#                                 'stp': row.get('stp', 0),
+#                                 'admin_block': row.get('admin_block', 0),
+#                                 'utilities': row.get('utilities', 0),
+#                                 'others': row.get('others', 0),
+#                                 'coking_coal': row.get('coking_coal', 0),
+#                                 'coke_oven_coal': row.get('coke_oven_coal', 0),
+#                                 'natural_gas': row.get('natural_gas', 0),
+#                                 'diesel': row.get('diesel', 0),
+#                                 'biomass_wood': row.get('biomass_wood', 0),
+#                                 'biomass_other_solid': row.get('biomass_other_solid', 0),
+#                                 'renewable_solar': row.get('renewable_solar', 0),
+#                                 'renewable_other': row.get('renewable_other', 0)
+#                             }
+#                         )
+
+#             except Exception as e:
+#                 return Response(
+#                     {"error": f"Error processing file {file_obj.name}: {str(e)}"},
+#                     status=status.HTTP_400_BAD_REQUEST
+#                 )
+
+#         return Response({"message": "File processed successfully!"}, status=status.HTTP_201_CREATED)
