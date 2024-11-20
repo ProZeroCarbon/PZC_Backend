@@ -541,16 +541,6 @@ class WaterCreateSerializer(serializers.ModelSerializer):
                     "non_field_errors": _("A different Water entry for this facility already exists for this month.")
                 })
 
-        # Ensure that Generated_Water is greater than or equal to Recycled_Water
-        generated_water = data.get('Generated_Water')
-        recycled_water = data.get('Recycled_Water')
-
-        if generated_water is not None and recycled_water is not None:
-            if recycled_water > generated_water:
-                raise serializers.ValidationError({
-                    "Recycled_Water": "Recycled Water must be less than or equal to Generated Water."
-                })
-
         # Validate positive values for all water fields
         water_fields = [
             'Generated_Water', 'Recycled_Water', 'Softener_usage', 'Boiler_usage', 'otherUsage'

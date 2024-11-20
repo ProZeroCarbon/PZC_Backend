@@ -5902,49 +5902,25 @@ class EmissionCalculations(APIView):
                 monthly_data = energy_data.filter(DatePicker__month=month)
 
                 # Calculate electricity emissions for the month (sum of all relevant fields)
-                electricity_emissions = monthly_data.aggregate(
-                    total_electricity=Coalesce(Sum(Cast('hvac', FloatField())), 0) + 
-                                      Coalesce(Sum(Cast('production', FloatField())), 0) + 
-                                      Coalesce(Sum(Cast('stp', FloatField())), 0) + 
-                                      Coalesce(Sum(Cast('admin_block', FloatField())), 0) + 
-                                      Coalesce(Sum(Cast('utilities', FloatField())), 0) + 
-                                      Coalesce(Sum(Cast('others', FloatField())), 0)
-                )['total_electricity'] or 0
+                hvac_sum = monthly_data.aggregate(total=Coalesce(Sum(Cast('hvac', FloatField()), output_field=FloatField()), 0))['total']
+                production_sum = monthly_data.aggregate(total=Coalesce(Sum(Cast('production', FloatField()), output_field=FloatField()), 0))['total']
+                stp_sum = monthly_data.aggregate(total=Coalesce(Sum(Cast('stp', FloatField()), output_field=FloatField()), 0))['total']
+                admin_block_sum = monthly_data.aggregate(total=Coalesce(Sum(Cast('admin_block', FloatField()), output_field=FloatField()), 0))['total']
+                utilities_sum = monthly_data.aggregate(total=Coalesce(Sum(Cast('utilities', FloatField()), output_field=FloatField()), 0))['total']
+                others_sum = monthly_data.aggregate(total=Coalesce(Sum(Cast('others', FloatField()), output_field=FloatField()), 0))['total']
 
+                electricity_emissions = (
+                    hvac_sum + production_sum + stp_sum + admin_block_sum + utilities_sum + others_sum
+                )
                 # Calculate fuel emissions for the month (sum of all relevant fields)
-                # fuel_emissions = sum([
-                #     monthly_data.aggregate(total=Coalesce(Sum(Cast('coking_coal', FloatField())), 0))['total'] * fuel_factors['coking_coal'],
-                #     monthly_data.aggregate(total=Coalesce(Sum(Cast('coke_oven_coal', FloatField())), 0))['total'] * fuel_factors['coke_oven_coal'],
-                #     monthly_data.aggregate(total=Coalesce(Sum(Cast('natural_gas', FloatField())), 0))['total'] * fuel_factors['natural_gas'],
-                #     monthly_data.aggregate(total=Coalesce(Sum(Cast('diesel', FloatField())), 0))['total'] * fuel_factors['diesel'],
-                #     monthly_data.aggregate(total=Coalesce(Sum(Cast('biomass_wood', FloatField())), 0))['total'] * fuel_factors['biomass_wood'],
-                #     monthly_data.aggregate(total=Coalesce(Sum(Cast('biomass_other_solid', FloatField())), 0))['total'] * fuel_factors['biomass_other_solid']
-                # ])
                 fuel_emissions = sum([
-                    monthly_data.aggregate(
-                        total=Coalesce(Sum('coking_coal'), 0)
-                    )['total'] * fuel_factors['coking_coal'] if monthly_data.aggregate(total=Coalesce(Sum('coking_coal'), 0))['total'] is not None else 0,
-    
-                    monthly_data.aggregate(
-                        total=Coalesce(Sum('coke_oven_coal'), 0)
-                    )['total'] * fuel_factors['coke_oven_coal'] if monthly_data.aggregate(total=Coalesce(Sum('coke_oven_coal'), 0))['total'] is not None else 0,
-    
-    monthly_data.aggregate(
-        total=Coalesce(Sum('natural_gas'), 0)
-    )['total'] * fuel_factors['natural_gas'] if monthly_data.aggregate(total=Coalesce(Sum('natural_gas'), 0))['total'] is not None else 0,
-    
-    monthly_data.aggregate(
-        total=Coalesce(Sum('diesel'), 0)
-    )['total'] * fuel_factors['diesel'] if monthly_data.aggregate(total=Coalesce(Sum('diesel'), 0))['total'] is not None else 0,
-    
-    monthly_data.aggregate(
-        total=Coalesce(Sum('biomass_wood'), 0)
-    )['total'] * fuel_factors['biomass_wood'] if monthly_data.aggregate(total=Coalesce(Sum('biomass_wood'), 0))['total'] is not None else 0,
-    
-    monthly_data.aggregate(
-        total=Coalesce(Sum('biomass_other_solid'), 0)
-    )['total'] * fuel_factors['biomass_other_solid'] if monthly_data.aggregate(total=Coalesce(Sum('biomass_other_solid'), 0))['total'] is not None else 0
-])
+                    monthly_data.aggregate(total=Coalesce(Sum(Cast('coking_coal', FloatField()), output_field=FloatField()), 0))['total'] * fuel_factors['coking_coal'],
+                    monthly_data.aggregate(total=Coalesce(Sum(Cast('coke_oven_coal', FloatField()), output_field=FloatField()), 0))['total'] * fuel_factors['coke_oven_coal'],
+                    monthly_data.aggregate(total=Coalesce(Sum(Cast('natural_gas', FloatField()), output_field=FloatField()), 0))['total'] * fuel_factors['natural_gas'],
+                    monthly_data.aggregate(total=Coalesce(Sum(Cast('diesel', FloatField()), output_field=FloatField()), 0))['total'] * fuel_factors['diesel'],
+                    monthly_data.aggregate(total=Coalesce(Sum(Cast('biomass_wood', FloatField()), output_field=FloatField()), 0))['total'] * fuel_factors['biomass_wood'],
+                    monthly_data.aggregate(total=Coalesce(Sum(Cast('biomass_other_solid', FloatField()), output_field=FloatField()), 0))['total'] * fuel_factors['biomass_other_solid']
+                ])
 
                 # Calculate the total energy emissions for the month (electricity + fuel)
                 total_energy_emissions = electricity_emissions + fuel_emissions
