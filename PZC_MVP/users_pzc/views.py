@@ -4930,7 +4930,7 @@ class LogisticesOverviewAndGraphs(APIView):
         year = request.GET.get('year')
 
         try:
-            # Get the latest year if no year is specified
+            # Determine the fiscal year if no year is specified
             if not year:
                 latest_date = Logistices.objects.filter(user=user).aggregate(latest_date=Max('DatePicker'))['latest_date']
                 year = latest_date.year if latest_date else datetime.now().year
@@ -4946,7 +4946,7 @@ class LogisticesOverviewAndGraphs(APIView):
             if facility_id != 'all':
                 filters['facility__facility_id'] = facility_id
 
-            # Query data for current year
+            # Query data for the current year
             current_year_data = Logistices.objects.filter(**filters)
 
             # Aggregating totals for the overview
@@ -4966,50 +4966,59 @@ class LogisticesOverviewAndGraphs(APIView):
                 total_fuel_consumed=Coalesce(Sum('fuel_consumption'), Value(0.0))
             )['total_fuel_consumed']
 
-            # Monthly Fuel Consumption for the Bar Graph (One Bar per Month)
+            # Monthly Fuel Consumption
             monthly_data = current_year_data.annotate(month=ExtractMonth('DatePicker')).values('month').annotate(
                 total_fuel=Coalesce(Sum('fuel_consumption', output_field=FloatField()), Value(0.0, output_field=FloatField()))
             )
             monthly_fuel = {d['month']: d['total_fuel'] for d in monthly_data}
 
-            # Facility-wise Fuel Consumption for the Graph (Bar Graph)
+            # Facility-wise Fuel Consumption
             facility_data = current_year_data.values('facility__facility_name').annotate(
                 total_fuel=Coalesce(Sum('fuel_consumption', output_field=FloatField()), Value(0.0, output_field=FloatField()))
             )
-            facility_fuel = {d['facility__facility_name']: d['total_fuel'] for d in facility_data}
 
-            # Fuel Consumption for Both Logistics Types for the Graph (Bar Graph for each type)
+            # Calculate percentages for the donut chart
+            total_fuel = sum(d['total_fuel'] for d in facility_data) or 1  # Avoid division by zero
+            donut_chart_data = [
+                {"facility_name": d['facility__facility_name'], "percentage": round((d['total_fuel'] / total_fuel) * 100, 2)}
+                for d in facility_data
+            ]
+            if not donut_chart_data:
+                donut_chart_data = [{"facility_name": "No Facility", "percentage": 0}]
+
+            # Logistics Types Fuel Consumption
             type_month_data = current_year_data.annotate(month=ExtractMonth('DatePicker')).values(
                 'month', 'logistices_types'
             ).annotate(
                 total_fuel=Coalesce(Sum('fuel_consumption', output_field=FloatField()), Value(0.0, output_field=FloatField()))
             )
-            cargo_data = {d['month']: d['total_fuel'] for d in type_month_data if d['logistices_types'] == "cargo"}
-            staff_data = {d['month']: d['total_fuel'] for d in type_month_data if d['logistices_types'] == "staff_logistices"}
+            
+            # Define the month order from April to March
+            month_order = [4, 5, 6, 7, 8, 9, 10, 11, 12, 1, 2, 3]
 
             # Fill missing months with zeros for graphs
             all_months = range(1, 13)
             monthly_fuel = {month: monthly_fuel.get(month, 0.0) for month in all_months}
-            cargo_data = {month: cargo_data.get(month, 0.0) for month in all_months}
-            staff_data = {month: staff_data.get(month, 0.0) for month in all_months}
+            cargo_data = {month: 0.0 for month in all_months}  # Initialize to 0 for each month
+            staff_data = {month: 0.0 for month in all_months}  # Initialize to 0 for each month
 
-            # Define the month order from April to March
-            month_order = [4, 5, 6, 7, 8, 9, 10, 11, 12, 1, 2, 3]
-            
-            # Prepare the data for the bar graph (Monthly Fuel Consumption)
-            monthly_bar_data = []
-            for month in month_order:
-                month_name = datetime(1900, month, 1).strftime('%b')
-                monthly_bar_data.append({
-                    "month": month_name,
-                    "fuel_consumption": monthly_fuel[month]
-                })
+            # Prepare the data for the line chart
+            line_chart_data = [
+                {"month": datetime(1900, month, 1).strftime('%b'), "hvac": monthly_fuel[month]}
+                for month in month_order
+            ]
 
-            # Prepare the data for the bar graph comparing logistics types (cargo and staff)
-            cargo_data_with_names = {datetime(1900, month, 1).strftime('%b'): cargo_data[month] for month in month_order}
-            staff_data_with_names = {datetime(1900, month, 1).strftime('%b'): staff_data[month] for month in month_order}
+            # Prepare the data for comparing logistics types
+            cargo_data_with_names = [
+                {"month": datetime(1900, month, 1).strftime('%b'), "cargo": cargo_data[month]}
+                for month in month_order
+            ]
+            staff_data_with_names = [
+                {"month": datetime(1900, month, 1).strftime('%b'), "staff": staff_data[month]}
+                for month in month_order
+            ]
 
-            # Structure the final response containing both the overview data and graph data
+            # Structure the final response
             data = {
                 "year": year,
                 "facility_id": facility_id,
@@ -5019,8 +5028,8 @@ class LogisticesOverviewAndGraphs(APIView):
                     "total_km_travelled": total_km_travelled,
                     "total_fuel_consumed": total_fuel_consumed
                 },
-                "monthly_fuel_consumption": monthly_bar_data,  # Bar Graph (Monthly Fuel Consumption)
-                "facility_wise_consumption_donut": facility_fuel,  # Donut Chart (Facility-wise Fuel Consumption)
+                "line_chart_data": line_chart_data,  # Line Chart
+                "donut_chart_data": donut_chart_data,  # Donut Chart
                 "logistics_fuel_comparison": {  # Bar Graph (Fuel Consumption by Logistics Type)
                     "cargo": cargo_data_with_names,
                     "staff": staff_data_with_names
@@ -5101,34 +5110,34 @@ class LogisticesOverviewAndGraphs(APIView):
 #                         renewable_other=row.get('renewable_other', 0)
 #                     )
 
-#                 elif category == 'Water':
-#                     Water.objects.create(
-#                         user=request.user,
-#                         facility=facility,
-#                         category=row.get('category'),
-#                         DatePicker=row.get('DatePicker'),
-#                         Generated_Water=row.get('Generated_Water', 0),
-#                         Recycled_Water=row.get('Recycled_Water', 0),
-#                         Softener_usage=row.get('Softener_usage', 0),
-#                         Boiler_usage=row.get('Boiler_usage', 0),
-#                         otherUsage=row.get('otherUsage', 0)
-#                     )
+                # elif category == 'Water':
+                #     Water.objects.create(
+                #         user=request.user,
+                #         facility=facility,
+                #         category=row.get('category'),
+                #         DatePicker=row.get('DatePicker'),
+                #         Generated_Water=row.get('Generated_Water', 0),
+                #         Recycled_Water=row.get('Recycled_Water', 0),
+                #         Softener_usage=row.get('Softener_usage', 0),
+                #         Boiler_usage=row.get('Boiler_usage', 0),
+                #         otherUsage=row.get('otherUsage', 0)
+                #     )
 
-#                 elif category == 'Biodiversity':
-#                     Biodiversity.objects.create(
-#                         user=request.user,
-#                         facility=facility,
-#                         category=row.get('category'),
-#                         DatePicker=row.get('DatePicker'),
-#                         no_trees=row.get('no_trees', 0),
-#                         species=row.get('species', ''),
-#                         age=row.get('age', 0),
-#                         height=row.get('height', 0),
-#                         width=row.get('width', 0),
-#                         totalArea=row.get('totalArea', 0),
-#                         new_trees_planted=row.get('new_trees_planted', 0),
-#                         head_count=row.get('head_count', 0)
-#                     )
+                # elif category == 'Biodiversity':
+                #     Biodiversity.objects.create(
+                #         user=request.user,
+                #         facility=facility,
+                #         category=row.get('category'),
+                #         DatePicker=row.get('DatePicker'),
+                #         no_trees=row.get('no_trees', 0),
+                #         species=row.get('species', ''),
+                #         age=row.get('age', 0),
+                #         height=row.get('height', 0),
+                #         width=row.get('width', 0),
+                #         totalArea=row.get('totalArea', 0),
+                #         new_trees_planted=row.get('new_trees_planted', 0),
+                #         head_count=row.get('head_count', 0)
+                #     )
 
 #                 elif category == 'Logistices':
 #                     Logistices.objects.create(
@@ -5400,114 +5409,6 @@ class LogisticesOverviewAndGraphs(APIView):
 
 #         return Response({"message": "File processed successfully!"}, status=status.HTTP_201_CREATED)
 
-class ExcelUploadView(APIView):
-    permission_classes = [IsAuthenticated]
-    parser_classes = (MultiPartParser, FormParser)
-
-    def post(self, request):
-        # Check if files are uploaded
-        if not request.FILES:
-            return Response({"error": "No files uploaded."}, status=status.HTTP_400_BAD_REQUEST)
-
-        for file_key, file_obj in request.FILES.items():
-            # Validate file format
-            if not file_obj.name.endswith(('.xls', '.xlsx')):
-                return Response(
-                    {"error": f"Invalid file format for {file_obj.name}. Only .xls and .xlsx files are supported."},
-                    status=status.HTTP_400_BAD_REQUEST
-                )
-
-            try:
-                # Read the Excel file
-                df = pd.read_excel(file_obj)
-
-                # Process each row in the DataFrame
-                for _, row in df.iterrows():
-                    row = row.to_dict()
-
-                    # Validate required fields
-                    required_fields = ['facility', 'category', 'DatePicker']
-                    for field in required_fields:
-                        if field not in row or pd.isna(row[field]):
-                            return Response(
-                                {"error": f"Missing required field: {field} in {file_obj.name}."},
-                                status=status.HTTP_400_BAD_REQUEST
-                            )
-
-                    # Fetch Facility object
-                    facility_name = row.get('facility')
-                    try:
-                        facilities = Facility.objects.filter(facility_name=facility_name)
-                        if not facilities.exists():
-                            return Response(
-                                {"error": f"Facility '{facility_name}' does not exist in {file_obj.name}."},
-                                status=status.HTTP_400_BAD_REQUEST
-                            )
-                        elif facilities.count() > 1:
-                            return Response(
-                                {"error": f"Multiple facilities found for '{facility_name}'. Please resolve duplicates."},
-                                status=status.HTTP_400_BAD_REQUEST
-                            )
-                        facility = facilities.first()  # Get the first matching facility
-                    except Exception as e:
-                        return Response(
-                            {"error": f"Error fetching facility '{facility_name}': {str(e)}"},
-                            status=status.HTTP_400_BAD_REQUEST
-                        )
-
-                    # Handle categories
-                    category = row.get('category')
-                    if category == 'Waste':
-                        # Check for existing record or create/update it
-                        Waste.objects.update_or_create(
-                            user=request.user,
-                            facility=facility,
-                            category=category,
-                            DatePicker=row['DatePicker'],
-                            defaults={
-                                'food_waste': row.get('food_waste', 0),
-                                'solid_Waste': row.get('solid_Waste', 0),
-                                'E_Waste': row.get('E_Waste', 0),
-                                'Biomedical_waste': row.get('Biomedical_waste', 0),
-                                'liquid_discharge': row.get('liquid_discharge', 0),
-                                'other_waste': row.get('other_waste', 0),
-                                'Recycle_waste': row.get('Recycle_waste', 0),
-                                'Landfill_waste': row.get('Landfill_waste', 0)
-                            }
-                        )
-
-                    elif category == 'Energy':
-                        # Check for existing record or create/update it
-                        Energy.objects.update_or_create(
-                            user=request.user,
-                            facility=facility,
-                            category=row.get('category'),
-                            DatePicker=row.get('DatePicker'),
-                            defaults={
-                                'hvac': row.get('hvac', 0),
-                                'production': row.get('production', 0),
-                                'stp': row.get('stp', 0),
-                                'admin_block': row.get('admin_block', 0),
-                                'utilities': row.get('utilities', 0),
-                                'others': row.get('others', 0),
-                                'coking_coal': row.get('coking_coal', 0),
-                                'coke_oven_coal': row.get('coke_oven_coal', 0),
-                                'natural_gas': row.get('natural_gas', 0),
-                                'diesel': row.get('diesel', 0),
-                                'biomass_wood': row.get('biomass_wood', 0),
-                                'biomass_other_solid': row.get('biomass_other_solid', 0),
-                                'renewable_solar': row.get('renewable_solar', 0),
-                                'renewable_other': row.get('renewable_other', 0)
-                            }
-                        )
-
-            except Exception as e:
-                return Response(
-                    {"error": f"Error processing file {file_obj.name}: {str(e)}"},
-                    status=status.HTTP_400_BAD_REQUEST
-                )
-
-        return Response({"message": "File processed successfully!"}, status=status.HTTP_201_CREATED)
 
 # class ExcelUploadView(APIView):
 #     permission_classes = [IsAuthenticated]
@@ -5617,476 +5518,6 @@ class ExcelUploadView(APIView):
 #                 )
 
 #         return Response({"message": "File processed successfully!"}, status=status.HTTP_201_CREATED)
-
-
-# class EmissionCalculations(APIView):
-#     permission_classes = [IsAuthenticated]
-
-#     def get(self, request):
-#         user = request.user
-#         year = request.GET.get('year', None)
-#         facility_id = request.GET.get('facility_id', 'all')
-#         facility_location = request.GET.get('facility_location', None)
-
-#         try:
-#             filters = {'user': user}
-#             today = datetime.now()
-
-#             # Year calculation
-#             if year:
-#                 try:
-#                     year = int(year)
-#                 except ValueError:
-#                     return Response({'error': 'Invalid year parameter.'}, status=status.HTTP_400_BAD_REQUEST)
-#             else:
-#                 latest_entry = Energy.objects.filter(user=user).aggregate(latest_date=Max('DatePicker'))
-#                 year = latest_entry['latest_date'].year if latest_entry['latest_date'] else today.year
-
-#             # Fiscal year range
-#             start_date, end_date = (
-#                 (datetime(year, 4, 1), datetime(year + 1, 3, 31))
-#                 if today.month >= 4
-#                 else (datetime(year - 1, 4, 1), datetime(year, 3, 31))
-#             )
-#             filters['DatePicker__range'] = (start_date, end_date)
-
-#             # Facility ID filtering
-#             if facility_id.lower() != 'all':
-#                 if not Facility.objects.filter(facility_id=facility_id).exists():
-#                     return Response({'error': f'Facility with ID {facility_id} does not exist.'}, status=status.HTTP_400_BAD_REQUEST)
-#                 filters['facility__facility_id'] = facility_id
-
-#             # Facility location filtering
-#             if facility_location and facility_location.lower() != 'all':
-#                 if not Facility.objects.filter(facility_location__icontains=facility_location).exists():
-#                     return Response({'error': f'No facility found with location {facility_location}.'}, status=status.HTTP_400_BAD_REQUEST)
-#                 filters['facility__facility_location__icontains'] = facility_location
-
-#             # Fetch energy data
-#             energy_data = Energy.objects.filter(**filters)
-
-#             # Emission factors
-#             electricity_factor = 0.82
-#             fuel_factors = {
-#                 'coking_coal': 2.66,
-#                 'coke_oven_coal': 3.1,
-#                 'natural_gas': 2.7,
-#                 'diesel': 2.91 * 1000,  # Diesel in liters, convert to kg
-#                 'biomass_wood': 1.75,
-#                 'biomass_other_solid': 1.16
-#             }
-
-#             # Monthly totals (ordered by fiscal year: April - March)
-#             month_order = [4, 5, 6, 7, 8, 9, 10, 11, 12, 1, 2, 3]
-#             months = ['Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec', 'Jan', 'Feb', 'Mar']
-#             monthly_total_emissions = {}
-
-#             for month in month_order:  # Loop over fiscal months
-#                 # Filter data for the specific month
-#                 monthly_data = energy_data.filter(DatePicker__month=month)
-
-#                 # Calculate electricity emissions for the month (sum of all relevant fields)
-#                 electricity_emissions = monthly_data.aggregate(
-#                     total_electricity=Sum('hvac') + Sum('production') + Sum('stp') + 
-#                                       Sum('admin_block') + Sum('utilities') + Sum('others')
-#                 )['total_electricity'] or 0
-
-#                 # Calculate fuel emissions for the month (sum of all relevant fields)
-#                 fuel_emissions = sum([
-#                     monthly_data.aggregate(total=Coalesce(Sum('coking_coal'), 0))['total'] * fuel_factors['coking_coal'],
-#                     monthly_data.aggregate(total=Coalesce(Sum('coke_oven_coal'), 0))['total'] * fuel_factors['coke_oven_coal'],
-#                     monthly_data.aggregate(total=Coalesce(Sum('natural_gas'), 0))['total'] * fuel_factors['natural_gas'],
-#                     monthly_data.aggregate(total=Coalesce(Sum('diesel'), 0))['total'] * fuel_factors['diesel'],
-#                     monthly_data.aggregate(total=Coalesce(Sum('biomass_wood'), 0))['total'] * fuel_factors['biomass_wood'],
-#                     monthly_data.aggregate(total=Coalesce(Sum('biomass_other_solid'), 0))['total'] * fuel_factors['biomass_other_solid']
-#                 ])
-
-
-#                 # Calculate the total energy emissions for the month (electricity + fuel)
-#                 total_energy_emissions = electricity_emissions + fuel_emissions
-
-#                 # Store monthly total emissions data
-#                 monthly_total_emissions[month] = total_energy_emissions
-
-#             # Prepare the response data for line chart
-#             line_chart_data = []
-#             for month in month_order:
-#                 month_name = datetime(1900, month, 1).strftime('%b')  # Get month name
-#                 line_chart_data.append({
-#                     "month": month_name,
-#                     "total_energy_emissions": monthly_total_emissions.get(month, 0)
-#                 })
-
-#             response_data = {
-#                 'year': year,
-#                 'line_chart_data': line_chart_data
-#             }
-
-#             return Response(response_data, status=status.HTTP_200_OK)
-
-#         except Exception as e:
-#             error_message = f"An error occurred: {str(e)}"
-#             print(error_message)
-#             return Response({'error': error_message}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-
-# # class EmissionCalculations(APIView):
-#     permission_classes = [IsAuthenticated]
-
-#     def get(self, request):
-#         user = request.user
-#         year = request.GET.get('year', None)
-#         facility_id = request.GET.get('facility_id', 'all')
-#         facility_location = request.GET.get('facility_location', None)
-
-#         try:
-#             filters = {'user': user}
-#             today = datetime.now()
-
-#             # Year calculation
-#             if year:
-#                 try:
-#                     year = int(year)
-#                 except ValueError:
-#                     return Response({'error': 'Invalid year parameter.'}, status=status.HTTP_400_BAD_REQUEST)
-#             else:
-#                 latest_entry = Energy.objects.filter(user=user).aggregate(latest_date=Max('DatePicker'))
-#                 year = latest_entry['latest_date'].year if latest_entry['latest_date'] else today.year
-
-#             # Fiscal year range
-#             start_date, end_date = (
-#                 (datetime(year, 4, 1), datetime(year + 1, 3, 31))
-#                 if today.month >= 4
-#                 else (datetime(year - 1, 4, 1), datetime(year, 3, 31))
-#             )
-#             filters['DatePicker__range'] = (start_date, end_date)
-
-#             # Facility ID filtering
-#             if facility_id.lower() != 'all':
-#                 if not Facility.objects.filter(facility_id=facility_id).exists():
-#                     return Response({'error': f'Facility with ID {facility_id} does not exist.'}, status=status.HTTP_400_BAD_REQUEST)
-#                 filters['facility__facility_id'] = facility_id
-
-#             # Facility location filtering
-#             if facility_location and facility_location.lower() != 'all':
-#                 if not Facility.objects.filter(facility_location__icontains=facility_location).exists():
-#                     return Response({'error': f'No facility found with location {facility_location}.'}, status=status.HTTP_400_BAD_REQUEST)
-#                 filters['facility__facility_location__icontains'] = facility_location
-
-#             # Fetch energy data
-#             energy_data = Energy.objects.filter(**filters)
-
-#             # Emission factors
-#             electricity_factor = 0.82
-#             fuel_factors = {
-#                 'coking_coal': 2.66,
-#                 'coke_oven_coal': 3.1,
-#                 'natural_gas': 2.7,
-#                 'diesel': 2.91 * 1000,  # Diesel in liters, convert to kg
-#                 'biomass_wood': 1.75,
-#                 'biomass_other_solid': 1.16
-#             }
-
-#             # Monthly totals (ordered by fiscal year: April - March)
-#             month_order = [4, 5, 6, 7, 8, 9, 10, 11, 12, 1, 2, 3]
-#             monthly_total_emissions = {}
-
-#             for month in month_order:  # Loop over fiscal months
-#                 # Filter data for the specific month
-#                 monthly_data = energy_data.filter(DatePicker__month=month)
-
-#                 # Calculate electricity emissions for the month (sum of all relevant fields)
-#                 electricity_emissions = monthly_data.aggregate(
-#                     total_electricity=Coalesce(Sum('hvac'), 0) + Coalesce(Sum('production'), 0) +
-#                                       Coalesce(Sum('stp'), 0) + Coalesce(Sum('admin_block'), 0) + 
-#                                       Coalesce(Sum('utilities'), 0) + Coalesce(Sum('others'), 0)
-#                 )['total_electricity'] or 0
-
-#                 # Calculate fuel emissions for the month (sum of all relevant fields)
-#                 fuel_emissions = sum([
-#                     monthly_data.aggregate(total=Coalesce(Sum('coking_coal'), 0))['total'] * fuel_factors['coking_coal'],
-#                     monthly_data.aggregate(total=Coalesce(Sum('coke_oven_coal'), 0))['total'] * fuel_factors['coke_oven_coal'],
-#                     monthly_data.aggregate(total=Coalesce(Sum('natural_gas'), 0))['total'] * fuel_factors['natural_gas'],
-#                     monthly_data.aggregate(total=Coalesce(Sum('diesel'), 0))['total'] * fuel_factors['diesel'],
-#                     monthly_data.aggregate(total=Coalesce(Sum('biomass_wood'), 0))['total'] * fuel_factors['biomass_wood'],
-#                     monthly_data.aggregate(total=Coalesce(Sum('biomass_other_solid'), 0))['total'] * fuel_factors['biomass_other_solid']
-#                 ])
-
-#                 # Calculate the total energy emissions for the month (electricity + fuel)
-#                 total_energy_emissions = electricity_emissions + fuel_emissions
-
-#                 # Store monthly total emissions data
-#                 monthly_total_emissions[month] = total_energy_emissions
-
-#             # Prepare the response data for line chart
-#             line_chart_data = []
-#             for month in month_order:
-#                 month_name = datetime(1900, month, 1).strftime('%b')  # Get month name
-#                 line_chart_data.append({
-#                     "month": month_name,
-#                     "total_energy_emissions": monthly_total_emissions.get(month, 0)
-#                 })
-
-#             response_data = {
-#                 'year': year,
-#                 'line_chart_data': line_chart_data
-#             }
-
-#             return Response(response_data, status=status.HTTP_200_OK)
-
-#         except Exception as e:
-#             error_message = f"An error occurred: {str(e)}"
-#             print(error_message)
-#             return Response({'error': error_message}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-        
-
-
-
-# class EmissionCalculations(APIView):
-#     permission_classes = [IsAuthenticated]
-
-#     def get(self, request):
-#         user = request.user
-#         year = request.GET.get('year', None)
-#         facility_id = request.GET.get('facility_id', 'all')
-#         facility_location = request.GET.get('facility_location', None)
-
-#         try:
-#             filters = {'user': user}
-#             today = datetime.now()
-
-#             # Year calculation
-#             if year:
-#                 try:
-#                     year = int(year)
-#                 except ValueError:
-#                     return Response({'error': 'Invalid year parameter.'}, status=status.HTTP_400_BAD_REQUEST)
-#             else:
-#                 latest_entry = Energy.objects.filter(user=user).aggregate(latest_date=Max('DatePicker'))
-#                 year = latest_entry['latest_date'].year if latest_entry['latest_date'] else today.year
-
-#             # Fiscal year range
-#             start_date, end_date = (
-#                 (datetime(year, 4, 1), datetime(year + 1, 3, 31))
-#                 if today.month >= 4
-#                 else (datetime(year - 1, 4, 1), datetime(year, 3, 31))
-#             )
-#             filters['DatePicker__range'] = (start_date, end_date)
-
-#             # Facility ID filtering
-#             if facility_id.lower() != 'all':
-#                 if not Facility.objects.filter(facility_id=facility_id).exists():
-#                     return Response({'error': f'Facility with ID {facility_id} does not exist.'}, status=status.HTTP_400_BAD_REQUEST)
-#                 filters['facility__facility_id'] = facility_id
-
-#             # Facility location filtering
-#             if facility_location and facility_location.lower() != 'all':
-#                 if not Facility.objects.filter(facility_location__icontains=facility_location).exists():
-#                     return Response({'error': f'No facility found with location {facility_location}.'}, status=status.HTTP_400_BAD_REQUEST)
-#                 filters['facility__facility_location__icontains'] = facility_location
-
-#             # Fetch energy data
-#             energy_data = Energy.objects.filter(**filters)
-
-#             # Emission factors
-#             electricity_factor = 0.82
-#             fuel_factors = {
-#                 'coking_coal': 2.66,
-#                 'coke_oven_coal': 3.1,
-#                 'natural_gas': 2.7,
-#                 'diesel': 2.91 * 1000,  # Diesel in liters, convert to kg
-#                 'biomass_wood': 1.75,
-#                 'biomass_other_solid': 1.16
-#             }
-
-#             # Monthly totals (ordered by fiscal year: April - March)
-#             month_order = [4, 5, 6, 7, 8, 9, 10, 11, 12, 1, 2, 3]
-#             monthly_total_emissions = {}
-
-#             for month in month_order:  # Loop over fiscal months
-#                 # Filter data for the specific month
-#                 monthly_data = energy_data.filter(DatePicker__month=month)
-
-#                 # Calculate electricity emissions for the month (sum of all relevant fields)
-#                 hvac_sum = monthly_data.aggregate(total=Coalesce(Sum(Cast('hvac', FloatField()), output_field=FloatField()), 0))['total']
-#                 production_sum = monthly_data.aggregate(total=Coalesce(Sum(Cast('production', FloatField()), output_field=FloatField()), 0))['total']
-#                 stp_sum = monthly_data.aggregate(total=Coalesce(Sum(Cast('stp', FloatField()), output_field=FloatField()), 0))['total']
-#                 admin_block_sum = monthly_data.aggregate(total=Coalesce(Sum(Cast('admin_block', FloatField()), output_field=FloatField()), 0))['total']
-#                 utilities_sum = monthly_data.aggregate(total=Coalesce(Sum(Cast('utilities', FloatField()), output_field=FloatField()), 0))['total']
-#                 others_sum = monthly_data.aggregate(total=Coalesce(Sum(Cast('others', FloatField()), output_field=FloatField()), 0))['total']
-
-#                 electricity_emissions = (
-#                     hvac_sum + production_sum + stp_sum + admin_block_sum + utilities_sum + others_sum
-#                 )
-#                 # Calculate fuel emissions for the month (sum of all relevant fields)
-#                 fuel_emissions = sum([
-#                     monthly_data.aggregate(total=Coalesce(Sum(Cast('coking_coal', FloatField()), output_field=FloatField()), 0))['total'] * fuel_factors['coking_coal'],
-#                     monthly_data.aggregate(total=Coalesce(Sum(Cast('coke_oven_coal', FloatField()), output_field=FloatField()), 0))['total'] * fuel_factors['coke_oven_coal'],
-#                     monthly_data.aggregate(total=Coalesce(Sum(Cast('natural_gas', FloatField()), output_field=FloatField()), 0))['total'] * fuel_factors['natural_gas'],
-#                     monthly_data.aggregate(total=Coalesce(Sum(Cast('diesel', FloatField()), output_field=FloatField()), 0))['total'] * fuel_factors['diesel'],
-#                     monthly_data.aggregate(total=Coalesce(Sum(Cast('biomass_wood', FloatField()), output_field=FloatField()), 0))['total'] * fuel_factors['biomass_wood'],
-#                     monthly_data.aggregate(total=Coalesce(Sum(Cast('biomass_other_solid', FloatField()), output_field=FloatField()), 0))['total'] * fuel_factors['biomass_other_solid']
-#                 ])
-
-#                 # Calculate the total energy emissions for the month (electricity + fuel)
-#                 total_energy_emissions = electricity_emissions + fuel_emissions
-
-#                 # Store monthly total emissions data
-#                 monthly_total_emissions[month] = total_energy_emissions
-
-#             # Prepare the response data for line chart
-#             line_chart_data = []
-#             for month in month_order:
-#                 month_name = datetime(1900, month, 1).strftime('%b')  # Get month name
-#                 line_chart_data.append({
-#                     "month": month_name,
-#                     "total_energy_emissions": monthly_total_emissions.get(month, 0)
-#                 })
-
-#             response_data = {
-#                 'year': year,
-#                 'line_chart_data': line_chart_data
-#             }
-
-#             return Response(response_data, status=status.HTTP_200_OK)
-
-#         except Exception as e:
-#             error_message = f"An error occurred: {str(e)}"
-#             print(error_message)
-#             return Response({'error': error_message}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-
-
-# class EmissionCalculations(APIView):
-#     permission_classes = [IsAuthenticated]
-
-#     def get(self, request):
-#         user = request.user
-#         year = request.GET.get('year', None)
-#         facility_id = request.GET.get('facility_id', 'all')
-#         facility_location = request.GET.get('facility_location', None)
-
-#         try:
-#             filters = {'user': user}
-#             today = datetime.now()
-
-#             # Year calculation
-#             if year:
-#                 try:
-#                     year = int(year)
-#                 except ValueError:
-#                     return Response({'error': 'Invalid year parameter.'}, status=status.HTTP_400_BAD_REQUEST)
-#             else:
-#                 latest_entry = Energy.objects.filter(user=user).aggregate(latest_date=Max('DatePicker'))
-#                 year = latest_entry['latest_date'].year if latest_entry['latest_date'] else today.year
-
-#             # Fiscal year range
-#             start_date, end_date = (
-#                 (datetime(year, 4, 1), datetime(year + 1, 3, 31))
-#                 if today.month >= 4
-#                 else (datetime(year - 1, 4, 1), datetime(year, 3, 31))
-#             )
-#             filters['DatePicker__range'] = (start_date, end_date)
-
-#             # Facility ID filtering
-#             if facility_id.lower() != 'all':
-#                 if not Facility.objects.filter(facility_id=facility_id).exists():
-#                     return Response({'error': f'Facility with ID {facility_id} does not exist.'}, status=status.HTTP_400_BAD_REQUEST)
-#                 filters['facility__facility_id'] = facility_id
-
-#             # Facility location filtering
-#             if facility_location and facility_location.lower() != 'all':
-#                 if not Facility.objects.filter(facility_location__icontains=facility_location).exists():
-#                     return Response({'error': f'No facility found with location {facility_location}.'}, status=status.HTTP_400_BAD_REQUEST)
-#                 filters['facility__facility_location__icontains'] = facility_location
-
-#             # Fetch energy data
-#             energy_data = Energy.objects.filter(**filters)
-
-#             # Energy Emission factors
-#             electricity_factor = 0.82
-#             fuel_factors = {
-#                 'coking_coal': 2.66,
-#                 'coke_oven_coal': 3.1,
-#                 'natural_gas': 2.7,
-#                 'diesel': 2.91 * 1000,  # Diesel in liters, convert to kg
-#                 'biomass_wood': 1.75,
-#                 'biomass_other_solid': 1.16
-#             }
-
-#             # Monthly totals (ordered by fiscal year: April - March)
-#             month_order = [4, 5, 6, 7, 8, 9, 10, 11, 12, 1, 2, 3]
-#             monthly_total_emissions = {}
-
-#             for month in month_order:  # Loop over fiscal months
-#                 # Filter data for the specific month
-#                 monthly_energy = energy_data.filter(DatePicker__month=month)
-#                 monthly_water = water_data.filter(DatePicker__month=month)
-
-#                 # Calculate electricity emissions for the month (sum of all relevant fields)
-#                 hvac_sum = monthly_energy.aggregate(total=Coalesce(Sum(Cast('hvac', FloatField()), output_field=FloatField()), 0.0))['total']
-#                 production_sum = monthly_energy.aggregate(total=Coalesce(Sum(Cast('production', FloatField()), output_field=FloatField()), 0.0))['total']
-#                 stp_sum = monthly_energy.aggregate(total=Coalesce(Sum(Cast('stp', FloatField()), output_field=FloatField()), 0.0))['total']
-#                 admin_block_sum = monthly_energy.aggregate(total=Coalesce(Sum(Cast('admin_block', FloatField()), output_field=FloatField()), 0.0))['total']
-#                 utilities_sum = monthly_energy.aggregate(total=Coalesce(Sum(Cast('utilities', FloatField()), output_field=FloatField()), 0.0))['total']
-#                 others_sum = monthly_energy.aggregate(total=Coalesce(Sum(Cast('others', FloatField()), output_field=FloatField()), 0.0))['total']
-
-#                 electricity_emissions = (
-#                     hvac_sum + production_sum + stp_sum + admin_block_sum + utilities_sum + others_sum
-#                 )
-#                 # Add the multiplication of electricity emissions by 0.86
-#                 electricity_emissions *= 0.82
-#                 # Calculate fuel emissions for the month (sum of all relevant fields)
-#                 fuel_emissions = sum([
-#                     monthly_energy.aggregate(total=Coalesce(Sum(Cast('coking_coal', FloatField()), output_field=FloatField()), 0.0))['total'] * fuel_factors['coking_coal'],
-#                     monthly_energy.aggregate(total=Coalesce(Sum(Cast('coke_oven_coal', FloatField()), output_field=FloatField()), 0.0))['total'] * fuel_factors['coke_oven_coal'],
-#                     monthly_energy.aggregate(total=Coalesce(Sum(Cast('natural_gas', FloatField()), output_field=FloatField()), 0.0))['total'] * fuel_factors['natural_gas'],
-#                     monthly_energy.aggregate(total=Coalesce(Sum(Cast('diesel', FloatField()), output_field=FloatField()), 0.0))['total'] * fuel_factors['diesel'],
-#                     monthly_energy.aggregate(total=Coalesce(Sum(Cast('biomass_wood', FloatField()), output_field=FloatField()), 0.0))['total'] * fuel_factors['biomass_wood'],
-#                     monthly_energy.aggregate(total=Coalesce(Sum(Cast('biomass_other_solid', FloatField()), output_field=FloatField()), 0.0))['total'] * fuel_factors['biomass_other_solid']
-#                 ])
-
-#                 # # Calculate the total energy emissions for the month (electricity + fuel)
-#                 # total_energy_emissions = electricity_emissions + fuel_emissions
-
-#                 # # Store monthly total emissions data
-#                 # monthly_total_emissions[month] = total_energy_emissions
-#                 # Calculate water usage
-#                 total_water = monthly_water.aggregate(
-#                     total=Coalesce(Sum('Generated_Water'), 0.0)
-#                     + Coalesce(Sum('Recycled_Water'), 0.0)
-#                     + Coalesce(Sum('Softener_usage'), 0.0)
-#                     + Coalesce(Sum('Boiler_usage'), 0.0)
-#                     + Coalesce(Sum('otherUsage'), 0.0)
-#                 )['total']
-
-#                 # Total emissions (energy + water)
-#                 total_emissions = electricity_emissions + fuel_emissions + total_water
-
-#                 # Store monthly emissions data
-#                 monthly_total_emissions[month] = total_emissions
-
-
-#             # Prepare the response data for line chart
-#             line_chart_data = []
-#             for month in month_order:
-#                 month_name = datetime(1900, month, 1).strftime('%b')  # Get month name
-#                 line_chart_data.append({
-#                     "month": month_name,
-#                     "total_energy_emissions": monthly_total_emissions.get(month, 0)
-#                 })
-
-#             response_data = {
-#                 'year': year,
-#                 'line_chart_data': line_chart_data
-#             }
-
-#             return Response(response_data, status=status.HTTP_200_OK)
-
-#         except Exception as e:
-#             error_message = f"An error occurred: {str(e)}"
-#             print(error_message)
-#             return Response({'error': error_message}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 class EmissionCalculations(APIView):
@@ -6240,3 +5671,164 @@ class EmissionCalculations(APIView):
             error_message = f"An error occurred: {str(e)}"
             print(error_message)
             return Response({'error': error_message}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+
+
+class ExcelUploadView(APIView):
+    permission_classes = [IsAuthenticated]
+    parser_classes = (MultiPartParser, FormParser)
+
+    def post(self, request):
+        # Check if files are uploaded
+        if not request.FILES:
+            return Response({"error": "No files uploaded."}, status=status.HTTP_400_BAD_REQUEST)
+
+        for file_key, file_obj in request.FILES.items():
+            # Validate file format
+            if not file_obj.name.endswith(('.xls', '.xlsx')):
+                return Response(
+                    {"error": f"Invalid file format for {file_obj.name}. Only .xls and .xlsx files are supported."},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            try:
+                # Read the Excel file
+                df = pd.read_excel(file_obj)
+                df.columns = df.columns.str.strip().str.lower()  # Convert columns to lowercase and strip whitespace
+                print(f"Columns in {file_obj.name}: {df.columns.tolist()}")
+
+                # Process each row in the DataFrame
+                for _, row in df.iterrows():
+                    row = row.to_dict()
+
+                    # Validate required fields
+                    required_fields = ['facility', 'category', 'DatePicker']
+                    for field in required_fields:
+                        if field not in row or pd.isna(row[field]):
+                            return Response(
+                                {"error": f"Missing required field: {field} in {file_obj.name}."},
+                                status=status.HTTP_400_BAD_REQUEST
+                            )
+
+                    # Fetch Facility object
+                    facility_name = row.get('facility')
+                    try:
+                        facilities = Facility.objects.filter(facility_name=facility_name)
+                        if not facilities.exists():
+                            return Response(
+                                {"error": f"Facility '{facility_name}' does not exist in {file_obj.name}."},
+                                status=status.HTTP_400_BAD_REQUEST
+                            )
+                        elif facilities.count() > 1:
+                            return Response(
+                                {"error": f"Multiple facilities found for '{facility_name}'. Please resolve duplicates."},
+                                status=status.HTTP_400_BAD_REQUEST
+                            )
+                        facility = facilities.first()  # Get the first matching facility
+                    except Exception as e:
+                        return Response(
+                            {"error": f"Error fetching facility '{facility_name}': {str(e)}"},
+                            status=status.HTTP_400_BAD_REQUEST
+                        )
+
+                    # Handle categories
+                    category = row.get('category')
+                    if category == 'Waste':
+                        # Check for existing record or create/update it
+                        Waste.objects.update_or_create(
+                            user=request.user,
+                            facility=facility,
+                            category=category,
+                            DatePicker=row['DatePicker'],
+                            defaults={
+                                'food_waste': row.get('food_waste', 0),
+                                'solid_Waste': row.get('solid_Waste', 0),
+                                'E_Waste': row.get('E_Waste', 0),
+                                'Biomedical_waste': row.get('Biomedical_waste', 0),
+                                'liquid_discharge': row.get('liquid_discharge', 0),
+                                'other_waste': row.get('other_waste', 0),
+                                'Recycle_waste': row.get('Recycle_waste', 0),
+                                'Landfill_waste': row.get('Landfill_waste', 0)
+                            }
+                        )
+
+                    elif category == 'Energy':
+                        # Check for existing record or create/update it
+                        Energy.objects.update_or_create(
+                            user=request.user,
+                            facility=facility,
+                            category=row.get('category'),
+                            DatePicker=row.get('DatePicker'),
+                            defaults={
+                                'hvac': row.get('hvac', 0),
+                                'production': row.get('production', 0),
+                                'stp': row.get('stp', 0),
+                                'admin_block': row.get('admin_block', 0),
+                                'utilities': row.get('utilities', 0),
+                                'others': row.get('others', 0),
+                                'coking_coal': row.get('coking_coal', 0),
+                                'coke_oven_coal': row.get('coke_oven_coal', 0),
+                                'natural_gas': row.get('natural_gas', 0),
+                                'diesel': row.get('diesel', 0),
+                                'biomass_wood': row.get('biomass_wood', 0),
+                                'biomass_other_solid': row.get('biomass_other_solid', 0),
+                                'renewable_solar': row.get('renewable_solar', 0),
+                                'renewable_other': row.get('renewable_other', 0)
+                            }
+                        )
+                    elif category == 'Water':
+                        Water.objects.update_or_create(
+                            user=request.user,
+                            facility=facility,
+                            category=row.get('category'),
+                            DatePicker=row.get('DatePicker'),
+                            defaults={
+                                'Generated_Water': row.get('Generated_Water', 0),
+                                'Recycled_Water' : row.get('Recycled_Water', 0),
+                                'Softener_usage' : row.get('Softener_usage', 0),
+                                'Boiler_usage' : row.get('Boiler_usage', 0),
+                                'otherUsage' : row.get('otherUsage', 0)
+                            }
+                        )
+                    elif category == 'Biodiversity':
+                        Biodiversity.objects.update_or_create(
+                            user=request.user,
+                            facility=facility,
+                            category=row.get('category'),
+                            DatePicker=row.get('DatePicker'),
+                            defaults={
+                                'no_trees' : row.get('no_trees', 0),
+                                'species' : row.get('species', ''),
+                                'age' : row.get('age', 0),
+                                'height' : row.get('height', 0),
+                                'width' : row.get('width', 0),
+                                'totalArea' : row.get('totalArea', 0),
+                                'new_trees_planted' : row.get('new_trees_planted', 0),
+                                'head_count' : row.get('head_count', 0)
+                            }
+                        )
+                    
+                    elif category == 'Logistices':
+                        Logistices.objects.update_or_create(
+                            user=request.user,
+                            facility=facility,
+                            category=row.get('category'),
+                            DatePicker=row.get('DatePicker'),
+                            defaults = {
+                                'logistices_types' : row.get('logistices_types', 'staff_logistices'),
+                                'Typeof_fuel' : row.get('Typeof_fuel', 'diesel'),
+                                'km_travelled' : row.get('km_travelled', 0),
+                                'No_Trips' : row.get('No_Trips', 0),
+                                'fuel_consumption' : row.get('fuel_consumption', 0),
+                                'No_Vehicles' : row.get('No_Vehicles', 0),
+                                'Spends_on_fuel' : row.get('Spends_on_fuel', 0)
+                            }
+                        )
+            except Exception as e:
+                return Response(
+                    {"error": f"Error processing file {file_obj.name}: {str(e)}"},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+        return Response({"message": "File processed successfully!"}, status=status.HTTP_201_CREATED)
