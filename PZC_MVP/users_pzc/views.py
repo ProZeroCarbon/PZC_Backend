@@ -644,6 +644,7 @@ class BiodiversityView(APIView):
 
         if not biodiversity_data.exists():
             empty_fields = {
+                "facility_id":"N/A",
                 "no_trees": 0,
                 "no_plants": 0,
                 "water_bodies": 0,
@@ -663,6 +664,10 @@ class BiodiversityView(APIView):
             )
 
         biodiversity_serializer = BiodiversitySerializer(biodiversity_data, many=True)
+        serialized_data = biodiversity_serializer.data
+        for data, biodiversity in zip(serialized_data, biodiversity_data):
+            data['facility_id'] = biodiversity.facility.facility_id
+            
         overall_total = sum(biodiversity.no_trees for biodiversity in biodiversity_data)
 
         user_data = {
@@ -757,6 +762,7 @@ class LogisticesView(APIView):
 
         if not logistices_data.exists():
             empty_fields = {
+                "facility_id":"N/A",
                 "logistices_types": "N/A",
                 "Typeof_fuel": "N/A",
                 "km_travelled": 0,
@@ -778,6 +784,11 @@ class LogisticesView(APIView):
             )
 
         logistices_serializer = LogisticesSerializer(logistices_data, many=True)
+        
+        serialized_data = logistices_serializer.data
+        for data, logistices in zip(serialized_data, logistices_data):
+            data['facility_id'] = logistices.facility.facility_id
+            
         overall_fuelconsumption = sum(logistices_fuel.fuel_consumption for logistices_fuel in logistices_data)
 
         user_data = {
