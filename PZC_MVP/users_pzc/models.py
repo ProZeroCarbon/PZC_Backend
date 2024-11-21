@@ -57,7 +57,7 @@ class Org_registration(models.Model):
 class Facility(models.Model):
     user = models.ForeignKey(CustomUser, on_delete=models.CASCADE,related_name='facilities')
     facility_id = models.CharField(max_length=255, primary_key=True, editable=False)
-    facility_name = models.CharField(max_length=255,unique=True)
+    facility_name = models.CharField(max_length=255)
     facility_head = models.CharField(max_length=255)
     facility_location = models.CharField(max_length=255)
     facility_description = models.TextField()

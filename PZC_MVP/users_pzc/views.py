@@ -223,7 +223,7 @@ class WasteView(APIView):
         
         if not waste_data.exists():
             empty_fields = {
-                "facility_id":"N/A",
+                "facility_id":facility_id,
                 "food_waste":0,
                 "solid_Waste":0,
                 "E_Waste":0,
@@ -4368,9 +4368,9 @@ class WaterAnalyticsView(APIView):
                     "facility_id": facility_id,
                     "facility_location": facility_location,
                     "donut_chart_data": {
-                        "Softener Usage": 0,
-                        "Boiler Usage": 0,
-                        "Other Usage": 0
+                        "Softener_Usage": 0,
+                        "Boiler_Usage": 0,
+                        "Other_Usage": 0
                     },
                     "pie_chart_data": [
                         {"label": "Recycled Water", "value": 0},
@@ -4394,9 +4394,9 @@ class WaterAnalyticsView(APIView):
                 water_totals['otherUsage_total']
             )
             water_percentages = {
-                "Softener Usage": (water_totals['Softener_usage_total'] / total_usage * 100) if total_usage else 0,
-                "Boiler Usage": (water_totals['Boiler_usage_total'] / total_usage * 100) if total_usage else 0,
-                "Other Usage": (water_totals['otherUsage_total'] / total_usage * 100) if total_usage else 0
+                "Softener_Usage": (water_totals['Softener_usage_total'] / total_usage * 100) if total_usage else 0,
+                "Boiler_Usage": (water_totals['Boiler_usage_total'] / total_usage * 100) if total_usage else 0,
+                "Other_Usage": (water_totals['otherUsage_total'] / total_usage * 100) if total_usage else 0
             }
 
             # Pie chart data
