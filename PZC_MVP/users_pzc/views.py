@@ -4439,298 +4439,6 @@ class WaterAnalyticsView(APIView):
 
 
 '''Biodiversity Overview Cards Starts'''
-
-
-# class BiodiversityMetricsView(APIView):
-#     permission_classes = [IsAuthenticated]
-
-#     def get(self, request):
-#         user = request.user
-#         facility_id = request.GET.get('facility_id', 'all')
-#         year = request.GET.get('year')
-
-#         try:
-#             # Get the latest year if no year is specified
-#             if not year:
-#                 latest_date = Biodiversity.objects.filter(user=user).aggregate(latest_date=Max('DatePicker'))['latest_date']
-#                 year = latest_date.year if latest_date else datetime.now().year
-#             else:
-#                 year = int(year)
-
-#             # Define fiscal year ranges
-#             start_date = datetime(year, 4, 1)
-#             end_date = datetime(year + 1, 3, 31)
-#             prev_start_date = datetime(year - 1, 4, 1)
-#             prev_end_date = datetime(year, 3, 31)
-
-#             # Filters
-#             filters = {'user': user}
-#             if facility_id != 'all':
-#                 filters['facility__facility_id'] = facility_id
-
-#             # Query data
-#             all_years_data = Biodiversity.objects.filter(**filters)
-#             current_year_data = all_years_data.filter(DatePicker__range=(start_date, end_date)).distinct()
-#             previous_year_data = all_years_data.filter(DatePicker__range=(prev_start_date, prev_end_date)).distinct()
-
-#             # Define CO2 calculation function
-#             def calculate_co2(data):
-#                 return sum(
-#                     0.00006 *
-#                     (entry['width'] or 0) ** 2 *
-#                     (entry['height'] or 0) *
-#                     (entry['no_trees'] or 0)
-#                     for entry in data.values('width', 'height', 'no_trees')
-#                 )
-
-#             # Define Biomass calculation function
-#             def calculate_biomass(data):
-#                 return sum(
-#                     0.0998 *
-#                     (entry['width'] or 0) ** 2 *
-#                     (entry['height'] or 0)
-#                     for entry in data.values('width', 'height')
-#                 )
-
-#             # Metric calculations
-#             def calculate_metrics(data):
-#                 aggregated = data.aggregate(
-#                     total_trees=Sum('no_trees'),
-#                     total_area=Sum('totalArea'),
-#                     head_count=Sum('head_count'),
-#                     new_trees_planted=Sum('new_trees_planted')
-#                 )
-#                 total_trees = aggregated.get('total_trees', 0)
-#                 total_area = aggregated.get('total_area', 0)
-#                 head_count = aggregated.get('head_count', 0)
-#                 new_trees_planted = aggregated.get('new_trees_planted', 0)
-
-#                 green_belt_density = (total_trees / total_area) * 10000 if total_area > 0 else 0
-#                 trees_per_capita = total_trees / head_count if head_count > 0 else 0
-
-#                 return total_trees, green_belt_density, trees_per_capita, new_trees_planted
-
-#             # If no data, set metrics to zero
-#             if not current_year_data.exists():
-#                 total_trees = 0
-#                 green_belt_density = 0
-#                 trees_per_capita = 0
-#                 new_trees_planted = 0
-#                 carbon_offset = 0
-#                 biomass = 0
-#                 co2_sequestration_rate = 0
-#             else:
-#                 # Calculate metrics for the current year
-#                 total_trees, green_belt_density, trees_per_capita, new_trees_planted = calculate_metrics(current_year_data)
-#                 carbon_offset = calculate_co2(current_year_data)
-#                 biomass = calculate_biomass(current_year_data)
-
-#                 # Calculate CO2 sequestration rate
-#                 co2_final_year = carbon_offset
-#                 co2_previous_year = calculate_co2(previous_year_data) if previous_year_data.exists() else 0
-#                 co2_sequestration_rate = co2_final_year - co2_previous_year
-
-#             # Response structure
-#             response_data = {
-#                 "facility_id": facility_id,
-#                 "year": year,
-#                 "current_year_metrics": {
-#                     "total_trees": total_trees,  # Sum of number of trees for the facility for the financial year
-#                     "carbon_offset": carbon_offset,  # Offset = 0.00006 * width * width * Height * count of tree
-#                     "green_belt_density": green_belt_density,  # ((Total number of trees / total area) * 10000)
-#                     "trees_per_capita": trees_per_capita,  # (Total number of trees / Head Count)
-#                     "new_trees_planted": new_trees_planted,  # Sum of new trees planted in the financial year
-#                     "biomass": biomass,  # Biomass = 0.0998 * Width * Width * Height
-#                     "co2_sequestration_rate": co2_sequestration_rate,  # Offset final year - Offset previous year
-#                 },
-#             }
-
-#             return Response(response_data, status=status.HTTP_200_OK)
-
-#         except Exception as e:
-#             return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-        
-# class BiodiversityMetricsGraphsView(APIView):
-#     permission_classes = [IsAuthenticated]
-
-#     def get(self, request):
-#         user = request.user
-#         facility_id = request.GET.get('facility_id', 'all')
-
-#         try:
-#             # Filters for user and facility
-#             filters = {'user': user}
-#             if facility_id != 'all':
-#                 filters['facility__facility_id'] = facility_id
-
-#             # Query all data for the user and facility
-#             all_years_data = Biodiversity.objects.filter(**filters)
-
-#             if not all_years_data.exists():
-#                 return Response(
-#                     {
-#                         "facility_id": facility_id,
-#                         "year": None,
-#                         "current_year_metrics": {
-#                             "total_trees": 0,
-#                             "carbon_offset": 0,
-#                             "green_belt_density": 0,
-#                             "trees_per_capita": 0,
-#                             "new_trees_planted": 0,
-#                             "biomass": 0,
-#                             "co2_sequestration_rate": 0,
-#                         },
-#                         "yearly_metrics": [],
-#                         "chart_data": {
-#                             "years": [],
-#                             "carbon_offset": {"type": "bar", "data": []},
-#                             "green_belt_density": {"type": "line", "data": []},
-#                             "trees_per_capita": {"type": "line", "data": []},
-#                         },
-#                     },
-#                     status=status.HTTP_200_OK,
-#                 )
-
-#             # Get the latest date if no year is specified
-#             latest_date = all_years_data.aggregate(latest_date=Max('DatePicker'))['latest_date']
-#             if not latest_date:
-#                 return Response({'error': 'No data available in the database.'}, status=status.HTTP_404_NOT_FOUND)
-
-#             latest_year = latest_date.year
-#             year = request.GET.get('year', latest_year)
-
-#             try:
-#                 year = int(year)
-#             except ValueError:
-#                 return Response({'error': 'Invalid year provided.'}, status=status.HTTP_400_BAD_REQUEST)
-
-#             # Define fiscal year ranges for filtering
-#             start_date = datetime(year, 4, 1)
-#             end_date = datetime(year + 1, 3, 31)
-
-#             # Filter data for the current year
-#             current_year_data = all_years_data.filter(DatePicker__range=(start_date, end_date))
-
-#             # Aggregate yearly metrics
-#             yearly_data = {}
-#             for entry in all_years_data.values('DatePicker', 'width', 'height', 'no_trees', 'totalArea', 'head_count'):
-#                 entry_year = entry['DatePicker'].year
-#                 if entry_year not in yearly_data:
-#                     yearly_data[entry_year] = {'no_trees': 0, 'width': 0, 'height': 0, 'totalArea': 0, 'head_count': 0}
-#                 yearly_data[entry_year]['no_trees'] += entry['no_trees'] or 0
-#                 yearly_data[entry_year]['width'] += entry['width'] or 0
-#                 yearly_data[entry_year]['height'] += entry['height'] or 0
-#                 yearly_data[entry_year]['totalArea'] += entry['totalArea'] or 0
-#                 yearly_data[entry_year]['head_count'] += entry['head_count'] or 0
-
-#             # Compute metrics for each year
-#             results = []
-#             for entry_year, data in yearly_data.items():
-#                 total_trees = data['no_trees']
-#                 carbon_offset = 0.00006 * (data['width'] ** 2) * data['height'] * total_trees
-#                 green_belt_density = (total_trees / data['totalArea']) * 10000 if data['totalArea'] > 0 else 0
-#                 trees_per_capita = total_trees / data['head_count'] if data['head_count'] > 0 else 0
-#                 results.append({
-#                     'year': entry_year,
-#                     'carbon_offset': carbon_offset,
-#                     'green_belt_density': green_belt_density,
-#                     'trees_per_capita': trees_per_capita,
-#                 })
-
-#             # Sort results by year
-#             results.sort(key=lambda x: x['year'])
-
-#             # Prepare chart data
-#             years = [r['year'] for r in results]
-#             carbon_offsets = [r['carbon_offset'] for r in results]
-#             green_belt_densities = [r['green_belt_density'] for r in results]
-#             trees_per_capitas = [r['trees_per_capita'] for r in results]
-
-#             # Prepare metrics for the current year
-#             total_trees = green_belt_density = trees_per_capita = new_trees_planted = biomass = 0
-#             carbon_offset = co2_sequestration_rate = 0
-
-#             if current_year_data.exists():
-#                 total_trees, green_belt_density, trees_per_capita, new_trees_planted = self.calculate_metrics(current_year_data)
-#                 carbon_offset = self.calculate_co2(current_year_data)
-#                 biomass = self.calculate_biomass(current_year_data)
-#                 co2_sequestration_rate = self.calculate_co2_sequestration_rate(all_years_data, current_year_data)
-
-#             # Response structure
-#             response_data = {
-#                 "facility_id": facility_id,
-#                 "year": year,
-#                 "current_year_metrics": {
-#                     "total_trees": total_trees,
-#                     "carbon_offset": carbon_offset,
-#                     "green_belt_density": green_belt_density,
-#                     "trees_per_capita": trees_per_capita,
-#                     "new_trees_planted": new_trees_planted,
-#                     "biomass": biomass,
-#                     "co2_sequestration_rate": co2_sequestration_rate,
-#                 },
-#                 "yearly_metrics": results,
-#                 "chart_data": {
-#                     "years": years,
-#                     "carbon_offset": {"type": "bar", "data": carbon_offsets},
-#                     "green_belt_density": {"type": "line", "data": green_belt_densities},
-#                     "trees_per_capita": {"type": "line", "data": trees_per_capitas},
-#                 },
-#             }
-
-#             return Response(response_data, status=status.HTTP_200_OK)
-
-#         except Exception as e:
-#             return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-#     def calculate_co2(self, data):
-#         return sum(
-#             0.00006 *
-#             (entry['width'] or 0) ** 2 *
-#             (entry['height'] or 0) *
-#             (entry['no_trees'] or 0)
-#             for entry in data.values('width', 'height', 'no_trees')
-#         )
-
-#     def calculate_biomass(self, data):
-#         return sum(
-#             0.0998 *
-#             (entry['width'] or 0) ** 2 *
-#             (entry['height'] or 0)
-#             for entry in data.values('width', 'height')
-#         )
-
-#     def calculate_metrics(self, data):
-#         aggregated = data.aggregate(
-#             total_trees=Sum('no_trees'),
-#             total_area=Sum('totalArea'),
-#             head_count=Sum('head_count'),
-#             new_trees_planted=Sum('new_trees_planted')
-#         )
-#         total_trees = aggregated.get('total_trees', 0)
-#         total_area = aggregated.get('total_area', 0)
-#         head_count = aggregated.get('head_count', 0)
-#         new_trees_planted = aggregated.get('new_trees_planted', 0)
-
-#         green_belt_density = (total_trees / total_area) * 10000 if total_area > 0 else 0
-#         trees_per_capita = total_trees / head_count if head_count > 0 else 0
-
-#         return total_trees, green_belt_density, trees_per_capita, new_trees_planted
-
-#     def calculate_co2_sequestration_rate(self, all_years_data, current_year_data):
-#         # Get the current year from the current year's data
-#         current_year = current_year_data.first().DatePicker.year
-
-#         # Fetch data for the previous year
-#         prev_year_data = all_years_data.filter(DatePicker__year=current_year - 1)
-
-#         # Calculate CO2 sequestration rate
-#         current_year_co2 = self.calculate_co2(current_year_data)
-#         prev_year_co2 = self.calculate_co2(prev_year_data) if prev_year_data.exists() else 0
-
-#         # Return the difference, or current_year_co2 if there's no previous year data
-#         return current_year_co2 - prev_year_co2
-
 class BiodiversityMetricsGraphsView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -4763,13 +4471,9 @@ class BiodiversityMetricsGraphsView(APIView):
                         },
                         "yearly_metrics": [],
                         "chart_data": {
-                            "bar_graph": {
-                                "carbon_offset": {"type": "bar", "data": []},
-                            },
-                            "line_graph": {
-                                "green_belt_density": {"type": "line", "data": []},
-                                "trees_per_capita": {"type": "line", "data": []},
-                            },
+                            "Offset_year": [],
+                            "Green_Belt_Density": [],
+                            "Trees_Per_Capita": [],
                         },
                     },
                     status=status.HTTP_200_OK,
@@ -4824,11 +4528,26 @@ class BiodiversityMetricsGraphsView(APIView):
             # Sort results by year
             results.sort(key=lambda x: x['year'])
 
-            # Prepare chart data
-            years = [r['year'] for r in results]
-            carbon_offsets = [r['carbon_offset'] for r in results]
-            green_belt_densities = [r['green_belt_density'] for r in results]
-            trees_per_capitas = [r['trees_per_capita'] for r in results]
+            # Prepare chart data in the requested structure
+            offset_year_data = []
+            green_belt_density_data = []
+            trees_per_capita_data = []
+
+            for entry in results:
+                offset_year_data.append({
+                    'year': entry['year'],
+                    'carbon_offset': entry['carbon_offset'],
+                })
+
+                green_belt_density_data.append({
+                    'year': entry['year'],
+                    'green_belt_density': entry['green_belt_density'],
+                })
+
+                trees_per_capita_data.append({
+                    'year': entry['year'],
+                    'trees_per_capita': entry['trees_per_capita'],
+                })
 
             # Prepare metrics for the current year
             total_trees = green_belt_density = trees_per_capita = new_trees_planted = biomass = 0
@@ -4839,7 +4558,10 @@ class BiodiversityMetricsGraphsView(APIView):
                 carbon_offset = self.calculate_co2(current_year_data)
                 biomass = self.calculate_biomass(current_year_data)
                 co2_sequestration_rate = self.calculate_co2_sequestration_rate(all_years_data, current_year_data)
-
+            
+            offset_year_data = [{"year": r['year'], "carbon_offset": r['carbon_offset']} for r in results]
+            green_belt_density_data = [{"year": r['year'], "green_belt_density": r['green_belt_density']} for r in results]
+            trees_per_capita_data = [{"year": r['year'], "trees_per_capita": r['trees_per_capita']} for r in results]
             # Response structure
             response_data = {
                 "facility_id": facility_id,
@@ -4853,16 +4575,9 @@ class BiodiversityMetricsGraphsView(APIView):
                     "biomass": biomass,
                     "co2_sequestration_rate": co2_sequestration_rate,
                 },
-                "yearly_metrics": results,
-                "chart_data": {
-                    "bar_graph": {
-                        "carbon_offset": {"type": "bar", "data": carbon_offsets},
-                    },
-                    "line_graph": {
-                        "green_belt_density": {"type": "line", "data": green_belt_densities},
-                        "trees_per_capita": {"type": "line", "data": trees_per_capitas},
-                    },
-                },
+                 "Offset_year": offset_year_data,
+                "Green_Belt_Density": green_belt_density_data,
+                "Trees_Per_Capita": trees_per_capita_data,
             }
 
             return Response(response_data, status=status.HTTP_200_OK)
@@ -4949,6 +4664,34 @@ class LogisticesOverviewAndGraphs(APIView):
             # Query data for the current year
             current_year_data = Logistices.objects.filter(**filters)
 
+            # If no data exists, set all fields to 0
+            if not current_year_data.exists():
+                return Response({
+                    "year": year,
+                    "facility_id": facility_id,
+                    "logistics_totals": {
+                        "total_vehicles": 0,
+                        "total_trips": 0,
+                        "total_km_travelled": 0.0,
+                        "total_fuel_consumed": 0.0
+                    },
+                    "line_chart_data": [
+                        {"month": datetime(1900, month, 1).strftime('%b'), "Co2": 0.0}
+                        for month in range(1, 13)
+                    ],
+                    "donut_chart_data": [{"facility_name": "No Facility", "percentage": 0}],
+                    "logistics_fuel_comparison": {
+                        "cargo": [
+                            {"month": datetime(1900, month, 1).strftime('%b'), "cargo": 0.0}
+                            for month in range(1, 13)
+                        ],
+                        "staff": [
+                            {"month": datetime(1900, month, 1).strftime('%b'), "staff": 0.0}
+                            for month in range(1, 13)
+                        ]
+                    }
+                }, status=200)
+
             # Aggregating totals for the overview
             total_vehicles = current_year_data.aggregate(
                 total_vehicles=Coalesce(Sum('No_Vehicles'), Value(0))
@@ -4992,7 +4735,7 @@ class LogisticesOverviewAndGraphs(APIView):
             ).annotate(
                 total_fuel=Coalesce(Sum('fuel_consumption', output_field=FloatField()), Value(0.0, output_field=FloatField()))
             )
-            
+
             # Define the month order from April to March
             month_order = [4, 5, 6, 7, 8, 9, 10, 11, 12, 1, 2, 3]
 
@@ -5002,9 +4745,20 @@ class LogisticesOverviewAndGraphs(APIView):
             cargo_data = {month: 0.0 for month in all_months}  # Initialize to 0 for each month
             staff_data = {month: 0.0 for month in all_months}  # Initialize to 0 for each month
 
+            # Process logistics types data and update cargo and staff data
+            for data in type_month_data:
+                month = data['month']
+                logistices_type = data['logistices_types']  # Ensure this matches the correct field names
+                fuel_consumed = data['total_fuel']
+
+                if logistices_type == 'cargo':  # Ensure 'cargo' matches the correct string in the data
+                    cargo_data[month] = fuel_consumed
+                elif logistices_type == 'staff_logistices':  # Ensure 'staff_logistices' matches the correct string in the data
+                    staff_data[month] = fuel_consumed
+
             # Prepare the data for the line chart
-            line_chart_data = [
-                {"month": datetime(1900, month, 1).strftime('%b'), "hvac": monthly_fuel[month]}
+            bar_chart_data = [
+                {"month": datetime(1900, month, 1).strftime('%b'), "Fuel_Consumption": monthly_fuel[month]}
                 for month in month_order
             ]
 
@@ -5028,7 +4782,7 @@ class LogisticesOverviewAndGraphs(APIView):
                     "total_km_travelled": total_km_travelled,
                     "total_fuel_consumed": total_fuel_consumed
                 },
-                "line_chart_data": line_chart_data,  # Line Chart
+                "bar_chart_data": bar_chart_data,  # Line Chart
                 "donut_chart_data": donut_chart_data,  # Donut Chart
                 "logistics_fuel_comparison": {  # Bar Graph (Fuel Consumption by Logistics Type)
                     "cargo": cargo_data_with_names,
@@ -5045,480 +4799,6 @@ class LogisticesOverviewAndGraphs(APIView):
             return Response({"error": str(e)}, status=500)
 
 '''LOgistics overview Graphs ends'''
-
-
-# class ExcelUploadView(APIView):
-#     permission_classes = [IsAuthenticated]
-#     parser_classes = (MultiPartParser, FormParser)
-
-#     def post(self, request):
-#         file_obj = request.FILES.get('file')
-#         if not file_obj:
-#             return Response({"error": "No file uploaded."}, status=status.HTTP_400_BAD_REQUEST)
-
-#         try:
-#             # Read the Excel file
-#             df = pd.read_excel(file_obj)
-
-#             # Loop through each row in the Excel file
-#             for _, row in df.iterrows():
-#                 facility_name = row.get('facility_name')
-
-#                 # Get the Facility object by name
-#                 try:
-#                     facility = Facility.objects.get(name=facility_name)
-#                 except Facility.DoesNotExist:
-#                     return Response({"error": f"Facility '{facility_name}' does not exist."}, status=status.HTTP_400_BAD_REQUEST)
-
-#                 category = row.get('category')
-
-#                 if category == 'Waste':
-#                     Waste.objects.create(
-#                         user=request.user,
-#                         facility=facility,
-#                         category=row.get('category'),
-#                         DatePicker=row.get('DatePicker'),
-#                         food_waste=row.get('food_waste', 0),
-#                         solid_Waste=row.get('solid_Waste', 0),
-#                         E_Waste=row.get('E_Waste', 0),
-#                         Biomedical_waste=row.get('Biomedical_waste', 0),
-#                         liquid_discharge=row.get('liquid_discharge', 0),
-#                         other_waste=row.get('other_waste', 0),
-#                         Recycle_waste=row.get('Recycle_waste', 0),
-#                         Landfill_waste=row.get('Landfill_waste', 0)
-#                     )
-
-#                 elif category == 'Energy':
-#                     Energy.objects.create(
-#                         user=request.user,
-#                         facility=facility,
-#                         category=row.get('category'),
-#                         DatePicker=row.get('DatePicker'),
-#                         hvac=row.get('hvac', 0),
-#                         production=row.get('production', 0),
-#                         stp=row.get('stp', 0),
-#                         admin_block=row.get('admin_block', 0),
-#                         utilities=row.get('utilities', 0),
-#                         others=row.get('others', 0),
-#                         coking_coal=row.get('coking_coal', 0),
-#                         coke_oven_coal=row.get('coke_oven_coal', 0),
-#                         natural_gas=row.get('natural_gas', 0),
-#                         diesel=row.get('diesel', 0),
-#                         biomass_wood=row.get('biomass_wood', 0),
-#                         biomass_other_solid=row.get('biomass_other_solid', 0),
-#                         renewable_solar=row.get('renewable_solar', 0),
-#                         renewable_other=row.get('renewable_other', 0)
-#                     )
-
-                # elif category == 'Water':
-                #     Water.objects.create(
-                #         user=request.user,
-                #         facility=facility,
-                #         category=row.get('category'),
-                #         DatePicker=row.get('DatePicker'),
-                #         Generated_Water=row.get('Generated_Water', 0),
-                #         Recycled_Water=row.get('Recycled_Water', 0),
-                #         Softener_usage=row.get('Softener_usage', 0),
-                #         Boiler_usage=row.get('Boiler_usage', 0),
-                #         otherUsage=row.get('otherUsage', 0)
-                #     )
-
-                # elif category == 'Biodiversity':
-                #     Biodiversity.objects.create(
-                #         user=request.user,
-                #         facility=facility,
-                #         category=row.get('category'),
-                #         DatePicker=row.get('DatePicker'),
-                #         no_trees=row.get('no_trees', 0),
-                #         species=row.get('species', ''),
-                #         age=row.get('age', 0),
-                #         height=row.get('height', 0),
-                #         width=row.get('width', 0),
-                #         totalArea=row.get('totalArea', 0),
-                #         new_trees_planted=row.get('new_trees_planted', 0),
-                #         head_count=row.get('head_count', 0)
-                #     )
-
-#                 elif category == 'Logistices':
-#                     Logistices.objects.create(
-#                         user=request.user,
-#                         facility=facility,
-#                         category=row.get('category'),
-#                         DatePicker=row.get('DatePicker'),
-#                         logistices_types=row.get('logistices_types', 'staff_logistices'),
-#                         Typeof_fuel=row.get('Typeof_fuel', 'diesel'),
-#                         km_travelled=row.get('km_travelled', 0),
-#                         No_Trips=row.get('No_Trips', 0),
-#                         fuel_consumption=row.get('fuel_consumption', 0),
-#                         No_Vehicles=row.get('No_Vehicles', 0),
-#                         Spends_on_fuel=row.get('Spends_on_fuel', 0)
-#                     )
-
-#             return Response({"message": "Data uploaded successfully!"}, status=status.HTTP_201_CREATED)
-
-#         except Exception as e:
-#             return Response({"error": f"Error processing file: {str(e)}"}, status=status.HTTP_400_BAD_REQUEST)
-
-# class ExcelUploadView(APIView):
-#     permission_classes = [IsAuthenticated]
-#     parser_classes = (MultiPartParser, FormParser)
-
-#     def post(self, request):
-#         file_obj = request.FILES
-#         if not file_obj:
-#             return Response({"error": "No file uploaded or file is invalid."}, status=status.HTTP_400_BAD_REQUEST)
-
-#         if not file_obj.name.endswith(('.xls', '.xlsx')):
-#             return Response({"error": "Invalid file format. Only .xls and .xlsx files are supported."}, status=status.HTTP_400_BAD_REQUEST)
-
-#         try:
-#             # Read the Excel file
-#             df = pd.read_excel(file_obj)
-
-#             # Process each row
-#             for _, row in df.iterrows():
-#                 row = row.to_dict()
-
-#                 # Validate required fields
-#                 required_fields = ['facility', 'category', 'DatePicker']
-#                 for field in required_fields:
-#                     if field not in row or pd.isna(row[field]):
-#                         return Response({"error": f"Missing required field: {field}"}, status=status.HTTP_400_BAD_REQUEST)
-
-#                 # Fetch Facility object
-#                 facility_name = row.get('facility')
-#                 try:
-#                     facility = Facility.objects.get(facility_name=facility_name)
-#                 except Facility.DoesNotExist:
-#                     return Response({"error": f"Facility '{facility_name}' does not exist."}, status=status.HTTP_400_BAD_REQUEST)
-
-#                 # Handle categories
-#                 category = row.get('category')
-#                 if category == 'Waste':
-#                     Waste.objects.create(
-#                         user=request.user,
-#                         facility=facility,
-#                         category=category,
-#                         DatePicker=row['DatePicker'],
-#                         food_waste=row.get('food_waste', 0),
-#                         solid_Waste=row.get('solid_Waste', 0),
-#                         E_Waste=row.get('E_Waste', 0),
-#                         Biomedical_waste=row.get('Biomedical_waste', 0),
-#                         liquid_discharge=row.get('liquid_discharge', 0),
-#                         other_waste=row.get('other_waste', 0),
-#                         Recycle_waste=row.get('Recycle_waste', 0),
-#                         Landfill_waste=row.get('Landfill_waste', 0)
-#                     )
-
-#             return Response({"message": "Data uploaded successfully!"}, status=status.HTTP_201_CREATED)
-
-#         except Exception as e:
-#             return Response({"error": f"Error processing file: {str(e)}"}, status=status.HTTP_400_BAD_REQUEST)
-
-# class ExcelUploadView(APIView):
-#     permission_classes = [IsAuthenticated]
-#     parser_classes = (MultiPartParser, FormParser)
-
-#     def post(self, request):
-#         # Check if files are uploaded
-#         if not request.FILES:
-#             return Response({"error": "No files uploaded."}, status=status.HTTP_400_BAD_REQUEST)
-
-#         for file_key, file_obj in request.FILES.items():
-#             # Validate file format
-#             if not file_obj.name.endswith(('.xls', '.xlsx')):
-#                 return Response(
-#                     {"error": f"Invalid file format for {file_obj.name}. Only .xls and .xlsx files are supported."},
-#                     status=status.HTTP_400_BAD_REQUEST
-#                 )
-
-#             try:
-#                 # Read the Excel file
-#                 df = pd.read_excel(file_obj)
-
-#                 # Process each row in the DataFrame
-#                 for _, row in df.iterrows():
-#                     row = row.to_dict()
-
-#                     # Validate required fields
-#                     required_fields = ['facility', 'category', 'DatePicker']
-#                     for field in required_fields:
-#                         if field not in row or pd.isna(row[field]):
-#                             return Response(
-#                                 {"error": f"Missing required field: {field} in {file_obj.name}."},
-#                                 status=status.HTTP_400_BAD_REQUEST
-#                             )
-
-#                     # Fetch Facility object
-#                     facility_name = row.get('facility')
-#                     try:
-#                         facility = Facility.objects.get(facility_name=facility_name)
-#                     except Facility.DoesNotExist:
-#                         return Response(
-#                             {"error": f"Facility '{facility_name}' does not exist in {file_obj.name}."},
-#                             status=status.HTTP_400_BAD_REQUEST
-#                         )
-
-#                     # Handle categories
-#                     category = row.get('category')
-#                     if category == 'Waste':
-#                         Waste.objects.create(
-#                             user=request.user,
-#                             facility=facility,
-#                             category=category,
-#                             DatePicker=row['DatePicker'],
-#                             food_waste=row.get('food_waste', 0),
-#                             solid_Waste=row.get('solid_Waste', 0),
-#                             E_Waste=row.get('E_Waste', 0),
-#                             Biomedical_waste=row.get('Biomedical_waste', 0),
-#                             liquid_discharge=row.get('liquid_discharge', 0),
-#                             other_waste=row.get('other_waste', 0),
-#                             Recycle_waste=row.get('Recycle_waste', 0),
-#                             Landfill_waste=row.get('Landfill_waste', 0)
-#                         )
-#                     elif category == 'Energy':
-#                         Energy.objects.create(
-#                             user=request.user,
-#                             facility=facility,
-#                             category=row.get('category'),
-#                             DatePicker=row.get('DatePicker'),
-#                             hvac=row.get('hvac', 0),
-#                             production=row.get('production', 0),
-#                             stp=row.get('stp', 0),
-#                             admin_block=row.get('admin_block', 0),
-#                             utilities=row.get('utilities', 0),
-#                             others=row.get('others', 0),
-#                             coking_coal=row.get('coking_coal', 0),
-#                             coke_oven_coal=row.get('coke_oven_coal', 0),
-#                             natural_gas=row.get('natural_gas', 0),
-#                             diesel=row.get('diesel', 0),
-#                             biomass_wood=row.get('biomass_wood', 0),
-#                             biomass_other_solid=row.get('biomass_other_solid', 0),
-#                             renewable_solar=row.get('renewable_solar', 0),
-#                             renewable_other=row.get('renewable_other', 0)
-#                         )
-
-#             except Exception as e:
-#                 return Response(
-#                     {"error": f"Error processing file {file_obj.name}: {str(e)}"},
-#                     status=status.HTTP_400_BAD_REQUEST
-#                 )
-
-#         return Response({"message": "File  processed successfully!"}, status=status.HTTP_201_CREATED)
-
-
-# class ExcelUploadView(APIView):
-#     permission_classes = [IsAuthenticated]
-#     parser_classes = (MultiPartParser, FormParser)
-
-#     def post(self, request):
-#         # Check if files are uploaded
-#         if not request.FILES:
-#             return Response({"error": "No files uploaded."}, status=status.HTTP_400_BAD_REQUEST)
-
-#         for file_key, file_obj in request.FILES.items():
-#             # Validate file format
-#             if not file_obj.name.endswith(('.xls', '.xlsx')):
-#                 return Response(
-#                     {"error": f"Invalid file format for {file_obj.name}. Only .xls and .xlsx files are supported."},
-#                     status=status.HTTP_400_BAD_REQUEST
-#                 )
-
-#             try:
-#                 # Read the Excel file
-#                 df = pd.read_excel(file_obj)
-
-#                 # Process each row in the DataFrame
-#                 for _, row in df.iterrows():
-#                     row = row.to_dict()
-
-#                     # Validate required fields
-#                     required_fields = ['facility', 'category', 'DatePicker']
-#                     for field in required_fields:
-#                         if field not in row or pd.isna(row[field]):
-#                             return Response(
-#                                 {"error": f"Missing required field: {field} in {file_obj.name}."},
-#                                 status=status.HTTP_400_BAD_REQUEST
-#                             )
-
-#                     # Fetch Facility object
-#                     facility_name = row.get('facility')
-#                     try:
-#                         facility = Facility.objects.get(facility_name=facility_name)
-#                     except Facility.DoesNotExist:
-#                         return Response(
-#                             {"error": f"Facility '{facility_name}' does not exist in {file_obj.name}."},
-#                             status=status.HTTP_400_BAD_REQUEST
-#                         )
-
-#                     # Handle categories
-#                     category = row.get('category')
-#                     if category == 'Waste':
-#                         # Check for existing record
-#                         waste_record, created = Waste.objects.update_or_create(
-#                             user=request.user,
-#                             facility=facility,
-#                             category=category,
-#                             DatePicker=row['DatePicker'],
-#                             defaults={
-#                                 'food_waste': row.get('food_waste', 0),
-#                                 'solid_Waste': row.get('solid_Waste', 0),
-#                                 'E_Waste': row.get('E_Waste', 0),
-#                                 'Biomedical_waste': row.get('Biomedical_waste', 0),
-#                                 'liquid_discharge': row.get('liquid_discharge', 0),
-#                                 'other_waste': row.get('other_waste', 0),
-#                                 'Recycle_waste': row.get('Recycle_waste', 0),
-#                                 'Landfill_waste': row.get('Landfill_waste', 0)
-#                             }
-#                         )
-#                         action = "created" if created else "updated"
-#                         print(f"Waste record {action} for {facility_name} on {row['DatePicker']}.")
-
-#                     elif category == 'Energy':
-#                         # Check for existing record
-#                         energy_record, created = Energy.objects.update_or_create(
-#                             user=request.user,
-#                             facility=facility,
-#                             category=row.get('category'),
-#                             DatePicker=row.get('DatePicker'),
-#                             defaults={
-#                                 'hvac': row.get('hvac', 0),
-#                                 'production': row.get('production', 0),
-#                                 'stp': row.get('stp', 0),
-#                                 'admin_block': row.get('admin_block', 0),
-#                                 'utilities': row.get('utilities', 0),
-#                                 'others': row.get('others', 0),
-#                                 'coking_coal': row.get('coking_coal', 0),
-#                                 'coke_oven_coal': row.get('coke_oven_coal', 0),
-#                                 'natural_gas': row.get('natural_gas', 0),
-#                                 'diesel': row.get('diesel', 0),
-#                                 'biomass_wood': row.get('biomass_wood', 0),
-#                                 'biomass_other_solid': row.get('biomass_other_solid', 0),
-#                                 'renewable_solar': row.get('renewable_solar', 0),
-#                                 'renewable_other': row.get('renewable_other', 0)
-#                             }
-#                         )
-#                         action = "created" if created else "updated"
-#                         print(f"Energy record {action} for {facility_name} on {row['DatePicker']}.")
-
-#             except Exception as e:
-#                 return Response(
-#                     {"error": f"Error processing file {file_obj.name}: {str(e)}"},
-#                     status=status.HTTP_400_BAD_REQUEST
-#                 )
-
-#         return Response({"message": "File processed successfully!"}, status=status.HTTP_201_CREATED)
-
-
-# class ExcelUploadView(APIView):
-#     permission_classes = [IsAuthenticated]
-#     parser_classes = (MultiPartParser, FormParser)
-
-#     def post(self, request):
-#         # Check if files are uploaded
-#         if not request.FILES:
-#             return Response({"error": "No files uploaded."}, status=status.HTTP_400_BAD_REQUEST)
-
-#         for file_key, file_obj in request.FILES.items():
-#             # Validate file format
-#             if not file_obj.name.endswith(('.xls', '.xlsx')):
-#                 return Response(
-#                     {"error": f"Invalid file format for {file_obj.name}. Only .xls and .xlsx files are supported."},
-#                     status=status.HTTP_400_BAD_REQUEST
-#                 )
-
-#             try:
-#                 # Read the Excel file
-#                 df = pd.read_excel(file_obj)
-
-#                 # Process each row in the DataFrame
-#                 for _, row in df.iterrows():
-#                     row = row.to_dict()
-
-#                     # Validate required fields
-#                     required_fields = ['facility', 'category', 'DatePicker']
-#                     for field in required_fields:
-#                         if field not in row or pd.isna(row[field]):
-#                             return Response(
-#                                 {"error": f"Missing required field: {field} in {file_obj.name}."},
-#                                 status=status.HTTP_400_BAD_REQUEST
-#                             )
-
-#                     # Fetch Facility object
-#                     facility_name = row.get('facility')
-#                     try:
-#                         facilities = Facility.objects.filter(facility_name=facility_name)
-#                         if not facilities.exists():
-#                             return Response(
-#                                 {"error": f"Facility '{facility_name}' does not exist in {file_obj.name}."},
-#                                 status=status.HTTP_400_BAD_REQUEST
-#                             )
-#                         elif facilities.count() > 1:
-#                             return Response(
-#                                 {"error": f"Multiple facilities found for '{facility_name}'. Please resolve duplicates."},
-#                                 status=status.HTTP_400_BAD_REQUEST
-#                             )
-#                         facility = facilities.first()  # Get the first matching facility
-#                     except Exception as e:
-#                         return Response(
-#                             {"error": f"Error fetching facility '{facility_name}': {str(e)}"},
-#                             status=status.HTTP_400_BAD_REQUEST
-#                         )
-
-#                     # Handle categories
-#                     category = row.get('category')
-#                     if category == 'Waste':
-#                         # Check for existing record or create/update it
-#                         Waste.objects.update_or_create(
-#                             user=request.user,
-#                             facility=facility,
-#                             category=category,
-#                             DatePicker=row['DatePicker'],
-#                             defaults={
-#                                 'food_waste': row.get('food_waste', 0),
-#                                 'solid_Waste': row.get('solid_Waste', 0),
-#                                 'E_Waste': row.get('E_Waste', 0),
-#                                 'Biomedical_waste': row.get('Biomedical_waste', 0),
-#                                 'liquid_discharge': row.get('liquid_discharge', 0),
-#                                 'other_waste': row.get('other_waste', 0),
-#                                 'Recycle_waste': row.get('Recycle_waste', 0),
-#                                 'Landfill_waste': row.get('Landfill_waste', 0)
-#                             }
-#                         )
-
-#                     elif category == 'Energy':
-#                         # Check for existing record or create/update it
-#                         Energy.objects.update_or_create(
-#                             user=request.user,
-#                             facility=facility,
-#                             category=row.get('category'),
-#                             DatePicker=row.get('DatePicker'),
-#                             defaults={
-#                                 'hvac': row.get('hvac', 0),
-#                                 'production': row.get('production', 0),
-#                                 'stp': row.get('stp', 0),
-#                                 'admin_block': row.get('admin_block', 0),
-#                                 'utilities': row.get('utilities', 0),
-#                                 'others': row.get('others', 0),
-#                                 'coking_coal': row.get('coking_coal', 0),
-#                                 'coke_oven_coal': row.get('coke_oven_coal', 0),
-#                                 'natural_gas': row.get('natural_gas', 0),
-#                                 'diesel': row.get('diesel', 0),
-#                                 'biomass_wood': row.get('biomass_wood', 0),
-#                                 'biomass_other_solid': row.get('biomass_other_solid', 0),
-#                                 'renewable_solar': row.get('renewable_solar', 0),
-#                                 'renewable_other': row.get('renewable_other', 0)
-#                             }
-#                         )
-
-#             except Exception as e:
-#                 return Response(
-#                     {"error": f"Error processing file {file_obj.name}: {str(e)}"},
-#                     status=status.HTTP_400_BAD_REQUEST
-#                 )
-
-#         return Response({"message": "File processed successfully!"}, status=status.HTTP_201_CREATED)
-
 
 class EmissionCalculations(APIView):
     permission_classes = [IsAuthenticated]
