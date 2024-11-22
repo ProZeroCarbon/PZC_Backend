@@ -4751,9 +4751,9 @@ class LogisticesOverviewAndGraphs(APIView):
                 logistices_type = data['logistices_types']  # Ensure this matches the correct field names
                 fuel_consumed = data['total_fuel']
 
-                if logistices_type == 'cargo':  # Ensure 'cargo' matches the correct string in the data
+                if logistices_type == 'Cargo':  # Ensure 'cargo' matches the correct string in the data
                     cargo_data[month] = fuel_consumed
-                elif logistices_type == 'staff_logistices':  # Ensure 'staff_logistices' matches the correct string in the data
+                elif logistices_type == 'Staff':  # Ensure 'staff_logistices' matches the correct string in the data
                     staff_data[month] = fuel_consumed
 
             # Prepare the data for the line chart

@@ -180,12 +180,12 @@ class Logistices(models.Model):
     user = models.ForeignKey(CustomUser,on_delete=models.CASCADE)
     facility = models.ForeignKey(Facility, on_delete=models.CASCADE)
     LOGISTICES_TYPE_CHOICES=[
-        ('staff_logistices','staff_logistices'),
-        ('cargo','cargo')
+        ('Staff','Staff'),
+        ('Cargo','Cargo')
     ]
     FUEL_TYPE_CHOICES=[
-        ('diesel','diesel'),
-        ('petrol','petrol')
+        ('Diesel','Diesel'),
+        ('Petrol','Petrol')
     ]
     category = models.CharField(max_length=255)
     DatePicker = models.DateField(null=True,blank=True)
