@@ -123,9 +123,9 @@ urlpatterns = [
     
     path('LogisticesOverviewAndGraphs/',LogisticesOverviewAndGraphs.as_view(),name="LogisticesOverviewAndGraphs"),
     
-    path('upload_excel/', ExcelUploadView.as_view(), name='upload_excel'),
     
     path('EmissionCalculations/',EmissionCalculations.as_view(),name="EmissionCalculations"),
     
-    path('YearFacilityDataAPIView/',YearFacilityDataAPIView.as_view(),name="YearFacilityDataAPIView")
+    path('YearFacilityDataAPIView/',YearFacilityDataAPIView.as_view(),name="YearFacilityDataAPIView"),
+    path('ExcelUploadView/',ExcelUploadView.as_view(),name="ExcelUploadView"),
 ]
