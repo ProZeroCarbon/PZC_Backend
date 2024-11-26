@@ -3609,8 +3609,6 @@ class EnergyAnalyticsView(APIView):
 '''Water Overview Cards ,Graphs and Individual Line Charts and donut Charts Starts'''
 #Water Card OverView
 
-
-
 class WaterViewCard_Over(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -4436,8 +4434,6 @@ class WaterAnalyticsView(APIView):
 
 '''Water Overview Cards ,Graphs and Individual Line Charts and donut Charts Ends'''
 
-
-
 '''Biodiversity Overview Cards Starts'''
 class BiodiversityMetricsGraphsView(APIView):
     permission_classes = [IsAuthenticated]
@@ -4952,9 +4948,6 @@ class EmissionCalculations(APIView):
             print(error_message)
             return Response({'error': error_message}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-
-
-
 class ExcelUploadView(APIView):
     permission_classes = [IsAuthenticated]
     parser_classes = (MultiPartParser, FormParser)
@@ -5112,3 +5105,185 @@ class ExcelUploadView(APIView):
                 )
 
         return Response({"message": "File processed successfully!"}, status=status.HTTP_201_CREATED)
+
+
+# class YearFacilityDataAPIView(APIView):
+#     permission_classes = [IsAuthenticated]
+
+#     def get(self, request):
+#         try:
+#             user = request.user
+#             facility_id = request.query_params.get('facility_id', 'all')  # Default to 'all'
+#             year = request.query_params.get('year')  # Optional year parameter
+#             category = request.query_params.get('category')  # Required model category
+
+#             if not category:
+#                 return Response({"error": "Category parameter is required."}, status=status.HTTP_400_BAD_REQUEST)
+
+#             # Map categories to models and serializers
+#             model_serializer_map = {
+#                 'waste': (Waste, WasteSerializer),
+#                 'energy': (Energy, EnergySerializer),
+#                 'water': (Water, WaterSerializer),
+#                 'biodiversity': (Biodiversity, BiodiversitySerializer),
+#                 'logistices': (Logistices, LogisticesSerializer),
+#             }
+
+#             category = category.lower()
+#             if category not in model_serializer_map:
+#                 return Response({
+#                     "error": f"Invalid category. Valid options are: {', '.join(model_serializer_map.keys())}"
+#                 }, status=status.HTTP_400_BAD_REQUEST)
+
+#             model, serializer_class = model_serializer_map[category]
+
+#             # Validate facility
+#             if facility_id != 'all' and not Facility.objects.filter(facility_id=facility_id, user=user).exists():
+#                 return Response(
+#                     {'error': 'Invalid facility ID or not associated with the logged-in user.'},
+#                     status=status.HTTP_400_BAD_REQUEST
+#                 )
+
+#             # Validate year
+#             try:
+#                 if year:
+#                     year = int(year)
+#                     if year < 1900 or year > datetime.now().year + 10:  # Allow future years up to 10 years ahead
+#                         return Response({'error': 'Invalid year parameter.'}, status=status.HTTP_400_BAD_REQUEST)
+#             except ValueError:
+#                 return Response({'error': 'Year must be an integer.'}, status=status.HTTP_400_BAD_REQUEST)
+
+#             # Determine date range for fiscal year
+#             if year:
+#                 start_date = datetime(year, 4, 1)
+#                 end_date = datetime(year + 1, 3, 31)
+#             else:
+#                 # Get the latest year with available data
+#                 latest_entry = model.objects.filter(user=user).order_by('-DatePicker').first()
+#                 if latest_entry:
+#                     latest_year = latest_entry.DatePicker.year
+#                     year = latest_year if latest_entry.DatePicker.month >= 4 else latest_year - 1
+#                 else:
+#                     today = datetime.now()
+#                     year = today.year - 1 if today.month < 4 else today.year
+
+#                 start_date = datetime(year, 4, 1)
+#                 end_date = datetime(year + 1, 3, 31)
+
+#             # Filter data
+#             queryset = model.objects.filter(
+#                 user=user,
+#                 DatePicker__range=(start_date, end_date)
+#             )
+
+#             if facility_id != 'all':
+#                 queryset = queryset.filter(facility__facility_id=facility_id)
+
+#             serializer = serializer_class(queryset, many=True)
+#             return Response({
+#                 "year": year,
+#                 "facility_id": facility_id,
+#                 "category": category,
+#                 "data": serializer.data
+#             }, status=status.HTTP_200_OK)
+
+#         except Exception as e:
+#             error_message = f"An error occurred: {str(e)}"
+#             print(error_message)  # For debugging purposes, consider using a logger in production
+#             return Response({'error': error_message}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class YearFacilityDataAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        try:
+            user = request.user
+            facility_id = request.query_params.get('facility_id', 'all')  # Default to 'all'
+            year = request.query_params.get('year')  # Optional year parameter
+            category = request.query_params.get('category')  # Required model category
+
+            if not category:
+                return Response({"error": "Category parameter is required."}, status=status.HTTP_400_BAD_REQUEST)
+
+            # Map categories to models and serializers
+            model_serializer_map = {
+                'waste': (Waste, WasteSerializer),
+                'energy': (Energy, EnergySerializer),
+                'water': (Water, WaterSerializer),
+                'biodiversity': (Biodiversity, BiodiversitySerializer),
+                'logistices': (Logistices, LogisticesSerializer),
+            }
+
+            category = category.lower()
+            if category not in model_serializer_map:
+                return Response({
+                    "error": f"Invalid category. Valid options are: {', '.join(model_serializer_map.keys())}"
+                }, status=status.HTTP_400_BAD_REQUEST)
+
+            model, serializer_class = model_serializer_map[category]
+
+            # Validate facility
+            if facility_id != 'all' and not Facility.objects.filter(facility_id=facility_id, user=user).exists():
+                return Response(
+                    {'error': 'Invalid facility ID or not associated with the logged-in user.'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            # Validate year
+            try:
+                if year:
+                    year = int(year)
+                    if year < 1900 or year > datetime.now().year + 10:  # Allow future years up to 10 years ahead
+                        return Response({'error': 'Invalid year parameter.'}, status=status.HTTP_400_BAD_REQUEST)
+            except ValueError:
+                return Response({'error': 'Year must be an integer.'}, status=status.HTTP_400_BAD_REQUEST)
+
+            # Determine date range for fiscal year
+            if year:
+                start_date = datetime(year, 4, 1)
+                end_date = datetime(year + 1, 3, 31)
+            else:
+                # Get the latest year with available data
+                latest_entry = model.objects.filter(user=user).order_by('-DatePicker').first()
+                if latest_entry:
+                    latest_year = latest_entry.DatePicker.year
+                    year = latest_year if latest_entry.DatePicker.month >= 4 else latest_year - 1
+                else:
+                    today = datetime.now()
+                    year = today.year - 1 if today.month < 4 else today.year
+
+                start_date = datetime(year, 4, 1)
+                end_date = datetime(year + 1, 3, 31)
+
+            # Filter data
+            queryset = model.objects.filter(
+                user=user,
+                DatePicker__range=(start_date, end_date)
+            )
+
+            if facility_id != 'all':
+                queryset = queryset.filter(facility__facility_id=facility_id)
+
+            if queryset.exists():
+                serializer = serializer_class(queryset, many=True)
+                data = serializer.data
+            else:
+                # Generate default zero values for the specified category
+                default_data = {
+                    field.name: 0 if field.get_internal_type() in ['IntegerField', 'FloatField'] else None
+                    for field in model._meta.fields if field.name not in ['id', 'user', 'facility', 'category', 'DatePicker']
+                }
+                data = [default_data]
+
+            return Response({
+                "year": year,
+                "facility_id": facility_id,
+                "category": category,
+                "data": data
+            }, status=status.HTTP_200_OK)
+
+        except Exception as e:
+            error_message = f"An error occurred: {str(e)}"
+            print(error_message)  # For debugging purposes, consider using a logger in production
+            return Response({'error': error_message}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
