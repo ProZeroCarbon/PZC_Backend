@@ -1,4 +1,3 @@
-import traceback
 import pandas as pd
 from datetime import datetime
 from collections import defaultdict
@@ -2399,23 +2398,19 @@ class EnergyViewCard_Over(APIView):
                 'coke_oven_coal', 'natural_gas', 'diesel', 'biomass_wood', 'biomass_other_solid'
             ]
 
-            fuel_usage_fields = [
-                'coke_oven_coal', 'coking_coal', 'natural_gas', 'diesel', 'biomass_wood', 'biomass_other_solid'
-            ]
-
-            renewable_energy_fields = ['renewable_solar', 'renewable_other']
-
             response_data = {
                 'year': year,
                 'overall_energy_totals': {}
             }
 
             if not energy_data.exists():
-                # Populate zero values when no data exists
-                response_data['overall_energy_totals']['overall_fuel_used_in_operations'] = 0
-                response_data['overall_energy_totals']['overall_renewable_energy'] = 0
-                for field in energy_fields:
-                    response_data['overall_energy_totals'][f"overall_{field}"] = 0
+                # Populate only specific fields with zero values when no data exists
+                zero_fields = ['hvac', 'production', 'stp', 'admin_block', 'utilities', 'others']
+                response_data['overall_energy_totals'] = {
+                    f"overall_{field}": 0.0 for field in zero_fields
+                }
+                response_data['overall_energy_totals']['overall_fuel_used_in_operations'] = 0.0
+                response_data['overall_energy_totals']['overall_renewable_energy'] = 0.0
             else:
                 # Initialize counters for renewable energy and fuel usage totals
                 fuel_used_in_operations_total = 0
@@ -2426,15 +2421,15 @@ class EnergyViewCard_Over(APIView):
                     overall_total = energy_data.aggregate(total=Sum(field))['total'] or 0
 
                     # Add renewable energy (sum of renewable_solar and renewable_other)
-                    if field in renewable_energy_fields:
+                    if field in ['renewable_solar', 'renewable_other']:
                         renewable_energy_total += overall_total
 
-                    # Add to fuel usage totals (sum of coke_oven_coal, coking_coal, natural_gas, diesel, biomass_wood, biomass_other_solid)
-                    if field in fuel_usage_fields:
+                    # Add to fuel usage totals
+                    if field in ['coke_oven_coal', 'coking_coal', 'natural_gas', 'diesel', 'biomass_wood', 'biomass_other_solid']:
                         fuel_used_in_operations_total += overall_total
 
-                    # Include other fields in the response if they have non-zero values
-                    if overall_total > 0 and field not in renewable_energy_fields + fuel_usage_fields:
+                    # Include other fields in the response
+                    if field not in ['renewable_solar', 'renewable_other', 'coke_oven_coal', 'coking_coal', 'natural_gas', 'diesel', 'biomass_wood', 'biomass_other_solid']:
                         response_data['overall_energy_totals'][f"overall_{field}"] = overall_total
 
                 # Set the calculated totals for renewable energy and fuel used in operations
@@ -2447,6 +2442,7 @@ class EnergyViewCard_Over(APIView):
             error_message = f"An error occurred: {str(e)}"
             print(error_message)
             return Response({'error': error_message}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
 
 #HVAC Line Charts and Donut Chart 
 class HVACOverviewView(APIView):
@@ -4917,7 +4913,7 @@ class YearFacilityDataAPIView(APIView):
                 'energy': Energy,
                 'water': Water,
                 'biodiversity': Biodiversity,
-                'logistices': Logistices,
+                'logistics': Logistices,
             }
 
             # Fetch years from all categories (models)
@@ -4929,27 +4925,23 @@ class YearFacilityDataAPIView(APIView):
                 
                 years_set.update(queryset.values_list('DatePicker__year', flat=True))
 
-            # If no years found, return a friendly message
+            # If no years found, default to 0
             if not years_set:
-                return Response(
-                    {'facility_id': facility_id, 'available_years': [{"year": "0"}]},
-                    status=status.HTTP_200_OK
-                )
-            # Convert set to list and sort the years
-            years_list = sorted(list(years_set), reverse=True)
-
-            # Construct the response in the desired format
-            response_data = [{"year": str(year)} for year in years_list]
+                years_list = [{"year": 0}]
+            else:
+                # Convert set to list and sort the years
+                years_list = [{"year": year} for year in sorted(list(years_set), reverse=True)]
 
             return Response({
                 "facility_id": facility_id,
-                "available_years": response_data
+                "available_years": years_list
             }, status=status.HTTP_200_OK)
 
         except Exception as e:
             error_message = f"An error occurred: {str(e)}"
             print(error_message)  # For debugging purposes, consider using a logger in production
             return Response({'error': error_message}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
 '''YearFilter Ends'''
 
 '''ExcelSheets Upload Starts'''
