@@ -13,8 +13,8 @@ from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated,AllowAny
 from rest_framework_simplejwt.tokens import RefreshToken
-from .serializers import UserRegisterSerializer, UserLoginSerializer,WasteSerializer,WasteCreateSerializer,EnergyCreateSerializer,EnergySerializer,WaterCreateSerializer,WaterSerializer,BiodiversityCreateSerializer,BiodiversitySerializer,FacilitySerializer,LogisticsSerializer,OrganizationSerializer,FileUploadSerializer
-from .models import CustomUser,Waste,Energy,Water,Biodiversity,Facility,Logistics,Org_registration
+from .serializers import UserRegisterSerializer, UserLoginSerializer,WasteSerializer,WasteCreateSerializer,EnergyCreateSerializer,EnergySerializer,WaterCreateSerializer,WaterSerializer,BiodiversityCreateSerializer,BiodiversitySerializer,FacilitySerializer,LogisticesSerializer,OrganizationSerializer,FileUploadSerializer
+from .models import CustomUser,Waste,Energy,Water,Biodiversity,Facility,Logistices,Org_registration
 from django.db.models import Q
 from django.db.models import Field
 import logging
@@ -178,16 +178,6 @@ class FacilityDeleteView(APIView):
 
 '''Waste CRUD Operations Starts'''
 #Watste Create Form
-# class WasteCreateView(APIView):
-#     permission_classes = [IsAuthenticated]
-
-#     def post(self, request):
-#         serializer = WasteCreateSerializer(data=request.data, context={'request': request})
-#         if serializer.is_valid():
-#             serializer.save()
-#             return Response({"message": "Waste data added successfully."}, status=status.HTTP_201_CREATED)
-#         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
 class WasteCreateView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -747,24 +737,24 @@ class BiodiversityDeleteView(APIView):
 '''Biodiversity CRUD Operations Ends'''
 
 
-'''Logistics CRUD Operations Starts'''
-#Logistics Create Form
-class LogisticsCreateView(APIView):
+'''Logistices CRUD Operations Starts'''
+#Logistices Create Form
+class LogisticesCreateView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
         is_bulk = isinstance(request.data, list)
         if is_bulk:
-            serializer = LogisticsSerializer(data=request.data, many=True, context={'request': request})
+            serializer = LogisticesSerializer(data=request.data, many=True, context={'request': request})
         else:
-            serializer = LogisticsSerializer(data=request.data, context={'request': request})
+            serializer = LogisticesSerializer(data=request.data, context={'request': request})
         if serializer.is_valid():
             serializer.save(user=request.user)
-            return Response({"message": "Logistics data added successfully."}, status=status.HTTP_201_CREATED)
+            return Response({"message": "Logistices data added successfully."}, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
-#View Logistics
-class LogisticsView(APIView):
+#View Logistices
+class LogisticesView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
@@ -776,7 +766,7 @@ class LogisticsView(APIView):
             if year:
                 year = int(year)
             else:
-                latest_date = Logistics.objects.filter(user=user).aggregate(latest_date=Max('DatePicker'))['latest_date']
+                latest_date = Logistices.objects.filter(user=user).aggregate(latest_date=Max('DatePicker'))['latest_date']
 
                 if latest_date:
                     year = latest_date.year if latest_date.month >= 4 else latest_date.year - 1
@@ -792,18 +782,18 @@ class LogisticsView(APIView):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        logistics_data = Logistics.objects.filter(user=user, DatePicker__range=(start_date, end_date))
+        logistices_data = Logistices.objects.filter(user=user, DatePicker__range=(start_date, end_date))
 
         if facility_id.lower() != 'all':
-            logistics_data = logistics_data.filter(facility__facility_id=facility_id)
-            print(f"Filtered logistics Data Count by Facility: {logistics_data.count()}")
+            logistices_data = logistices_data.filter(facility__facility_id=facility_id)
+            print(f"Filtered logistices Data Count by Facility: {logistices_data.count()}")
         else:
             print("Facility ID is 'all'; skipping facility filtering.")
 
-        if not logistics_data.exists():
+        if not logistices_data.exists():
             empty_fields = {
                 "facility_id":"N/A",
-                "logistics_types": "N/A",
+                "logistices_types": "N/A",
                 "Typeof_fuel": "N/A",
                 "km_travelled": 0,
                 "No_Trips": 0,
@@ -817,67 +807,67 @@ class LogisticsView(APIView):
                     "message": "No data available for the selected facility and fiscal year.",
                     "email": user.email,
                     "year": year,
-                    "logistics_data": [empty_fields],
-                    "overall_logistics_usage_total": 0
+                    "logistices_data": [empty_fields],
+                    "overall_logistices_usage_total": 0
                 },
                 status=status.HTTP_200_OK
             )
 
-        logistics_serializer = LogisticsSerializer(logistics_data, many=True)
+        logistices_serializer = LogisticesSerializer(logistices_data, many=True)
         
-        serialized_data = logistics_serializer.data
-        for data, logistics in zip(serialized_data, logistics_data):
-            data['facility_id'] = logistics.facility.facility_id
+        serialized_data = logistices_serializer.data
+        for data, logistices in zip(serialized_data, logistices_data):
+            data['facility_id'] = logistices.facility.facility_id
             
-        overall_fuelconsumption = sum(logistics_fuel.fuel_consumption for logistics_fuel in logistics_data)
+        overall_fuelconsumption = sum(logistices_fuel.fuel_consumption for logistices_fuel in logistices_data)
 
         user_data = {
             "email": user.email,
             "year": year, 
             "facility_id": facility_id,
-            "logistics_data": logistics_serializer.data,
-            "overall_logistics_usage_total": overall_fuelconsumption
+            "logistices_data": logistices_serializer.data,
+            "overall_logistices_usage_total": overall_fuelconsumption
         }
 
         return Response(user_data, status=status.HTTP_200_OK)
 
-#Edit Logistics
-class LogisticsEditView(APIView):
+#Edit Logistices
+class LogisticesEditView(APIView):
     permission_classes = [IsAuthenticated]
 
-    def put(self, request, logistics_id):
+    def put(self, request, logistices_id):
         try:
             # Retrieve the instance to update
-            logistics = Logistics.objects.get(logistics_id=logistics_id, user=request.user)
-        except Logistics.DoesNotExist:
-            return Response({"error": "Logistics entry not found."}, status=status.HTTP_404_NOT_FOUND)
+            logistices = Logistices.objects.get(logistices_id=logistices_id, user=request.user)
+        except Logistices.DoesNotExist:
+            return Response({"error": "Logistices entry not found."}, status=status.HTTP_404_NOT_FOUND)
 
         # Initialize the serializer with the instance and request data
-        serializer = LogisticsSerializer(logistics, data=request.data, context={'request': request})
+        serializer = LogisticesSerializer(logistices, data=request.data, context={'request': request})
 
         # Validate and save
         if serializer.is_valid():
             serializer.save()
-            return Response({"message": "Logistics data updated successfully."}, status=status.HTTP_200_OK)
+            return Response({"message": "Logistices data updated successfully."}, status=status.HTTP_200_OK)
         else:
             # Return detailed validation errors
             return Response({"error": serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
 
 
-#Delete Logistics
-class LogisticsDeleteView(APIView):
+#Delete Logistices
+class LogisticesDeleteView(APIView):
     permission_classes = [IsAuthenticated]
 
-    def delete(self, request, logistics_id):
+    def delete(self, request, logistices_id):
         try:
-            logistics = Logistics.objects.get(logistics_id=logistics_id, user=request.user)
-        except Logistics.DoesNotExist:
-            return Response({"error": "Logistics data not found."}, status=status.HTTP_404_NOT_FOUND)
+            logistices = Logistices.objects.get(logistices_id=logistices_id, user=request.user)
+        except Logistices.DoesNotExist:
+            return Response({"error": "Logistices data not found."}, status=status.HTTP_404_NOT_FOUND)
 
-        logistics.delete()
-        return Response({"message": "Logistics data deleted successfully."}, status=status.HTTP_200_OK)
+        logistices.delete()
+        return Response({"message": "Logistices data deleted successfully."}, status=status.HTTP_200_OK)
 
-'''Logistics CRUD Operations Ends'''
+'''Logistices CRUD Operations Ends'''
 
 
 #Logout View
@@ -923,7 +913,7 @@ class OverallUsageView(APIView):
             if year:
                 year = int(year)
             else:
-                latest_date = Logistics.objects.filter(user=user).aggregate(latest_date=Max('DatePicker'))['latest_date']
+                latest_date = Logistices.objects.filter(user=user).aggregate(latest_date=Max('DatePicker'))['latest_date']
                 
                 if latest_date:
                     year = latest_date.year if latest_date.month >= 4 else latest_date.year - 1
@@ -944,7 +934,7 @@ class OverallUsageView(APIView):
             "energy_usage": 0,
             "water_usage": 0,
             "biodiversity_usage": 0,
-            "logistics_usage": 0,
+            "logistices_usage": 0,
         }
 
         # Filters based on user and date range
@@ -971,8 +961,8 @@ class OverallUsageView(APIView):
         biodiversity_data = Biodiversity.objects.filter(**filters)
         overall_data["biodiversity_usage"] = biodiversity_data.aggregate(total=Sum('overall_Trees'))['total'] or 0
 
-        logistics_data = Logistics.objects.filter(**filters)
-        overall_data["logistics_usage"] = logistics_data.aggregate(total=Sum('total_fuelconsumption'))['total'] or 0
+        logistices_data = Logistices.objects.filter(**filters)
+        overall_data["logistices_usage"] = logistices_data.aggregate(total=Sum('total_fuelconsumption'))['total'] or 0
 
         # If no data is found for the selected filters (year/facility), fetch the latest available data
         if not waste_data.exists() and facility_id == 'all':
@@ -981,7 +971,7 @@ class OverallUsageView(APIView):
             energy_data = Energy.objects.filter(user=user).order_by('-DatePicker').first()
             water_data = Water.objects.filter(user=user).order_by('-DatePicker').first()
             biodiversity_data = Biodiversity.objects.filter(user=user).order_by('-DatePicker').first()
-            logistics_data = Logistics.objects.filter(user=user).order_by('-DatePicker').first()
+            logistices_data = Logistices.objects.filter(user=user).order_by('-DatePicker').first()
 
             # Handle None cases and return zero values when no data is found
             if not waste_data:
@@ -1004,17 +994,17 @@ class OverallUsageView(APIView):
             else:
                 biodiversity_data = [biodiversity_data]
 
-            if not logistics_data:
-                logistics_data = []
+            if not logistices_data:
+                logistices_data = []
             else:
-                logistics_data = [logistics_data]
+                logistices_data = [logistices_data]
 
         # Serialize the data
         waste_serializer = WasteSerializer(waste_data, many=True)
         energy_serializer = EnergySerializer(energy_data, many=True)
         water_serializer = WaterSerializer(water_data, many=True)
         biodiversity_serializer = BiodiversitySerializer(biodiversity_data, many=True)
-        logistics_serializer = LogisticsSerializer(logistics_data, many=True)
+        logistices_serializer = LogisticesSerializer(logistices_data, many=True)
 
         # Format the response data
         response_data = {
@@ -1027,7 +1017,7 @@ class OverallUsageView(APIView):
             #     "energy_data": energy_serializer.data if energy_data else [],
             #     "water_data": water_serializer.data if water_data else [],
             #     "biodiversity_data": biodiversity_serializer.data if biodiversity_data else [],
-            #     "logistics_data": logistics_serializer.data if logistics_data else []
+            #     "logistices_data": logistices_serializer.data if logistices_data else []
             # }
         }
 
@@ -4587,8 +4577,8 @@ class BiodiversityMetricsGraphsView(APIView):
 
 '''Biodiversity Overview Cards Ends'''
 
-'''LOgistics overview Graphs starts'''
-class LogisticsOverviewAndGraphs(APIView):
+'''LOgistices overview Graphs starts'''
+class LogisticesOverviewAndGraphs(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
@@ -4599,7 +4589,7 @@ class LogisticsOverviewAndGraphs(APIView):
         try:
             # Determine the fiscal year if no year is specified
             if not year:
-                latest_date = Logistics.objects.filter(user=user).aggregate(latest_date=Max('DatePicker'))['latest_date']
+                latest_date = Logistices.objects.filter(user=user).aggregate(latest_date=Max('DatePicker'))['latest_date']
                 year = latest_date.year if latest_date else datetime.now().year
             else:
                 year = int(year)
@@ -4614,14 +4604,14 @@ class LogisticsOverviewAndGraphs(APIView):
                 filters['facility__facility_id'] = facility_id
 
             # Query data for the current year
-            current_year_data = Logistics.objects.filter(**filters)
+            current_year_data = Logistices.objects.filter(**filters)
 
             # If no data exists, set all fields to 0
             if not current_year_data.exists():
                 return Response({
                     "year": year,
                     "facility_id": facility_id,
-                    "logistics_totals": {
+                    "logistices_totals": {
                         "total_vehicles": 0,
                         "total_trips": 0,
                         "total_km_travelled": 0.0,
@@ -4632,7 +4622,7 @@ class LogisticsOverviewAndGraphs(APIView):
                         for month in range(1, 13)
                     ],
                     "donut_chart_data": [{"facility_name": "No Facility", "percentage": 0}],
-                    "logistics_fuel_comparison": {
+                    "logistices_fuel_comparison": {
                         "cargo": [
                             {"month": datetime(1900, month, 1).strftime('%b'), "cargo": 0.0}
                             for month in range(1, 13)
@@ -4681,9 +4671,9 @@ class LogisticsOverviewAndGraphs(APIView):
             if not donut_chart_data:
                 donut_chart_data = [{"facility_name": "No Facility", "percentage": 0}]
 
-            # Logistics Types Fuel Consumption
+            # Logistices Types Fuel Consumption
             type_month_data = current_year_data.annotate(month=ExtractMonth('DatePicker')).values(
-                'month', 'logistics_types'
+                'month', 'logistices_types'
             ).annotate(
                 total_fuel=Coalesce(Sum('fuel_consumption', output_field=FloatField()), Value(0.0, output_field=FloatField()))
             )
@@ -4697,15 +4687,15 @@ class LogisticsOverviewAndGraphs(APIView):
             cargo_data = {month: 0.0 for month in all_months}  # Initialize to 0 for each month
             staff_data = {month: 0.0 for month in all_months}  # Initialize to 0 for each month
 
-            # Process logistics types data and update cargo and staff data
+            # Process logistices types data and update cargo and staff data
             for data in type_month_data:
                 month = data['month']
-                logistics_type = data['logistics_types']  # Ensure this matches the correct field names
+                logistices_type = data['logistices_types']  # Ensure this matches the correct field names
                 fuel_consumed = data['total_fuel']
 
-                if logistics_type == 'Cargo':  # Ensure 'cargo' matches the correct string in the data
+                if logistices_type == 'Cargo':  # Ensure 'cargo' matches the correct string in the data
                     cargo_data[month] = fuel_consumed
-                elif logistics_type == 'Staff':  # Ensure 'staff_logistics' matches the correct string in the data
+                elif logistices_type == 'Staff':  # Ensure 'staff_logistices' matches the correct string in the data
                     staff_data[month] = fuel_consumed
 
             # Prepare the data for the line chart
@@ -4714,7 +4704,7 @@ class LogisticsOverviewAndGraphs(APIView):
                 for month in month_order
             ]
 
-            # Prepare the data for comparing logistics types
+            # Prepare the data for comparing logistices types
             cargo_data_with_names = [
                 {"month": datetime(1900, month, 1).strftime('%b'), "cargo": cargo_data[month]}
                 for month in month_order
@@ -4728,7 +4718,7 @@ class LogisticsOverviewAndGraphs(APIView):
             data = {
                 "year": year,
                 "facility_id": facility_id,
-                "logistics_totals": {
+                "logistices_totals": {
                     "total_vehicles": total_vehicles,
                     "total_trips": total_trips,
                     "total_km_travelled": total_km_travelled,
@@ -4736,7 +4726,7 @@ class LogisticsOverviewAndGraphs(APIView):
                 },
                 "bar_chart_data": bar_chart_data,  # Line Chart
                 "donut_chart_data": donut_chart_data,  # Donut Chart
-                "logistics_fuel_comparison": {  # Bar Graph (Fuel Consumption by Logistics Type)
+                "logistices_fuel_comparison": {  # Bar Graph (Fuel Consumption by Logistices Type)
                     "cargo": cargo_data_with_names,
                     "staff": staff_data_with_names
                 }
@@ -4750,7 +4740,7 @@ class LogisticsOverviewAndGraphs(APIView):
         except Exception as e:
             return Response({"error": str(e)}, status=500)
 
-'''LOgistics overview Graphs ends'''
+'''LOgistices overview Graphs ends'''
 '''Emissions Calculations starts'''
 class EmissionCalculations(APIView):
     permission_classes = [IsAuthenticated]
@@ -4775,8 +4765,8 @@ class EmissionCalculations(APIView):
                 latest_energy_date = Energy.objects.filter(user=user).aggregate(latest_date=Max('DatePicker'))['latest_date']
                 latest_water_date = Water.objects.filter(user=user).aggregate(latest_date=Max('DatePicker'))['latest_date']
                 latest_waste_date = Waste.objects.filter(user=user).aggregate(latest_date=Max('DatePicker'))['latest_date']
-                latest_logistics_date = Logistics.objects.filter(user=user).aggregate(latest_date=Max('DatePicker'))['latest_date']
-                latest_date = max(filter(None, [latest_energy_date, latest_water_date, latest_waste_date, latest_logistics_date]))
+                latest_logistices_date = Logistices.objects.filter(user=user).aggregate(latest_date=Max('DatePicker'))['latest_date']
+                latest_date = max(filter(None, [latest_energy_date, latest_water_date, latest_waste_date, latest_logistices_date]))
                 year = latest_date.year if latest_date else today.year
                 
             # Fiscal year range
@@ -4803,7 +4793,7 @@ class EmissionCalculations(APIView):
             energy_data = Energy.objects.filter(**filters)
             water_data = Water.objects.filter(**filters)
             waste_data = Waste.objects.filter(**filters)
-            logistics_data = Logistics.objects.filter(**filters)
+            logistices_data = Logistices.objects.filter(**filters)
 
             # Energy Emission factors
             electricity_factor = 0.82
@@ -4827,7 +4817,7 @@ class EmissionCalculations(APIView):
                 monthly_energy = energy_data.filter(DatePicker__month=month)
                 monthly_water = water_data.filter(DatePicker__month=month)
                 monthly_waste = waste_data.filter(DatePicker__month=month)
-                monthly_logistics = logistics_data.filter(DatePicker__month=month)
+                monthly_logistices = logistices_data.filter(DatePicker__month=month)
 
                 # Calculate electricity emissions
                 hvac_sum = monthly_energy.aggregate(total=Coalesce(Sum('hvac'), 0.0))['total']
@@ -4868,16 +4858,16 @@ class EmissionCalculations(APIView):
                     monthly_waste.aggregate(total=Coalesce(Sum('Landfill_waste'), 0.0))['total'] * 300,
                     monthly_waste.aggregate(total=Coalesce(Sum('Recycle_waste'), 0.0))['total'] * 10
                 ])
-                 # Calculate Logistics emissions
-                total_logistics_emissions = sum([
-                    monthly_logistics.filter(Typeof_fuel='diesel').aggregate(
+                 # Calculate Logistices emissions
+                total_logistices_emissions = sum([
+                    monthly_logistices.filter(Typeof_fuel='diesel').aggregate(
                         total=Coalesce(Sum('fuel_consumption'), 0.0))['total'] * diesel_factor,
-                    monthly_logistics.filter(Typeof_fuel='petrol').aggregate(
+                    monthly_logistices.filter(Typeof_fuel='petrol').aggregate(
                         total=Coalesce(Sum('fuel_consumption'), 0.0))['total'] * petrol_factor
                 ])
                 # Total emissions (energy + water)
-                total_emissions = total_energy_emissions + total_water_emissions + total_waste_emissions + total_logistics_emissions
-                # total_emissions = total_logistics_emissions
+                total_emissions = total_energy_emissions + total_water_emissions + total_waste_emissions + total_logistices_emissions
+                # total_emissions = total_logistices_emissions
             
                 
                 # Store monthly emissions data
@@ -4927,7 +4917,7 @@ class YearFacilityDataAPIView(APIView):
                 'energy': Energy,
                 'water': Water,
                 'biodiversity': Biodiversity,
-                'logistics': Logistics,
+                'logistices': Logistices,
             }
 
             # Fetch years from all categories (models)

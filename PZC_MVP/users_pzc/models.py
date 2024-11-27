@@ -176,10 +176,10 @@ class Biodiversity(models.Model):
         super(Biodiversity,self).save(*args, **kwargs)
         
     
-class Logistics(models.Model):
+class Logistices(models.Model):
     user = models.ForeignKey(CustomUser,on_delete=models.CASCADE)
     facility = models.ForeignKey(Facility, on_delete=models.CASCADE)
-    LOGISTICS_TYPE_CHOICES=[
+    LOGISTICES_TYPE_CHOICES=[
         ('Staff','Staff'),
         ('Cargo','Cargo')
     ]
@@ -189,8 +189,8 @@ class Logistics(models.Model):
     ]
     category = models.CharField(max_length=255)
     DatePicker = models.DateField(null=True,blank=True)
-    logistics_id =  models.CharField(max_length=20, primary_key=True, editable=False)
-    logistics_types = models.CharField(max_length=255,choices=LOGISTICS_TYPE_CHOICES,default='staff_logistics')
+    logistices_id =  models.CharField(max_length=20, primary_key=True, editable=False)
+    logistices_types = models.CharField(max_length=255,choices=LOGISTICES_TYPE_CHOICES,default='staff_logistices')
     Typeof_fuel = models.CharField(max_length=255,choices=FUEL_TYPE_CHOICES,default='diesel')
     km_travelled =models.FloatField(default=0.0)
     No_Trips = models.IntegerField()
@@ -202,8 +202,8 @@ class Logistics(models.Model):
         return f" data for {self.user.email}"
     
     def save(self,*args, **kwargs):
-        if not self.logistics_id:
-            self.logistics_id = uuid.uuid4().hex[:8].upper()
+        if not self.logistices_id:
+            self.logistices_id = uuid.uuid4().hex[:8].upper()
         self.total_fuelconsumption = (self.fuel_consumption)
-        super(Logistics,self).save(*args, **kwargs)
+        super(Logistices,self).save(*args, **kwargs)
     

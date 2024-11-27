@@ -7,7 +7,7 @@ from django.contrib.auth import authenticate
 from django.core.exceptions import ValidationError
 from django.utils.translation import gettext_lazy as _
 from django.utils.translation import gettext as _
-from .models import CustomUser,Waste,Energy,Water,Biodiversity,Facility,Logistics,Org_registration
+from .models import CustomUser,Waste,Energy,Water,Biodiversity,Facility,Logistices,Org_registration
 import logging
 
 
@@ -666,7 +666,7 @@ class BiodiversityCreateSerializer(serializers.ModelSerializer):
         biodiversity = Biodiversity.objects.create(**validated_data)
         return biodiversity
   
-class LogisticsSerializer(serializers.ModelSerializer):
+class LogisticesSerializer(serializers.ModelSerializer):
     facility_id = serializers.CharField(
         write_only=True,
         required=True,
@@ -686,9 +686,9 @@ class LogisticsSerializer(serializers.ModelSerializer):
         required=True,
         error_messages={'required': 'Category is required.'}
     )
-    logistics_types = serializers.CharField(
+    logistices_types = serializers.CharField(
         required=True,
-        error_messages={'required': 'logistics_types is required.'}
+        error_messages={'required': 'logistices_types is required.'}
     )
     Typeof_fuel = serializers.CharField(
         required=True,
@@ -698,11 +698,11 @@ class LogisticsSerializer(serializers.ModelSerializer):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        logistics_fields = [
+        logistices_fields = [
             'km_travelled', 'No_Trips', 'fuel_consumption', 'No_Vehicles', 'Spends_on_fuel'
         ]
 
-        for field in logistics_fields:
+        for field in logistices_fields:
             self.fields[field] = serializers.FloatField(
                 required=True,
                 min_value=0,
@@ -713,15 +713,15 @@ class LogisticsSerializer(serializers.ModelSerializer):
             )
 
     class Meta:
-        model = Logistics
+        model = Logistices
         fields = [
-            'facility_id', 'DatePicker', 'category', 'logistics_types', 'Typeof_fuel',
+            'facility_id', 'DatePicker', 'category', 'logistices_types', 'Typeof_fuel',
             'km_travelled', 'No_Trips', 'fuel_consumption', 'No_Vehicles',
-            'Spends_on_fuel', 'logistics_id'
+            'Spends_on_fuel', 'logistices_id'
         ]
         extra_kwargs = {
             'facility': {'read_only': True},
-            'logistics_id': {'read_only': True}
+            'logistices_id': {'read_only': True}
         }
 
     logger = logging.getLogger(__name__)
@@ -729,7 +729,7 @@ class LogisticsSerializer(serializers.ModelSerializer):
     def validate(self, data):
         facility_id = data.get('facility_id')
         date = data.get('DatePicker')
-        logistics_types = data.get('logistics_types')
+        logistices_types = data.get('logistices_types')
         Typeof_fuel = data.get('Typeof_fuel')
 
         # Verify if the facility exists
@@ -743,25 +743,25 @@ class LogisticsSerializer(serializers.ModelSerializer):
         year = date.year
 
         self.logger.debug(f"Checking for existing entry with parameters: "
-                          f"facility={facility}, date={date}, types={logistics_types}, fuel={Typeof_fuel}")
+                          f"facility={facility}, date={date}, types={logistices_types}, fuel={Typeof_fuel}")
 
-        # Check if an entry already exists for the same logistics_types and Typeof_fuel
-        existing_entry = Logistics.objects.filter(
+        # Check if an entry already exists for the same logistices_types and Typeof_fuel
+        existing_entry = Logistices.objects.filter(
             facility=facility,
             DatePicker__year=year,
             DatePicker__month=month,
-            logistics_types=logistics_types,
+            logistices_types=logistices_types,
             Typeof_fuel=Typeof_fuel
         )
 
         if self.instance:
             # Exclude the current instance in the check (update operation)
-            existing_entry = existing_entry.exclude(logistics_id=self.instance.logistics_id)
+            existing_entry = existing_entry.exclude(logistices_id=self.instance.logistices_id)
 
         if existing_entry.exists():
             raise serializers.ValidationError({
                 "non_field_errors": (
-                    f"An entry for logistics type '{logistics_types}' and fuel type '{Typeof_fuel}' "
+                    f"An entry for logistices type '{logistices_types}' and fuel type '{Typeof_fuel}' "
                     f"already exists for the same facility in the given month and year."
                 )
             })
@@ -774,15 +774,15 @@ class LogisticsSerializer(serializers.ModelSerializer):
         validated_data['user'] = user
         validated_data.pop('facility_id', None)
 
-        # Create the logistics entry
-        logistics = Logistics.objects.create(**validated_data)
-        return logistics
+        # Create the logistices entry
+        logistices = Logistices.objects.create(**validated_data)
+        return logistices
 
     def update(self, instance, validated_data):
         # Pop facility_id as it's write-only
         validated_data.pop('facility_id', None)
 
-        # Update the logistics instance
+        # Update the logistices instance
         for attr, value in validated_data.items():
             setattr(instance, attr, value)
 
