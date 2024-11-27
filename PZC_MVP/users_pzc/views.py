@@ -4417,9 +4417,15 @@ class BiodiversityMetricsGraphsView(APIView):
                             
                         ],
                         "chart_data": {
-                            "Offset_year":0,
-                            "Green_Belt_Density":0,
-                            "Trees_Per_Capita":0,
+                            "Offset_year": [
+                                {"year": 0, "carbon_offset": 0}
+                            ],
+                            "Green_Belt_Density": [
+                                {"year": 0, "green_belt_density": 0}
+                            ],
+                            "Trees_Per_Capita": [
+                                {"year": 0, "trees_per_capita": 0}
+                            ],
                         },
                     },
                     status=status.HTTP_200_OK,
@@ -4745,7 +4751,7 @@ class LogisticesOverviewAndGraphs(APIView):
             return Response({"error": str(e)}, status=500)
 
 '''LOgistices overview Graphs ends'''
-'''Emissions Calculations starts'''
+# '''Emissions Calculations starts'''
 class EmissionCalculations(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -4766,11 +4772,15 @@ class EmissionCalculations(APIView):
                 except ValueError:
                     return Response({'error': 'Invalid year parameter.'}, status=status.HTTP_400_BAD_REQUEST)
             else:
+                # Get latest dates from all relevant models
                 latest_energy_date = Energy.objects.filter(user=user).aggregate(latest_date=Max('DatePicker'))['latest_date']
                 latest_water_date = Water.objects.filter(user=user).aggregate(latest_date=Max('DatePicker'))['latest_date']
                 latest_waste_date = Waste.objects.filter(user=user).aggregate(latest_date=Max('DatePicker'))['latest_date']
                 latest_logistices_date = Logistices.objects.filter(user=user).aggregate(latest_date=Max('DatePicker'))['latest_date']
-                latest_date = max(filter(None, [latest_energy_date, latest_water_date, latest_waste_date, latest_logistices_date]))
+
+                # If there are no records, default to current year
+                latest_dates = [latest_energy_date, latest_water_date, latest_waste_date, latest_logistices_date]
+                latest_date = max(filter(None, latest_dates), default=None)
                 year = latest_date.year if latest_date else today.year
                 
             # Fiscal year range
@@ -4798,6 +4808,15 @@ class EmissionCalculations(APIView):
             water_data = Water.objects.filter(**filters)
             waste_data = Waste.objects.filter(**filters)
             logistices_data = Logistices.objects.filter(**filters)
+
+            # Check if data exists, if not set all emissions to zero
+            if not any([energy_data, water_data, waste_data, logistices_data]):
+                return Response({
+                    'year': year,
+                    'line_chart_data': [
+                        {"month": datetime(1900, month, 1).strftime('%b'), "total_emissions": 0} for month in range(1, 13)
+                    ]
+                }, status=status.HTTP_200_OK)
 
             # Energy Emission factors
             electricity_factor = 0.82
@@ -4855,24 +4874,24 @@ class EmissionCalculations(APIView):
                     + Coalesce(Sum('otherUsage'), 0.0)
                 )['total']
                 
-                total_water_emissions = total_water*0.46
+                total_water_emissions = total_water * 0.46
                 
                 # Calculate waste emissions
                 total_waste_emissions = sum([
                     monthly_waste.aggregate(total=Coalesce(Sum('Landfill_waste'), 0.0))['total'] * 300,
                     monthly_waste.aggregate(total=Coalesce(Sum('Recycle_waste'), 0.0))['total'] * 10
                 ])
-                 # Calculate Logistices emissions
+                
+                # Calculate Logistices emissions
                 total_logistices_emissions = sum([
                     monthly_logistices.filter(Typeof_fuel='diesel').aggregate(
                         total=Coalesce(Sum('fuel_consumption'), 0.0))['total'] * diesel_factor,
                     monthly_logistices.filter(Typeof_fuel='petrol').aggregate(
                         total=Coalesce(Sum('fuel_consumption'), 0.0))['total'] * petrol_factor
                 ])
-                # Total emissions (energy + water)
+                
+                # Total emissions (energy + water + waste + logistices)
                 total_emissions = total_energy_emissions + total_water_emissions + total_waste_emissions + total_logistices_emissions
-                # total_emissions = total_logistices_emissions
-            
                 
                 # Store monthly emissions data
                 monthly_total_emissions[month] = total_emissions
@@ -4897,7 +4916,8 @@ class EmissionCalculations(APIView):
             error_message = f"An error occurred: {str(e)}"
             print(error_message)
             return Response({'error': error_message}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-'''Emissions Calculations starts'''
+
+# '''Emissions Calculations starts'''
 
 '''YearFilter Starts'''
 class YearFacilityDataAPIView(APIView):
