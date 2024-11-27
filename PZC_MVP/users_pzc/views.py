@@ -4407,11 +4407,19 @@ class BiodiversityMetricsGraphsView(APIView):
                             "biomass": 0,
                             "co2_sequestration_rate": 0,
                         },
-                        "yearly_metrics": [],
+                        "yearly_metrics": [
+                            {
+                                "year": 0,
+                                "carbon_offset": 0,
+                                "green_belt_density": 0,
+                                "trees_per_capita": 0,
+                            }
+                            
+                        ],
                         "chart_data": {
-                            "Offset_year": [],
-                            "Green_Belt_Density": [],
-                            "Trees_Per_Capita": [],
+                            "Offset_year":0,
+                            "Green_Belt_Density":0,
+                            "Trees_Per_Capita":0,
                         },
                     },
                     status=status.HTTP_200_OK,
