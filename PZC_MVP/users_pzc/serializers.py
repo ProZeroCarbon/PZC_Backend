@@ -7,7 +7,7 @@ from django.contrib.auth import authenticate
 from django.core.exceptions import ValidationError
 from django.utils.translation import gettext_lazy as _
 from django.utils.translation import gettext as _
-from .models import CustomUser,Waste,Energy,Water,Biodiversity,Facility,Logistices,Org_registration
+from .models import CustomUser,Waste,Energy,Water,Biodiversity,Facility,Logistics,Org_registration
 import logging
 
 
@@ -666,7 +666,7 @@ class BiodiversityCreateSerializer(serializers.ModelSerializer):
         biodiversity = Biodiversity.objects.create(**validated_data)
         return biodiversity
   
-class LogisticesSerializer(serializers.ModelSerializer):
+class LogisticsSerializer(serializers.ModelSerializer):
     facility_id = serializers.CharField(
         write_only=True,
         required=True,
@@ -686,9 +686,9 @@ class LogisticesSerializer(serializers.ModelSerializer):
         required=True,
         error_messages={'required': 'Category is required.'}
     )
-    logistices_types = serializers.CharField(
+    logistics_types = serializers.CharField(
         required=True,
-        error_messages={'required': 'logistices_types is required.'}
+        error_messages={'required': 'logistics_types is required.'}
     )
     Typeof_fuel = serializers.CharField(
         required=True,
@@ -698,11 +698,11 @@ class LogisticesSerializer(serializers.ModelSerializer):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        logistices_fields = [
+        logistics_fields = [
             'km_travelled', 'No_Trips', 'fuel_consumption', 'No_Vehicles', 'Spends_on_fuel'
         ]
 
-        for field in logistices_fields:
+        for field in logistics_fields:
             self.fields[field] = serializers.FloatField(
                 required=True,
                 min_value=0,
@@ -713,15 +713,15 @@ class LogisticesSerializer(serializers.ModelSerializer):
             )
 
     class Meta:
-        model = Logistices
+        model = Logistics
         fields = [
-            'facility_id', 'DatePicker', 'category', 'logistices_types', 'Typeof_fuel',
+            'facility_id', 'DatePicker', 'category', 'logistics_types', 'Typeof_fuel',
             'km_travelled', 'No_Trips', 'fuel_consumption', 'No_Vehicles',
-            'Spends_on_fuel', 'logistices_id'
+            'Spends_on_fuel', 'logistics_id'
         ]
         extra_kwargs = {
             'facility': {'read_only': True},
-            'logistices_id': {'read_only': True}
+            'logistics_id': {'read_only': True}
         }
 
     logger = logging.getLogger(__name__)
@@ -729,7 +729,7 @@ class LogisticesSerializer(serializers.ModelSerializer):
     def validate(self, data):
         facility_id = data.get('facility_id')
         date = data.get('DatePicker')
-        logistices_types = data.get('logistices_types')
+        logistics_types = data.get('logistics_types')
         Typeof_fuel = data.get('Typeof_fuel')
 
         # Verify if the facility exists
@@ -743,25 +743,25 @@ class LogisticesSerializer(serializers.ModelSerializer):
         year = date.year
 
         self.logger.debug(f"Checking for existing entry with parameters: "
-                          f"facility={facility}, date={date}, types={logistices_types}, fuel={Typeof_fuel}")
+                          f"facility={facility}, date={date}, types={logistics_types}, fuel={Typeof_fuel}")
 
-        # Check if an entry already exists for the same logistices_types and Typeof_fuel
-        existing_entry = Logistices.objects.filter(
+        # Check if an entry already exists for the same logistics_types and Typeof_fuel
+        existing_entry = Logistics.objects.filter(
             facility=facility,
             DatePicker__year=year,
             DatePicker__month=month,
-            logistices_types=logistices_types,
+            logistics_types=logistics_types,
             Typeof_fuel=Typeof_fuel
         )
 
         if self.instance:
             # Exclude the current instance in the check (update operation)
-            existing_entry = existing_entry.exclude(logistices_id=self.instance.logistices_id)
+            existing_entry = existing_entry.exclude(logistics_id=self.instance.logistics_id)
 
         if existing_entry.exists():
             raise serializers.ValidationError({
                 "non_field_errors": (
-                    f"An entry for logistices type '{logistices_types}' and fuel type '{Typeof_fuel}' "
+                    f"An entry for logistics type '{logistics_types}' and fuel type '{Typeof_fuel}' "
                     f"already exists for the same facility in the given month and year."
                 )
             })
@@ -775,8 +775,8 @@ class LogisticesSerializer(serializers.ModelSerializer):
         validated_data.pop('facility_id', None)
 
         # Create the logistics entry
-        logistices = Logistices.objects.create(**validated_data)
-        return logistices
+        logistics = Logistics.objects.create(**validated_data)
+        return logistics
 
     def update(self, instance, validated_data):
         # Pop facility_id as it's write-only
@@ -788,3 +788,35 @@ class LogisticesSerializer(serializers.ModelSerializer):
 
         instance.save()
         return instance
+    
+    
+    
+    
+    
+    
+class FileUploadSerializer(serializers.Serializer):
+    file = serializers.FileField(
+        required=True,
+        error_messages={
+            'required': 'An Excel file is required.',
+            'invalid': 'Invalid file format.'
+        }
+    )
+
+    def validate_file(self, file):
+        # Check the file extension
+        valid_extensions = ['.xls', '.xlsx']
+        file_name = file.name.lower()
+        if not any(file_name.endswith(ext) for ext in valid_extensions):
+            raise serializers.ValidationError(
+                "Invalid file format. Only '.xls' and '.xlsx' files are allowed."
+            )
+
+        # Check file size (example: max 5MB)
+        max_file_size = 5 * 1024 * 1024  # 5 MB
+        if file.size > max_file_size:
+            raise serializers.ValidationError(
+                "File size exceeds the 5MB limit."
+            )
+
+        return file

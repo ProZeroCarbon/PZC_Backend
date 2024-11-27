@@ -13,11 +13,13 @@ from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated,AllowAny
 from rest_framework_simplejwt.tokens import RefreshToken
-from .serializers import UserRegisterSerializer, UserLoginSerializer,WasteSerializer,WasteCreateSerializer,EnergyCreateSerializer,EnergySerializer,WaterCreateSerializer,WaterSerializer,BiodiversityCreateSerializer,BiodiversitySerializer,FacilitySerializer,LogisticesSerializer,OrganizationSerializer
-from .models import CustomUser,Waste,Energy,Water,Biodiversity,Facility,Logistices,Org_registration
+from .serializers import UserRegisterSerializer, UserLoginSerializer,WasteSerializer,WasteCreateSerializer,EnergyCreateSerializer,EnergySerializer,WaterCreateSerializer,WaterSerializer,BiodiversityCreateSerializer,BiodiversitySerializer,FacilitySerializer,LogisticsSerializer,OrganizationSerializer,FileUploadSerializer
+from .models import CustomUser,Waste,Energy,Water,Biodiversity,Facility,Logistics,Org_registration
 from django.db.models import Q
-from django_filters.rest_framework import DjangoFilterBackend
-from users_pzc.filters import LogisticesFilter
+from django.db.models import Field
+import logging
+
+logger = logging.getLogger(__name__)
 
 #Register View
 class RegisterView(APIView):
@@ -712,20 +714,20 @@ class BiodiversityDeleteView(APIView):
 '''Biodiversity CRUD Operations Ends'''
 
 
-'''Logistices CRUD Operations Starts'''
-#Logistices Create Form
-class LogisticesCreateView(APIView):
+'''Logistics CRUD Operations Starts'''
+#Logistics Create Form
+class LogisticsCreateView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
-        serializer = LogisticesSerializer(data=request.data, context={'request': request})
+        serializer = LogisticsSerializer(data=request.data, context={'request': request})
         if serializer.is_valid():
             serializer.save(user=request.user)
-            return Response({"message": "Logistices data added successfully."}, status=status.HTTP_201_CREATED)
+            return Response({"message": "Logistics data added successfully."}, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
-#View Logistices
-class LogisticesView(APIView):
+#View Logistics
+class LogisticsView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
@@ -737,7 +739,7 @@ class LogisticesView(APIView):
             if year:
                 year = int(year)
             else:
-                latest_date = Logistices.objects.filter(user=user).aggregate(latest_date=Max('DatePicker'))['latest_date']
+                latest_date = Logistics.objects.filter(user=user).aggregate(latest_date=Max('DatePicker'))['latest_date']
 
                 if latest_date:
                     year = latest_date.year if latest_date.month >= 4 else latest_date.year - 1
@@ -753,18 +755,18 @@ class LogisticesView(APIView):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        logistices_data = Logistices.objects.filter(user=user, DatePicker__range=(start_date, end_date))
+        logistics_data = Logistics.objects.filter(user=user, DatePicker__range=(start_date, end_date))
 
         if facility_id.lower() != 'all':
-            logistices_data = logistices_data.filter(facility__facility_id=facility_id)
-            print(f"Filtered logistices Data Count by Facility: {logistices_data.count()}")
+            logistics_data = logistics_data.filter(facility__facility_id=facility_id)
+            print(f"Filtered logistics Data Count by Facility: {logistics_data.count()}")
         else:
             print("Facility ID is 'all'; skipping facility filtering.")
 
-        if not logistices_data.exists():
+        if not logistics_data.exists():
             empty_fields = {
                 "facility_id":"N/A",
-                "logistices_types": "N/A",
+                "logistics_types": "N/A",
                 "Typeof_fuel": "N/A",
                 "km_travelled": 0,
                 "No_Trips": 0,
@@ -778,67 +780,67 @@ class LogisticesView(APIView):
                     "message": "No data available for the selected facility and fiscal year.",
                     "email": user.email,
                     "year": year,
-                    "logistices_data": [empty_fields],
-                    "overall_logistices_usage_total": 0
+                    "logistics_data": [empty_fields],
+                    "overall_logistics_usage_total": 0
                 },
                 status=status.HTTP_200_OK
             )
 
-        logistices_serializer = LogisticesSerializer(logistices_data, many=True)
+        logistics_serializer = LogisticsSerializer(logistics_data, many=True)
         
-        serialized_data = logistices_serializer.data
-        for data, logistices in zip(serialized_data, logistices_data):
-            data['facility_id'] = logistices.facility.facility_id
+        serialized_data = logistics_serializer.data
+        for data, logistics in zip(serialized_data, logistics_data):
+            data['facility_id'] = logistics.facility.facility_id
             
-        overall_fuelconsumption = sum(logistices_fuel.fuel_consumption for logistices_fuel in logistices_data)
+        overall_fuelconsumption = sum(logistics_fuel.fuel_consumption for logistics_fuel in logistics_data)
 
         user_data = {
             "email": user.email,
             "year": year, 
             "facility_id": facility_id,
-            "logistices_data": logistices_serializer.data,
-            "overall_logistices_usage_total": overall_fuelconsumption
+            "logistics_data": logistics_serializer.data,
+            "overall_logistics_usage_total": overall_fuelconsumption
         }
 
         return Response(user_data, status=status.HTTP_200_OK)
 
-#Edit Logistices
-class LogisticesEditView(APIView):
+#Edit Logistics
+class LogisticsEditView(APIView):
     permission_classes = [IsAuthenticated]
 
-    def put(self, request, logistices_id):
+    def put(self, request, logistics_id):
         try:
             # Retrieve the instance to update
-            logistices = Logistices.objects.get(logistices_id=logistices_id, user=request.user)
-        except Logistices.DoesNotExist:
+            logistics = Logistics.objects.get(logistics_id=logistics_id, user=request.user)
+        except Logistics.DoesNotExist:
             return Response({"error": "Logistics entry not found."}, status=status.HTTP_404_NOT_FOUND)
 
         # Initialize the serializer with the instance and request data
-        serializer = LogisticesSerializer(logistices, data=request.data, context={'request': request})
+        serializer = LogisticsSerializer(logistics, data=request.data, context={'request': request})
 
         # Validate and save
         if serializer.is_valid():
             serializer.save()
-            return Response({"message": "Logistices data updated successfully."}, status=status.HTTP_200_OK)
+            return Response({"message": "Logistics data updated successfully."}, status=status.HTTP_200_OK)
         else:
             # Return detailed validation errors
             return Response({"error": serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
 
 
-#Delete Logistices
-class LogisticesDeleteView(APIView):
+#Delete Logistics
+class LogisticsDeleteView(APIView):
     permission_classes = [IsAuthenticated]
 
-    def delete(self, request, logistices_id):
+    def delete(self, request, logistics_id):
         try:
-            logistices = Logistices.objects.get(logistices_id=logistices_id, user=request.user)
-        except Logistices.DoesNotExist:
-            return Response({"error": "Logistices data not found."}, status=status.HTTP_404_NOT_FOUND)
+            logistics = Logistics.objects.get(logistics_id=logistics_id, user=request.user)
+        except Logistics.DoesNotExist:
+            return Response({"error": "Logistics data not found."}, status=status.HTTP_404_NOT_FOUND)
 
-        logistices.delete()
-        return Response({"message": "Logistices data deleted successfully."}, status=status.HTTP_200_OK)
+        logistics.delete()
+        return Response({"message": "Logistics data deleted successfully."}, status=status.HTTP_200_OK)
 
-'''Logistices CRUD Operations Ends'''
+'''Logistics CRUD Operations Ends'''
 
 
 #Logout View
@@ -928,7 +930,7 @@ class LogoutView(APIView):
 #         overall_data["biodiversity_usage"] = biodiversity_data.aggregate(total=Sum('overall_Trees'))['total'] or 0
 
 #         # Logistics usage
-#         logistics_data = Logistices.objects.filter(**filters)
+#         logistics_data = Logistics.objects.filter(**filters)
 #         overall_data["logistics_usage"] = logistics_data.aggregate(total=Sum('total_fuelconsumption'))['total'] or 0
 
 #         # Serialize data for each model
@@ -936,7 +938,7 @@ class LogoutView(APIView):
 #         energy_serializer = EnergySerializer(energy_data, many=True)
 #         water_serializer = WaterSerializer(water_data, many=True)
 #         biodiversity_serializer = BiodiversitySerializer(biodiversity_data, many=True)
-#         logistics_serializer = LogisticesSerializer(logistics_data, many=True)
+#         logistics_serializer = LogisticsSerializer(logistics_data, many=True)
 
 #         # Format response data
 #         response_data = {
@@ -967,7 +969,7 @@ class OverallUsageView(APIView):
             if year:
                 year = int(year)
             else:
-                latest_date = Logistices.objects.filter(user=user).aggregate(latest_date=Max('DatePicker'))['latest_date']
+                latest_date = Logistics.objects.filter(user=user).aggregate(latest_date=Max('DatePicker'))['latest_date']
                 
                 if latest_date:
                     year = latest_date.year if latest_date.month >= 4 else latest_date.year - 1
@@ -1015,7 +1017,7 @@ class OverallUsageView(APIView):
         biodiversity_data = Biodiversity.objects.filter(**filters)
         overall_data["biodiversity_usage"] = biodiversity_data.aggregate(total=Sum('overall_Trees'))['total'] or 0
 
-        logistics_data = Logistices.objects.filter(**filters)
+        logistics_data = Logistics.objects.filter(**filters)
         overall_data["logistics_usage"] = logistics_data.aggregate(total=Sum('total_fuelconsumption'))['total'] or 0
 
         # If no data is found for the selected filters (year/facility), fetch the latest available data
@@ -1025,7 +1027,7 @@ class OverallUsageView(APIView):
             energy_data = Energy.objects.filter(user=user).order_by('-DatePicker').first()
             water_data = Water.objects.filter(user=user).order_by('-DatePicker').first()
             biodiversity_data = Biodiversity.objects.filter(user=user).order_by('-DatePicker').first()
-            logistics_data = Logistices.objects.filter(user=user).order_by('-DatePicker').first()
+            logistics_data = Logistics.objects.filter(user=user).order_by('-DatePicker').first()
 
             # Handle None cases and return zero values when no data is found
             if not waste_data:
@@ -1058,7 +1060,7 @@ class OverallUsageView(APIView):
         energy_serializer = EnergySerializer(energy_data, many=True)
         water_serializer = WaterSerializer(water_data, many=True)
         biodiversity_serializer = BiodiversitySerializer(biodiversity_data, many=True)
-        logistics_serializer = LogisticesSerializer(logistics_data, many=True)
+        logistics_serializer = LogisticsSerializer(logistics_data, many=True)
 
         # Format the response data
         response_data = {
@@ -4633,7 +4635,7 @@ class BiodiversityMetricsGraphsView(APIView):
 '''Biodiversity Overview Cards Ends'''
 
 '''LOgistics overview Graphs starts'''
-class LogisticesOverviewAndGraphs(APIView):
+class LogisticsOverviewAndGraphs(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
@@ -4644,7 +4646,7 @@ class LogisticesOverviewAndGraphs(APIView):
         try:
             # Determine the fiscal year if no year is specified
             if not year:
-                latest_date = Logistices.objects.filter(user=user).aggregate(latest_date=Max('DatePicker'))['latest_date']
+                latest_date = Logistics.objects.filter(user=user).aggregate(latest_date=Max('DatePicker'))['latest_date']
                 year = latest_date.year if latest_date else datetime.now().year
             else:
                 year = int(year)
@@ -4659,7 +4661,7 @@ class LogisticesOverviewAndGraphs(APIView):
                 filters['facility__facility_id'] = facility_id
 
             # Query data for the current year
-            current_year_data = Logistices.objects.filter(**filters)
+            current_year_data = Logistics.objects.filter(**filters)
 
             # If no data exists, set all fields to 0
             if not current_year_data.exists():
@@ -4728,7 +4730,7 @@ class LogisticesOverviewAndGraphs(APIView):
 
             # Logistics Types Fuel Consumption
             type_month_data = current_year_data.annotate(month=ExtractMonth('DatePicker')).values(
-                'month', 'logistices_types'
+                'month', 'logistics_types'
             ).annotate(
                 total_fuel=Coalesce(Sum('fuel_consumption', output_field=FloatField()), Value(0.0, output_field=FloatField()))
             )
@@ -4745,12 +4747,12 @@ class LogisticesOverviewAndGraphs(APIView):
             # Process logistics types data and update cargo and staff data
             for data in type_month_data:
                 month = data['month']
-                logistices_type = data['logistices_types']  # Ensure this matches the correct field names
+                logistics_type = data['logistics_types']  # Ensure this matches the correct field names
                 fuel_consumed = data['total_fuel']
 
-                if logistices_type == 'Cargo':  # Ensure 'cargo' matches the correct string in the data
+                if logistics_type == 'Cargo':  # Ensure 'cargo' matches the correct string in the data
                     cargo_data[month] = fuel_consumed
-                elif logistices_type == 'Staff':  # Ensure 'staff_logistices' matches the correct string in the data
+                elif logistics_type == 'Staff':  # Ensure 'staff_logistics' matches the correct string in the data
                     staff_data[month] = fuel_consumed
 
             # Prepare the data for the line chart
@@ -4820,8 +4822,8 @@ class EmissionCalculations(APIView):
                 latest_energy_date = Energy.objects.filter(user=user).aggregate(latest_date=Max('DatePicker'))['latest_date']
                 latest_water_date = Water.objects.filter(user=user).aggregate(latest_date=Max('DatePicker'))['latest_date']
                 latest_waste_date = Waste.objects.filter(user=user).aggregate(latest_date=Max('DatePicker'))['latest_date']
-                latest_logistices_date = Logistices.objects.filter(user=user).aggregate(latest_date=Max('DatePicker'))['latest_date']
-                latest_date = max(filter(None, [latest_energy_date, latest_water_date, latest_waste_date, latest_logistices_date]))
+                latest_logistics_date = Logistics.objects.filter(user=user).aggregate(latest_date=Max('DatePicker'))['latest_date']
+                latest_date = max(filter(None, [latest_energy_date, latest_water_date, latest_waste_date, latest_logistics_date]))
                 year = latest_date.year if latest_date else today.year
                 
             # Fiscal year range
@@ -4848,7 +4850,7 @@ class EmissionCalculations(APIView):
             energy_data = Energy.objects.filter(**filters)
             water_data = Water.objects.filter(**filters)
             waste_data = Waste.objects.filter(**filters)
-            logistices_data = Logistices.objects.filter(**filters)
+            logistics_data = Logistics.objects.filter(**filters)
 
             # Energy Emission factors
             electricity_factor = 0.82
@@ -4872,7 +4874,7 @@ class EmissionCalculations(APIView):
                 monthly_energy = energy_data.filter(DatePicker__month=month)
                 monthly_water = water_data.filter(DatePicker__month=month)
                 monthly_waste = waste_data.filter(DatePicker__month=month)
-                monthly_logistices = logistices_data.filter(DatePicker__month=month)
+                monthly_logistics = logistics_data.filter(DatePicker__month=month)
 
                 # Calculate electricity emissions
                 hvac_sum = monthly_energy.aggregate(total=Coalesce(Sum('hvac'), 0.0))['total']
@@ -4914,15 +4916,15 @@ class EmissionCalculations(APIView):
                     monthly_waste.aggregate(total=Coalesce(Sum('Recycle_waste'), 0.0))['total'] * 10
                 ])
                  # Calculate Logistics emissions
-                total_logistices_emissions = sum([
-                    monthly_logistices.filter(Typeof_fuel='diesel').aggregate(
+                total_logistics_emissions = sum([
+                    monthly_logistics.filter(Typeof_fuel='diesel').aggregate(
                         total=Coalesce(Sum('fuel_consumption'), 0.0))['total'] * diesel_factor,
-                    monthly_logistices.filter(Typeof_fuel='petrol').aggregate(
+                    monthly_logistics.filter(Typeof_fuel='petrol').aggregate(
                         total=Coalesce(Sum('fuel_consumption'), 0.0))['total'] * petrol_factor
                 ])
                 # Total emissions (energy + water)
-                total_emissions = total_energy_emissions + total_water_emissions + total_waste_emissions + total_logistices_emissions
-                # total_emissions = total_logistices_emissions
+                total_emissions = total_energy_emissions + total_water_emissions + total_waste_emissions + total_logistics_emissions
+                # total_emissions = total_logistics_emissions
             
                 
                 # Store monthly emissions data
@@ -4970,7 +4972,7 @@ class YearFacilityDataAPIView(APIView):
                 'energy': Energy,
                 'water': Water,
                 'biodiversity': Biodiversity,
-                'logistices': Logistices,
+                'logistics': Logistics,
             }
 
             # Fetch years from all categories (models)
@@ -5005,126 +5007,6 @@ class YearFacilityDataAPIView(APIView):
             return Response({'error': error_message}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
-# class ExcelUploadView(APIView):
-#     permission_classes = [IsAuthenticated]
-#     parser_classes = (MultiPartParser, FormParser)
-
-#     def post(self, request):
-#         if not request.FILES:
-#             return Response({"error": "No files uploaded."}, status=status.HTTP_400_BAD_REQUEST)
-
-#         for file_key, file_obj in request.FILES.items():
-#             if not file_obj.name.endswith(('.xls', '.xlsx')):
-#                 return Response(
-#                     {"error": f"Invalid file format for {file_obj.name}. Only .xls and .xlsx files are supported."},
-#                     status=status.HTTP_400_BAD_REQUEST
-#                 )
-
-#             try:
-#                 df = pd.read_excel(file_obj)
-#                 df.columns = df.columns.str.strip().str.lower()  # Ensure lowercase columns
-#                 print(f"Columns in {file_obj.name}: {df.columns.tolist()}")
-
-#                 # Validate required columns
-#                 required_fields = ['facility', 'category', 'datepicker']
-#                 for field in required_fields:
-#                     if field not in df.columns:
-#                         return Response(
-#                             {"error": f"Missing required field: {field} in {file_obj.name}."},
-#                             status=status.HTTP_400_BAD_REQUEST
-#                         )
-
-#                 df = df.drop_duplicates(subset=['facility', 'category', 'datepicker'])  # Remove duplicates
-
-#                 for _, row in df.iterrows():
-#                     row = row.to_dict()
-
-#                     # Ensure required fields have non-null values
-#                     for field in required_fields:
-#                         if pd.isna(row[field]):
-#                             return Response(
-#                                 {"error": f"Missing value for required field: {field} in {file_obj.name}."},
-#                                 status=status.HTTP_400_BAD_REQUEST
-#                             )
-
-#                     facility_name = row.get('facility')
-#                     facilities = Facility.objects.filter(facility_name=facility_name)
-#                     if not facilities.exists():
-#                         return Response(
-#                             {"error": f"Facility '{facility_name}' does not exist in {file_obj.name}."},
-#                             status=status.HTTP_400_BAD_REQUEST
-#                         )
-#                     elif facilities.count() > 1:
-#                         return Response(
-#                             {"error": f"Multiple facilities found for '{facility_name}'. Resolve duplicates."},
-#                             status=status.HTTP_400_BAD_REQUEST
-#                         )
-#                     facility = facilities.first()
-
-#                     category = row.get('category').lower()
-#                     datepicker = row.get('datepicker')
-#                     if not isinstance(datepicker, pd.Timestamp):
-#                         return Response(
-#                             {"error": f"Invalid date format for DatePicker in {file_obj.name}."},
-#                             status=status.HTTP_400_BAD_REQUEST
-#                         )
-
-#                     # Handle categories and save data
-#                     try:
-#                         if category == 'waste':
-#                             Waste.objects.update_or_create(
-#                                 user=request.user,
-#                                 facility=facility,
-#                                 category=category,
-#                                 DatePicker=datepicker,
-#                                 defaults={
-#                                     'food_waste': row.get('food_waste', 0),
-#                                     'solid_waste': row.get('solid_waste', 0),
-#                                     'e_waste': row.get('e_waste', 0),
-#                                     'biomedical_waste': row.get('biomedical_waste', 0),
-#                                     'liquid_discharge': row.get('liquid_discharge', 0),
-#                                     'other_waste': row.get('other_waste', 0),
-#                                     'recycle_waste': row.get('recycle_waste', 0),
-#                                     'landfill_waste': row.get('landfill_waste', 0),
-#                                 }
-#                             )
-#                         elif category == 'energy':
-#                             Energy.objects.update_or_create(
-#                                 user=request.user,
-#                                 facility=facility,
-#                                 category=category,
-#                                 DatePicker=datepicker,
-#                                 defaults={
-#                                     'hvac': row.get('hvac', 0),
-#                                     'production': row.get('production', 0),
-#                                     'stp': row.get('stp', 0),
-#                                     'admin_block': row.get('admin_block', 0),
-#                                     'utilities': row.get('utilities', 0),
-#                                     'others': row.get('others', 0),
-#                                     'coking_coal': row.get('coking_coal', 0),
-#                                     'coke_oven_coal': row.get('coke_oven_coal', 0),
-#                                     'natural_gas': row.get('natural_gas', 0),
-#                                     'diesel': row.get('diesel', 0),
-#                                     'biomass_wood': row.get('biomass_wood', 0),
-#                                     'biomass_other_solid': row.get('biomass_other_solid', 0),
-#                                     'renewable_solar': row.get('renewable_solar', 0),
-#                                     'renewable_other': row.get('renewable_other', 0),
-#                                 }
-#                             )
-#                         # Handle other categories (Water, Biodiversity, Logistices) similarly
-#                     except Exception as e:
-#                         return Response(
-#                             {"error": f"Error saving data for category {category}: {str(e)}"},
-#                             status=status.HTTP_400_BAD_REQUEST
-#                         )
-
-#             except Exception as e:
-#                 return Response(
-#                     {"error": f"Error processing file {file_obj.name}: {str(e)}"},
-#                     status=status.HTTP_400_BAD_REQUEST
-#                 )
-
-#         return Response({"message": "File processed successfully!"}, status=status.HTTP_201_CREATED)
 
 
 # class ExcelUploadView(APIView):
@@ -5136,589 +5018,24 @@ class YearFacilityDataAPIView(APIView):
 #             return Response({"error": "No files uploaded."}, status=status.HTTP_400_BAD_REQUEST)
 
 #         for file_key, file_obj in request.FILES.items():
-#             if not file_obj.name.endswith(('.xls', '.xlsx')):
+#             if not file_obj.name.endswith(('.xls', '.xlsx')):  # Ensure file format
 #                 return Response(
 #                     {"error": f"Invalid file format for {file_obj.name}. Only .xls and .xlsx files are supported."},
 #                     status=status.HTTP_400_BAD_REQUEST
 #                 )
 
 #             try:
-#                 df = pd.read_excel(file_obj)
-#                 df.columns = df.columns.str.strip().str.lower()
-#                 print(f"Columns in {file_obj.name}: {df.columns.tolist()}")
-
-#                 required_fields = ['facility', 'category', 'datepicker']
-#                 missing_fields = [field for field in required_fields if field not in df.columns]
-#                 if missing_fields:
-#                     return Response(
-#                         {"error": f"Missing required fields: {', '.join(missing_fields)} in {file_obj.name}."},
-#                         status=status.HTTP_400_BAD_REQUEST
-#                     )
-
-#                 missing_values = df[required_fields].isnull().any(axis=1)
-#                 if missing_values.any():
-#                     row_indices = missing_values[missing_values].index.tolist()
-#                     return Response(
-#                         {"error": f"Missing required fields in rows: {row_indices} in {file_obj.name}."},
-#                         status=status.HTTP_400_BAD_REQUEST
-#                     )
-
-#                 initial_count = len(df)
-#                 df = df.drop_duplicates(subset=['facility', 'category', 'datepicker'])
-#                 removed_count = initial_count - len(df)
-#                 if removed_count > 0:
-#                     print(f"Removed {removed_count} duplicate rows from {file_obj.name}.")
-
-#                 for _, row in df.iterrows():
-#                     row = row.to_dict()
-#                     facility_name = row.get('facility')
-#                     category = row.get('category').lower()
-
-#                     try:
-#                         datepicker = pd.to_datetime(row.get('datepicker'))
-#                     except Exception:
-#                         return Response(
-#                             {"error": f"Invalid date format for DatePicker in {file_obj.name}."},
-#                             status=status.HTTP_400_BAD_REQUEST
-#                         )
-
-#                     facilities = Facility.objects.filter(facility_name=facility_name)
-#                     if not facilities.exists():
-#                         return Response(
-#                             {"error": f"Facility '{facility_name}' does not exist in {file_obj.name}."},
-#                             status=status.HTTP_400_BAD_REQUEST
-#                         )
-#                     elif facilities.count() > 1:
-#                         return Response(
-#                             {"error": f"Multiple facilities found for '{facility_name}'. Resolve duplicates."},
-#                             status=status.HTTP_400_BAD_REQUEST
-#                         )
-#                     facility = facilities.first()
-                    
-#                     if category == 'waste':
-#                         Waste.objects.update_or_create(
-#                             user=request.user,
-#                             facility=facility,
-#                             category=category,
-#                             DatePicker=datepicker,
-#                             defaults={
-#                                 'food_waste': row.get('food_waste', 0),
-#                                 'solid_waste': row.get('solid_waste', 0),
-#                                 'e_waste': row.get('e_waste', 0),
-#                                 'biomedical_waste': row.get('biomedical_waste', 0),
-#                                 'liquid_discharge': row.get('liquid_discharge', 0),
-#                                 'other_waste': row.get('other_waste', 0),
-#                                 'recycle_waste': row.get('recycle_waste', 0),
-#                                 'landfill_waste': row.get('landfill_waste', 0),
-#                                 }
-#                             )
-#                     elif category == 'energy':
-#                         Energy.objects.update_or_create(
-#                             user=request.user,
-#                             facility=facility,
-#                             category=category,
-#                             DatePicker=datepicker,
-#                             defaults={
-#                                 'hvac': row.get('hvac', 0),
-#                                 'production': row.get('production', 0),
-#                                 'stp': row.get('stp', 0),
-#                                 'admin_block': row.get('admin_block', 0),
-#                                 'utilities': row.get('utilities', 0),
-#                                 'others': row.get('others', 0),
-#                                 'coking_coal': row.get('coking_coal', 0),
-#                                 'coke_oven_coal': row.get('coke_oven_coal', 0),
-#                                 'natural_gas': row.get('natural_gas', 0),
-#                                 'diesel': row.get('diesel', 0),
-#                                 'biomass_wood': row.get('biomass_wood', 0),
-#                                 'biomass_other_solid': row.get('biomass_other_solid', 0),
-#                                 'renewable_solar': row.get('renewable_solar', 0),
-#                                 'renewable_other': row.get('renewable_other', 0),
-#                                 }
-#                             )
-#                     elif category == 'Energy':
-#                         # Check for existing record or create/update it
-#                         Energy.objects.update_or_create(
-#                             user=request.user,
-#                             facility=facility,
-#                             category=row.get('category'),
-#                             DatePicker=row.get('DatePicker'),
-#                             defaults={
-#                                 'hvac': row.get('hvac', 0),
-#                                 'production': row.get('production', 0),
-#                                 'stp': row.get('stp', 0),
-#                                 'admin_block': row.get('admin_block', 0),
-#                                 'utilities': row.get('utilities', 0),
-#                                 'others': row.get('others', 0),
-#                                 'coking_coal': row.get('coking_coal', 0),
-#                                 'coke_oven_coal': row.get('coke_oven_coal', 0),
-#                                 'natural_gas': row.get('natural_gas', 0),
-#                                 'diesel': row.get('diesel', 0),
-#                                 'biomass_wood': row.get('biomass_wood', 0),
-#                                 'biomass_other_solid': row.get('biomass_other_solid', 0),
-#                                 'renewable_solar': row.get('renewable_solar', 0),
-#                                 'renewable_other': row.get('renewable_other', 0)
-#                             }
-#                         )
-#                     elif category == 'Water':
-#                         Water.objects.update_or_create(
-#                             user=request.user,
-#                             facility=facility,
-#                             category=row.get('category'),
-#                             DatePicker=row.get('DatePicker'),
-#                             defaults={
-#                                 'Generated_Water': row.get('Generated_Water', 0),
-#                                 'Recycled_Water' : row.get('Recycled_Water', 0),
-#                                 'Softener_usage' : row.get('Softener_usage', 0),
-#                                 'Boiler_usage' : row.get('Boiler_usage', 0),
-#                                 'otherUsage' : row.get('otherUsage', 0)
-#                             }
-#                         )
-#                     elif category == 'Biodiversity':
-#                         Biodiversity.objects.update_or_create(
-#                             user=request.user,
-#                             facility=facility,
-#                             category=row.get('category'),
-#                             DatePicker=row.get('DatePicker'),
-#                             defaults={
-#                                 'no_trees' : row.get('no_trees', 0),
-#                                 'species' : row.get('species', ''),
-#                                 'age' : row.get('age', 0),
-#                                 'height' : row.get('height', 0),
-#                                 'width' : row.get('width', 0),
-#                                 'totalArea' : row.get('totalArea', 0),
-#                                 'new_trees_planted' : row.get('new_trees_planted', 0),
-#                                 'head_count' : row.get('head_count', 0)
-#                             }
-#                         )
-                    
-#                     elif category == 'Logistices':
-#                         Logistices.objects.update_or_create(
-#                             user=request.user,
-#                             facility=facility,
-#                             category=row.get('category'),
-#                             DatePicker=row.get('DatePicker'),
-#                             defaults = {
-#                                 'logistices_types' : row.get('logistices_types', 'staff_logistices'),
-#                                 'Typeof_fuel' : row.get('Typeof_fuel', 'diesel'),
-#                                 'km_travelled' : row.get('km_travelled', 0),
-#                                 'No_Trips' : row.get('No_Trips', 0),
-#                                 'fuel_consumption' : row.get('fuel_consumption', 0),
-#                                 'No_Vehicles' : row.get('No_Vehicles', 0),
-#                                 'Spends_on_fuel' : row.get('Spends_on_fuel', 0)
-#                             }
-#                         )
-#             except Exception as e:
-#                 error_details = traceback.format_exc()
-#                 return Response(
-#                     {"error": f"Error processing file {file_obj.name}: {str(e)}", "details": error_details},
-#                     status=status.HTTP_400_BAD_REQUEST
-#                 )
-
-#         return Response({"message": "File processed successfully!"}, status=status.HTTP_201_CREATED)    
-
-
-
-import logging
-
-logger = logging.getLogger(__name__)
-
-# class ExcelUploadView(APIView):
-#     permission_classes = [IsAuthenticated]
-#     parser_classes = (MultiPartParser, FormParser)
-
-#     def post(self, request):
-#         if not request.FILES:
-#             return Response({"error": "No files uploaded."}, status=status.HTTP_400_BAD_REQUEST)
-
-#         for file_key, file_obj in request.FILES.items():
-#             if not file_obj.name.endswith(('.xls', '.xlsx')):
-#                 return Response(
-#                     {"error": f"Invalid file format for {file_obj.name}. Only .xls and .xlsx files are supported."},
-#                     status=status.HTTP_400_BAD_REQUEST
-#                 )
-
-#             try:
-#                 # Read Excel file
-#                 df = pd.read_excel(file_obj)
-#                 df.columns = df.columns.str.strip().str.lower()  # Normalize column names
-#                 print(f"Columns in {file_obj.name}: {df.columns.tolist()}")
-
-#                 # Check for missing required fields
-#                 required_fields = ['facility', 'category', 'datepicker']
-#                 missing_fields = [field for field in required_fields if field not in df.columns]
-#                 if missing_fields:
-#                     return Response(
-#                         {"error": f"Missing required fields: {', '.join(missing_fields)} in {file_obj.name}."},
-#                         status=status.HTTP_400_BAD_REQUEST
-#                     )
-
-#                 # Check for missing values
-#                 missing_values = df[required_fields].isnull().any(axis=1)
-#                 if missing_values.any():
-#                     row_indices = df.index[missing_values].tolist()
-#                     return Response(
-#                         {"error": f"Missing required values in rows: {row_indices} in {file_obj.name}."},
-#                         status=status.HTTP_400_BAD_REQUEST
-#                     )
-
-#                 # Normalize data
-#                 df['datepicker'] = pd.to_datetime(df['datepicker'], errors='coerce')
-#                 if df['datepicker'].isnull().any():
-#                     return Response(
-#                         {"error": f"Invalid date format in DatePicker column of {file_obj.name}."},
-#                         status=status.HTTP_400_BAD_REQUEST
-#                     )
-#                 df['facility'] = df['facility'].str.strip()
-#                 df['category'] = df['category'].str.strip().str.lower()
-
-#                 # Remove duplicates
-#                 initial_count = len(df)
-#                 df = df.drop_duplicates(subset=['facility', 'category', 'datepicker'])
-#                 removed_count = initial_count - len(df)
-#                 if removed_count > 0:
-#                     print(f"Removed {removed_count} duplicate rows from {file_obj.name}.")
-
-#                 # Process each row
-#                 for _, row in df.iterrows():
-#                     row = row.to_dict()
-#                     facility_name = row['facility']
-#                     category = row['category']
-#                     datepicker = row['datepicker']
-
-#                     # Validate facility existence
-#                     facilities = Facility.objects.filter(facility_name=facility_name)
-#                     if not facilities.exists():
-#                         return Response(
-#                             {"error": f"Facility '{facility_name}' does not exist in {file_obj.name}."},
-#                             status=status.HTTP_400_BAD_REQUEST
-#                         )
-#                     elif facilities.count() > 1:
-#                         return Response(
-#                             {"error": f"Multiple facilities found for '{facility_name}'. Resolve duplicates."},
-#                             status=status.HTTP_400_BAD_REQUEST
-#                         )
-#                     facility = facilities.first()
-
-#                     # Process data by category
-#                     try:
-#                         self.handle_category(category, request.user, facility, datepicker, row)
-#                     except Exception as e:
-#                         logger.error(traceback.format_exc())
-#                         return Response(
-#                             {"error": f"Error processing category {category} in {file_obj.name}: {str(e)}"},
-#                             status=status.HTTP_400_BAD_REQUEST
-#                         )
-
-#             except Exception as e:
-#                 logger.error(traceback.format_exc())
-#                 return Response(
-#                     {"error": f"Error processing file {file_obj.name}: {str(e)}"},
-#                     status=status.HTTP_400_BAD_REQUEST
-#                 )
-
-#         return Response({"message": "File processed successfully!"}, status=status.HTTP_201_CREATED)
-
-#     def handle_category(self, category, user, facility, datepicker, row):
-#         if category == 'waste':
-#             Waste.objects.update_or_create(
-#                 user=user,
-#                 facility=facility,
-#                 DatePicker=datepicker,
-#                 defaults={
-#                     'food_waste': row.get('food_waste', 0),
-#                     'solid_waste': row.get('solid_waste', 0),
-#                     'e_waste': row.get('e_waste', 0),
-#                     'biomedical_waste': row.get('biomedical_waste', 0),
-#                     'liquid_discharge': row.get('liquid_discharge', 0),
-#                     'other_waste': row.get('other_waste', 0),
-#                     'recycle_waste': row.get('recycle_waste', 0),
-#                     'landfill_waste': row.get('landfill_waste', 0),
-#                 }
-#             )
-#         elif category == 'energy':
-#             Energy.objects.update_or_create(
-#                 user=user,
-#                 facility=facility,
-#                 DatePicker=datepicker,
-#                 defaults={
-#                     'hvac': row.get('hvac', 0),
-#                     'production': row.get('production', 0),
-#                     'stp': row.get('stp', 0),
-#                     'admin_block': row.get('admin_block', 0),
-#                     'utilities': row.get('utilities', 0),
-#                     'others': row.get('others', 0),
-#                     'coking_coal': row.get('coking_coal', 0),
-#                     'coke_oven_coal': row.get('coke_oven_coal', 0),
-#                     'natural_gas': row.get('natural_gas', 0),
-#                     'diesel': row.get('diesel', 0),
-#                     'biomass_wood': row.get('biomass_wood', 0),
-#                     'biomass_other_solid': row.get('biomass_other_solid', 0),
-#                     'renewable_solar': row.get('renewable_solar', 0),
-#                     'renewable_other': row.get('renewable_other', 0),
-#                 }
-#             )
-#         elif category == 'water':
-#             Water.objects.update_or_create(
-#                 user=user,
-#                 facility=facility,
-#                 DatePicker=datepicker,
-#                 defaults={
-#                     'Generated_Water': row.get('Generated_Water', 0),
-#                     'Recycled_Water': row.get('Recycled_Water', 0),
-#                     'Softener_usage': row.get('Softener_usage', 0),
-#                     'Boiler_usage': row.get('Boiler_usage', 0),
-#                     'otherUsage': row.get('otherUsage', 0),
-#                 }
-#             )
-#         elif category == 'biodiversity':
-#             Biodiversity.objects.update_or_create(
-#                 user=user,
-#                 facility=facility,
-#                 DatePicker=datepicker,
-#                 defaults={
-#                     'no_trees': row.get('no_trees', 0),
-#                     'species': row.get('species', ''),
-#                     'age': row.get('age', 0),
-#                     'height': row.get('height', 0),
-#                     'width': row.get('width', 0),
-#                     'totalArea': row.get('totalArea', 0),
-#                     'new_trees_planted': row.get('new_trees_planted', 0),
-#                     'head_count': row.get('head_count', 0),
-#                 }
-#             )
-#         elif category == 'logistices':
-#             Logistices.objects.update_or_create(
-#                 user=user,
-#                 facility=facility,
-#                 DatePicker=datepicker,
-#                 defaults={
-#                     'logistices_types': row.get('logistices_types', 'staff_logistices'),
-#                     'Typeof_fuel': row.get('Typeof_fuel', 'diesel'),
-#                     'km_travelled': row.get('km_travelled', 0),
-#                     'No_Trips': row.get('No_Trips', 0),
-#                     'fuel_consumption': row.get('fuel_consumption', 0),
-#                     'No_Vehicles': row.get('No_Vehicles', 0),
-#                     'Spends_on_fuel': row.get('Spends_on_fuel', 0),
-#                 }
-#             )
-#         else:
-#             raise ValueError(f"Unsupported category: {category}")
-
-
-logger = logging.getLogger(__name__)
-
-# class ExcelUploadView(APIView):
-#     permission_classes = [IsAuthenticated]
-#     parser_classes = (MultiPartParser, FormParser)
-
-#     def post(self, request):
-#         if not request.FILES:
-#             return Response({"error": "No files uploaded."}, status=status.HTTP_400_BAD_REQUEST)
-
-#         for file_key, file_obj in request.FILES.items():
-#             if not file_obj.name.endswith(('.xls', '.xlsx')):
-#                 return Response(
-#                     {"error": f"Invalid file format for {file_obj.name}. Only .xls and .xlsx files are supported."},
-#                     status=status.HTTP_400_BAD_REQUEST
-#                 )
-
-#             try:
-#                 # Read Excel file
-#                 df = pd.read_excel(file_obj, header=None)  # Read without headers
-#                 df.columns = df.iloc[0].str.strip().str.lower()  # Use the first row as header
-#                 df = df[1:].reset_index(drop=True)  # Drop the header row
-                
-#                 print(f"Columns in {file_obj.name}: {df.columns.tolist()}")
-
-#                 # Check for missing required fields
-#                 required_fields = ['facility', 'category', 'datepicker']
-#                 missing_fields = [field for field in required_fields if field not in df.columns]
-#                 if missing_fields:
-#                     return Response(
-#                         {"error": f"Missing required fields: {', '.join(missing_fields)} in {file_obj.name}."},
-#                         status=status.HTTP_400_BAD_REQUEST
-#                     )
-
-#                 # Process data (rest of the code is unchanged)
-#                 df['datepicker'] = pd.to_datetime(df['datepicker'], errors='coerce')
-#                 if df['datepicker'].isnull().any():
-#                     return Response(
-#                         {"error": f"Invalid date format in DatePicker column of {file_obj.name}."},
-#                         status=status.HTTP_400_BAD_REQUEST
-#                     )
-#                 df['facility'] = df['facility'].str.strip()
-#                 df['category'] = df['category'].str.strip().str.lower()
-
-#                 initial_count = len(df)
-#                 df = df.drop_duplicates(subset=['facility', 'category', 'datepicker'])
-#                 removed_count = initial_count - len(df)
-#                 if removed_count > 0:
-#                     print(f"Removed {removed_count} duplicate rows from {file_obj.name}.")
-
-#                 # Process each row
-#                 for _, row in df.iterrows():
-#                     row = row.to_dict()
-#                     facility_name = row['facility']
-#                     category = row['category']
-#                     datepicker = row['datepicker']
-
-#                     # Validate facility existence
-#                     facilities = Facility.objects.filter(facility_name=facility_name)
-#                     if not facilities.exists():
-#                         return Response(
-#                             {"error": f"Facility '{facility_name}' does not exist in {file_obj.name}."},
-#                             status=status.HTTP_400_BAD_REQUEST
-#                         )
-#                     elif facilities.count() > 1:
-#                         return Response(
-#                             {"error": f"Multiple facilities found for '{facility_name}'. Resolve duplicates."},
-#                             status=status.HTTP_400_BAD_REQUEST
-#                         )
-#                     facility = facilities.first()
-
-#                     # Process data by category
-#                     try:
-#                         self.handle_category(category, request.user, facility, datepicker, row)
-#                     except Exception as e:
-#                         logger.error(traceback.format_exc())
-#                         return Response(
-#                             {"error": f"Error processing category {category} in {file_obj.name}: {str(e)}"},
-#                             status=status.HTTP_400_BAD_REQUEST
-#                         )
-
-#             except Exception as e:
-#                 logger.error(traceback.format_exc())
-#                 return Response(
-#                     {"error": f"Error processing file {file_obj.name}: {str(e)}"},
-#                     status=status.HTTP_400_BAD_REQUEST
-#                 )
-
-#         return Response({"message": "File processed successfully!"}, status=status.HTTP_201_CREATED)
-
-#     def handle_category(self, category, user, facility, datepicker, row):
-#         if category == 'waste':
-#             Waste.objects.update_or_create(
-#                 user=user,
-#                 facility=facility,
-#                 DatePicker=datepicker,
-#                 defaults={
-#                     'food_waste': row.get('food_waste', 0),
-#                     'solid_waste': row.get('solid_waste', 0),
-#                     'e_waste': row.get('e_waste', 0),
-#                     'biomedical_waste': row.get('biomedical_waste', 0),
-#                     'liquid_discharge': row.get('liquid_discharge', 0),
-#                     'other_waste': row.get('other_waste', 0),
-#                     'recycle_waste': row.get('recycle_waste', 0),
-#                     'landfill_waste': row.get('landfill_waste', 0),
-#                 }
-#             )
-#         elif category == 'energy':
-#             Energy.objects.update_or_create(
-#                 user=user,
-#                 facility=facility,
-#                 DatePicker=datepicker,
-#                 defaults={
-#                     'hvac': row.get('hvac', 0),
-#                     'production': row.get('production', 0),
-#                     'stp': row.get('stp', 0),
-#                     'admin_block': row.get('admin_block', 0),
-#                     'utilities': row.get('utilities', 0),
-#                     'others': row.get('others', 0),
-#                     'coking_coal': row.get('coking_coal', 0),
-#                     'coke_oven_coal': row.get('coke_oven_coal', 0),
-#                     'natural_gas': row.get('natural_gas', 0),
-#                     'diesel': row.get('diesel', 0),
-#                     'biomass_wood': row.get('biomass_wood', 0),
-#                     'biomass_other_solid': row.get('biomass_other_solid', 0),
-#                     'renewable_solar': row.get('renewable_solar', 0),
-#                     'renewable_other': row.get('renewable_other', 0),
-#                 }
-#             )
-#         elif category == 'water':
-#             Water.objects.update_or_create(
-#                 user=user,
-#                 facility=facility,
-#                 DatePicker=datepicker,
-#                 defaults={
-#                     'Generated_Water': row.get('Generated_Water', 0),
-#                     'Recycled_Water': row.get('Recycled_Water', 0),
-#                     'Softener_usage': row.get('Softener_usage', 0),
-#                     'Boiler_usage': row.get('Boiler_usage', 0),
-#                     'otherUsage': row.get('otherUsage', 0),
-#                 }
-#             )
-#         elif category == 'biodiversity':
-#             Biodiversity.objects.update_or_create(
-#                 user=user,
-#                 facility=facility,
-#                 DatePicker=datepicker,
-#                 defaults={
-#                     'no_trees': row.get('no_trees', 0),
-#                     'species': row.get('species', ''),
-#                     'age': row.get('age', 0),
-#                     'height': row.get('height', 0),
-#                     'width': row.get('width', 0),
-#                     'totalArea': row.get('totalArea', 0),
-#                     'new_trees_planted': row.get('new_trees_planted', 0),
-#                     'head_count': row.get('head_count', 0),
-#                 }
-#             )
-#         elif category == 'logistices':
-#             Logistices.objects.update_or_create(
-#                 user=user,
-#                 facility=facility,
-#                 DatePicker=datepicker,
-#                 defaults={
-#                     'logistices_types': row.get('logistices_types', 'staff_logistices'),
-#                     'Typeof_fuel': row.get('Typeof_fuel', 'diesel'),
-#                     'km_travelled': row.get('km_travelled', 0),
-#                     'No_Trips': row.get('No_Trips', 0),
-#                     'fuel_consumption': row.get('fuel_consumption', 0),
-#                     'No_Vehicles': row.get('No_Vehicles', 0),
-#                     'Spends_on_fuel': row.get('Spends_on_fuel', 0),
-#                 }
-#             )
-#         else:
-#             raise ValueError(f"Unsupported category: {category}")
-        
-        
-        
-# class ExcelUploadView(APIView):
-#     permission_classes = [IsAuthenticated]
-#     parser_classes = (MultiPartParser, FormParser)
-
-#     def post(self, request):
-#         if not request.FILES:
-#             return Response({"error": "No files uploaded."}, status=status.HTTP_400_BAD_REQUEST)
-
-#         for file_key, file_obj in request.FILES.items():
-#             if not file_obj.name.endswith(('.xls', '.xlsx')):
-#                 return Response(
-#                     {"error": f"Invalid file format for {file_obj.name}. Only .xls and .xlsx files are supported."},
-#                     status=status.HTTP_400_BAD_REQUEST
-#                 )
-
-#             try:
-#                 # Read Excel file
+#                 # Read the Excel file into a dataframe
 #                 df = pd.read_excel(file_obj, header=0)  # Read with headers
-#                 original_columns = df.columns.tolist()
-#                 print(f"Original Columns in {file_obj.name}: {original_columns}")
+#                 print(f"Original Columns in {file_obj.name}: {df.columns.tolist()}")
 
-#                 # Map columns to required fields
+#                 # Normalize column names and map to expected names
 #                 column_mapping = {
-#                     'Facility Date Category': ['facility', 'category', 'datepicker']
+#                     'Facility': 'facility',
+#                     'Date': 'datepicker',
+#                     'Category': 'category',
 #                 }
-
-#                 # Rename columns dynamically if the exact match is found
-#                 if 'Facility Date Category' in original_columns:
-#                     df.columns = column_mapping['Facility Date Category']
-#                 else:
-#                     df.columns = (
-#                         df.columns.str.strip().str.lower()
-#                         .str.replace(" ", "_")
-#                         .str.replace("-", "_")
-#                     )
-
+#                 df.rename(columns=lambda col: column_mapping.get(col.strip(), col.strip()), inplace=True)
 #                 print(f"Mapped Columns in {file_obj.name}: {df.columns.tolist()}")
 
 #                 # Check for missing required fields
@@ -5730,182 +5047,7 @@ logger = logging.getLogger(__name__)
 #                         status=status.HTTP_400_BAD_REQUEST
 #                     )
 
-#                 # Process data (rest of the code is unchanged)
-#                 df['datepicker'] = pd.to_datetime(df['datepicker'], errors='coerce')
-#                 if df['datepicker'].isnull().any():
-#                     return Response(
-#                         {"error": f"Invalid date format in DatePicker column of {file_obj.name}."},
-#                         status=status.HTTP_400_BAD_REQUEST
-#                     )
-#                 df['facility'] = df['facility'].str.strip()
-#                 df['category'] = df['category'].str.strip().str.lower()
-
-#                 initial_count = len(df)
-#                 df = df.drop_duplicates(subset=['facility', 'category', 'datepicker'])
-#                 removed_count = initial_count - len(df)
-#                 if removed_count > 0:
-#                     print(f"Removed {removed_count} duplicate rows from {file_obj.name}.")
-
-#                 # Process each row
-#                 for _, row in df.iterrows():
-#                     row = row.to_dict()
-#                     facility_name = row['facility']
-#                     category = row['category']
-#                     datepicker = row['datepicker']
-
-#                     # Validate facility existence
-#                     facilities = Facility.objects.filter(facility_name=facility_name)
-#                     if not facilities.exists():
-#                         return Response(
-#                             {"error": f"Facility '{facility_name}' does not exist in {file_obj.name}."},
-#                             status=status.HTTP_400_BAD_REQUEST
-#                         )
-#                     elif facilities.count() > 1:
-#                         return Response(
-#                             {"error": f"Multiple facilities found for '{facility_name}'. Resolve duplicates."},
-#                             status=status.HTTP_400_BAD_REQUEST
-#                         )
-#                     facility = facilities.first()
-
-#                     # Process data by category
-#                     try:
-#                         self.handle_category(category, request.user, facility, datepicker, row)
-#                     except Exception as e:
-#                         logger.error(traceback.format_exc())
-#                         return Response(
-#                             {"error": f"Error processing category {category} in {file_obj.name}: {str(e)}"},
-#                             status=status.HTTP_400_BAD_REQUEST
-#                         )
-
-#             except Exception as e:
-#                 logger.error(traceback.format_exc())
-#                 return Response(
-#                     {"error": f"Error processing file {file_obj.name}: {str(e)}"},
-#                     status=status.HTTP_400_BAD_REQUEST
-#                 )
-
-#         return Response({"message": "File processed successfully!"}, status=status.HTTP_201_CREATED)
-#     def handle_category(self, category, user, facility, datepicker, row):
-#         if category == 'waste':
-#             Waste.objects.update_or_create(
-#                 user=user,
-#                 facility=facility,
-#                 DatePicker=datepicker,
-#                 defaults={
-#                     'food_waste': row.get('food_waste', 0),
-#                     'solid_waste': row.get('solid_waste', 0),
-#                     'e_waste': row.get('e_waste', 0),
-#                     'biomedical_waste': row.get('biomedical_waste', 0),
-#                     'liquid_discharge': row.get('liquid_discharge', 0),
-#                     'other_waste': row.get('other_waste', 0),
-#                     'recycle_waste': row.get('recycle_waste', 0),
-#                     'landfill_waste': row.get('landfill_waste', 0),
-#                 }
-#             )
-#         elif category == 'energy':
-#             Energy.objects.update_or_create(
-#                 user=user,
-#                 facility=facility,
-#                 DatePicker=datepicker,
-#                 defaults={
-#                     'hvac': row.get('hvac', 0),
-#                     'production': row.get('production', 0),
-#                     'stp': row.get('stp', 0),
-#                     'admin_block': row.get('admin_block', 0),
-#                     'utilities': row.get('utilities', 0),
-#                     'others': row.get('others', 0),
-#                     'coking_coal': row.get('coking_coal', 0),
-#                     'coke_oven_coal': row.get('coke_oven_coal', 0),
-#                     'natural_gas': row.get('natural_gas', 0),
-#                     'diesel': row.get('diesel', 0),
-#                     'biomass_wood': row.get('biomass_wood', 0),
-#                     'biomass_other_solid': row.get('biomass_other_solid', 0),
-#                     'renewable_solar': row.get('renewable_solar', 0),
-#                     'renewable_other': row.get('renewable_other', 0),
-#                 }
-#             )
-#         elif category == 'water':
-#             Water.objects.update_or_create(
-#                 user=user,
-#                 facility=facility,
-#                 DatePicker=datepicker,
-#                 defaults={
-#                     'Generated_Water': row.get('Generated_Water', 0),
-#                     'Recycled_Water': row.get('Recycled_Water', 0),
-#                     'Softener_usage': row.get('Softener_usage', 0),
-#                     'Boiler_usage': row.get('Boiler_usage', 0),
-#                     'otherUsage': row.get('otherUsage', 0),
-#                 }
-#             )
-#         elif category == 'biodiversity':
-#             Biodiversity.objects.update_or_create(
-#                 user=user,
-#                 facility=facility,
-#                 DatePicker=datepicker,
-#                 defaults={
-#                     'no_trees': row.get('no_trees', 0),
-#                     'species': row.get('species', ''),
-#                     'age': row.get('age', 0),
-#                     'height': row.get('height', 0),
-#                     'width': row.get('width', 0),
-#                     'totalArea': row.get('totalArea', 0),
-#                     'new_trees_planted': row.get('new_trees_planted', 0),
-#                     'head_count': row.get('head_count', 0),
-#                 }
-#             )
-#         elif category == 'logistices':
-#             Logistices.objects.update_or_create(
-#                 user=user,
-#                 facility=facility,
-#                 DatePicker=datepicker,
-#                 defaults={
-#                     'logistices_types': row.get('logistices_types', 'staff_logistices'),
-#                     'Typeof_fuel': row.get('Typeof_fuel', 'diesel'),
-#                     'km_travelled': row.get('km_travelled', 0),
-#                     'No_Trips': row.get('No_Trips', 0),
-#                     'fuel_consumption': row.get('fuel_consumption', 0),
-#                     'No_Vehicles': row.get('No_Vehicles', 0),
-#                     'Spends_on_fuel': row.get('Spends_on_fuel', 0),
-#                 }
-#             )
-#         else:
-#             raise ValueError(f"Unsupported category: {category}")
-        
-# class ExcelUploadView(APIView):
-#     permission_classes = [IsAuthenticated]
-#     parser_classes = (MultiPartParser, FormParser)
-
-#     def post(self, request):
-#         if not request.FILES:
-#             return Response({"error": "No files uploaded."}, status=status.HTTP_400_BAD_REQUEST)
-
-#         for file_key, file_obj in request.FILES.items():
-#             if not file_obj.name.endswith(('.xls', '.xlsx')):
-#                 return Response(
-#                     {"error": f"Invalid file format for {file_obj.name}. Only .xls and .xlsx files are supported."},
-#                     status=status.HTTP_400_BAD_REQUEST
-#                 )
-
-#             try:
-#                 # Read Excel file
-#                 df = pd.read_excel(file_obj, header=0)  # Read with headers
-#                 original_columns = df.columns.tolist()
-#                 print(f"Original Columns in {file_obj.name}: {original_columns}")
-
-#                 # Normalize column names
-#                 df.columns = df.columns.str.strip().str.lower().str.replace(" ", "_").str.replace("-", "_")
-#                 print(f"Normalized Columns in {file_obj.name}: {df.columns.tolist()}")
-
-#                 # Check for missing required fields
-#                 required_fields = ['facility', 'category', 'datepicker']
-#                 missing_fields = [field for field in required_fields if field not in df.columns]
-#                 if missing_fields:
-#                     return Response(
-#                         {"error": f"Missing required fields: {', '.join(missing_fields)} in {file_obj.name}."},
-#                         status=status.HTTP_400_BAD_REQUEST
-#                     )
-
-#                 # Parse and validate date
+#                 # Parse and validate the date column
 #                 df['datepicker'] = pd.to_datetime(df['datepicker'], errors='coerce')
 #                 if df['datepicker'].isnull().any():
 #                     invalid_dates = df.loc[df['datepicker'].isnull()]
@@ -5914,7 +5056,7 @@ logger = logging.getLogger(__name__)
 #                         status=status.HTTP_400_BAD_REQUEST
 #                     )
 
-#                 # Strip any extra spaces
+#                 # Strip any extra spaces in text fields
 #                 df['facility'] = df['facility'].str.strip()
 #                 df['category'] = df['category'].str.strip().str.lower()
 
@@ -5965,28 +5107,471 @@ logger = logging.getLogger(__name__)
 
 #         return Response({"message": "File processed successfully!"}, status=status.HTTP_201_CREATED)
 
-#     def handle_category(self, category, user, facility, datepicker, row):
-#         if category == 'waste':
+    # def handle_category(self, category, user, facility, datepicker, row):
+    #     if category == 'waste':
+    #         Waste.objects.update_or_create(
+    #             user=user,
+    #             facility=facility,
+    #             DatePicker=datepicker,
+    #             defaults={
+    #                 'food_waste': row.get('food_waste', 0),
+    #                 'solid_waste': row.get('solid_waste', 0),
+    #                 'e_waste': row.get('e_waste', 0),
+    #                 'biomedical_waste': row.get('biomedical_waste', 0),
+    #                 'liquid_discharge': row.get('liquid_discharge', 0),
+    #                 'other_waste': row.get('other_waste', 0),
+    #                 'recycle_waste': row.get('recycle_waste', 0),
+    #                 'landfill_waste': row.get('landfill_waste', 0),
+    #             }
+    #         )
+    #     elif category == 'energy':
+    #         Energy.objects.update_or_create(
+    #             user=user,
+    #             facility=facility,
+    #             DatePicker=datepicker,
+    #             defaults={
+    #                 'hvac': row.get('hvac', 0),
+    #                 'production': row.get('production', 0),
+    #                 'stp': row.get('stp', 0),
+    #                 'admin_block': row.get('admin_block', 0),
+    #                 'utilities': row.get('utilities', 0),
+    #                 'others': row.get('others', 0),
+    #                 'coking_coal': row.get('coking_coal', 0),
+    #                 'coke_oven_coal': row.get('coke_oven_coal', 0),
+    #                 'natural_gas': row.get('natural_gas', 0),
+    #                 'diesel': row.get('diesel', 0),
+    #                 'biomass_wood': row.get('biomass_wood', 0),
+    #                 'biomass_other_solid': row.get('biomass_other_solid', 0),
+    #                 'renewable_solar': row.get('renewable_solar', 0),
+    #                 'renewable_other': row.get('renewable_other', 0),
+    #             }
+    #         )
+    #     elif category == 'water':
+    #         Water.objects.update_or_create(
+    #             user=user,
+    #             facility=facility,
+    #             DatePicker=datepicker,
+    #             defaults={
+    #                 'generated_water': row.get('generated_water', 0),
+    #                 'recycled_water': row.get('recycled_water', 0),
+    #                 'softener_usage': row.get('softener_usage', 0),
+    #                 'boiler_usage': row.get('boiler_usage', 0),
+    #                 'other_usage': row.get('other_usage', 0),
+    #             }
+    #         )
+    #     elif category == 'biodiversity':
+    #         Biodiversity.objects.update_or_create(
+    #             user=user,
+    #             facility=facility,
+    #             DatePicker=datepicker,
+    #             defaults={
+    #                 'no_trees': row.get('no_trees', 0),
+    #                 'species': row.get('species', ''),
+    #                 'age': row.get('age', 0),
+    #                 'height': row.get('height', 0.0),
+    #                 'width': row.get('width', 0.0),
+    #                 'total_area': row.get('total_area', 0.0),
+    #                 'new_trees_planted': row.get('new_trees_planted', 0.0),
+    #                 'head_count': row.get('head_count', 0.0),
+    #             }
+    #         )
+    #     elif category == 'logistics':
+    #         logistics_types = row.get('logistics_types', 'Staff')
+    #         typeof_fuel = row.get('typeof_fuel', 'Diesel')
+
+    #         # Validate choices
+    #         if logistics_types not in ['Staff', 'Cargo']:
+    #             raise ValueError(f"Invalid logistics type: {logistics_types}")
+    #         if typeof_fuel not in ['Diesel', 'Petrol']:
+    #             raise ValueError(f"Invalid fuel type: {typeof_fuel}")
+
+    #         Logistics.objects.update_or_create(
+    #             user=user,
+    #             facility=facility,
+    #             DatePicker=datepicker,
+    #             defaults={
+    #                 'logistics_types': logistics_types,
+    #                 'typeof_fuel': typeof_fuel,
+    #                 'km_travelled': row.get('km_travelled', 0),
+    #                 'no_trips': row.get('no_trips', 0),
+    #                 'fuel_consumption': row.get('fuel_consumption', 0),
+    #                 'no_vehicles': row.get('no_vehicles', 0),
+    #                 'spends_on_fuel': row.get('spends_on_fuel', 0),
+    #             }
+    #         )
+
+
+
+
+
+
+# logger = logging.getLogger(__name__)
+
+
+# Inside the ExcelUploadView class
+
+# class ExcelUploadView(APIView):
+#     permission_classes = [IsAuthenticated]
+#     parser_classes = (MultiPartParser, FormParser)
+
+#     def post(self, request):
+#         if not request.FILES:
+#             return Response({"error": "No files uploaded."}, status=status.HTTP_400_BAD_REQUEST)
+
+#         for file_key, file_obj in request.FILES.items():
+#             if not file_obj.name.endswith(('.xls', '.xlsx')):
+#                 return Response(
+#                     {"error": f"Invalid file format for {file_obj.name}. Only .xls and .xlsx files are supported."},
+#                     status=status.HTTP_400_BAD_REQUEST
+#                 )
+
+#             try:
+#                 # Read the Excel file into a dictionary of DataFrames, ensuring header row is treated correctly
+#                 excel_data = pd.read_excel(file_obj, sheet_name=None, header=0)  # header=0 ensures the first row is used as column names
+
+#                 # List of required sheets
+#                 required_sheets = ['Water', 'Waste', 'Energy', 'Logistics', 'Biodiversity']
+#                 missing_sheets = [sheet for sheet in required_sheets if sheet not in excel_data]
+#                 if missing_sheets:
+#                     return Response(
+#                         {"error": f"Missing sheets: {', '.join(missing_sheets)} in {file_obj.name}."},
+#                         status=status.HTTP_400_BAD_REQUEST
+#                     )
+
+#                 # Loop through each sheet and process
+#                 for sheet_name, df in excel_data.items():
+#                     print(f"Processing sheet: {sheet_name}")
+                    
+#                     # Check raw column names for debugging
+#                     print(f"Raw Columns in {sheet_name}: {df.columns.tolist()}")
+
+#                     # If the sheet name is 'Waste', we'll set the header manually, if necessary
+#                     if sheet_name == "Waste":
+#                         df.columns = ['facility', 'date', 'category', 'solid_waste', 'food_waste', 'e_waste', 'liquid_discharge', 'biomedical_waste', 'other_waste', 'sent_for_recycling', 'sent_to_landfill', 'notes']
+                    
+#                     # Normalize column names: strip spaces, lowercase, and replace spaces/hyphens with underscores
+#                     df.columns = df.columns.str.strip().str.lower().str.replace(" ", "_").str.replace("-", "_")
+#                     print(f"Mapped Columns in {sheet_name}: {df.columns.tolist()}")
+
+#                     # Column mapping to match expected model fields
+#                     column_mapping = {
+#                         'facility': 'facility',
+#                         'date': 'datepicker',  # Mapping 'date' to 'datepicker'
+#                         'category': 'category',
+#                     }
+
+#                     # Ensure that required fields are present in the DataFrame
+#                     missing_fields = [field for field in column_mapping.values() if field not in df.columns]
+#                     if missing_fields:
+#                         return Response(
+#                             {"error": f"Missing required fields: {', '.join(missing_fields)} in {sheet_name}."},
+#                             status=status.HTTP_400_BAD_REQUEST
+#                         )
+
+#                     # Rename columns to match expected model field names
+#                     df.rename(columns=column_mapping, inplace=True)
+
+#                     # Ensure valid date format
+#                     df['datepicker'] = pd.to_datetime(df['datepicker'], errors='coerce')
+#                     invalid_date_rows = df[df['datepicker'].isnull()]
+#                     if not invalid_date_rows.empty:
+#                         print(f"Invalid date rows in {sheet_name}:\n{invalid_date_rows}")
+#                         df = df.dropna(subset=['datepicker'])
+
+#                     if df.empty:
+#                         return Response(
+#                             {"error": f"All rows have invalid dates in {sheet_name}."},
+#                             status=status.HTTP_400_BAD_REQUEST
+#                         )
+
+#                     # Remove duplicates based on key fields (facility, category, date)
+#                     df = df.drop_duplicates(subset=['facility', 'category', 'datepicker'])
+
+#                     # Process rows in the sheet
+#                     for _, row in df.iterrows():
+#                         row = row.to_dict()
+#                         facility_name = row['facility']
+#                         category = row['category']
+#                         datepicker = row['datepicker']
+
+#                         # Validate facility exists
+#                         facilities = Facility.objects.filter(facility_name=facility_name)
+#                         if not facilities.exists():
+#                             return Response(
+#                                 {"error": f"Facility '{facility_name}' does not exist in {file_obj.name}."},
+#                                 status=status.HTTP_400_BAD_REQUEST
+#                             )
+#                         elif facilities.count() > 1:
+#                             return Response(
+#                                 {"error": f"Multiple facilities found for '{facility_name}'. Resolve duplicates."},
+#                                 status=status.HTTP_400_BAD_REQUEST
+#                             )
+#                         facility = facilities.first()
+
+#                         # Handle category-specific data processing
+#                         try:
+#                             self.handle_category(category, request.user, facility, datepicker, row, sheet_name)
+#                         except Exception as e:
+#                             logger.error(str(e))
+#                             return Response(
+#                                 {"error": f"Error processing category {category} in {sheet_name}: {str(e)}"},
+#                                 status=status.HTTP_400_BAD_REQUEST
+#                             )
+
+#             except Exception as e:
+#                 logger.error(str(e))
+#                 return Response(
+#                     {"error": f"Error processing file {file_obj.name}: {str(e)}"},
+#                     status=status.HTTP_400_BAD_REQUEST
+#                 )
+
+#         return Response({"message": "File processed successfully!"}, status=status.HTTP_201_CREATED)
+
+#     def handle_category(self, category, user, facility, datepicker, row, sheet_name):
+#         """Process data based on category and sheet."""
+#         if category == 'waste' and sheet_name == 'Waste':
 #             Waste.objects.update_or_create(
 #                 user=user,
 #                 facility=facility,
 #                 DatePicker=datepicker,
-#                 defaults={
+#                 defaults={ 
+#                     'solid_waste': row.get('solid_waste', 0),
 #                     'food_waste': row.get('food_waste', 0),
-#                     'solid_Waste': row.get('solid_Waste', 0),
-#                     'E_Waste': row.get('E_Waste', 0),
-#                     'Biomedical_waste': row.get('Biomedical_waste', 0),
+#                     'e_waste': row.get('e_waste', 0),
 #                     'liquid_discharge': row.get('liquid_discharge', 0),
+#                     'biomedical_waste': row.get('biomedical_waste', 0),
 #                     'other_waste': row.get('other_waste', 0),
-#                     'Recycle_waste': row.get('Recycle_waste', 0),
-#                     'Landfill_waste': row.get('Landfill_waste', 0),
+#                     'recycle_waste': row.get('sent_for_recycling', 0),
+#                     'landfill_waste': row.get('sent_to_landfill', 0),
 #                 }
 #             )
-#         elif category == 'energy':
+        # elif category == 'energy' and sheet_name == 'Energy':
+        #     Energy.objects.update_or_create(
+        #         user=user,
+        #         facility=facility,
+        #         DatePicker=datepicker,
+        #         defaults={
+        #             'hvac': row.get('hvac', 0),
+        #             'production': row.get('production', 0),
+        #             'stp': row.get('stp', 0),
+        #             'admin_block': row.get('admin_block', 0),
+        #             'utilities': row.get('utilities', 0),
+        #             'others': row.get('others', 0),
+        #             'renewable_solar': row.get('renewable_solar', 0),
+        #             'renewable_other': row.get('renewable_other', 0),
+        #         }
+        #     )
+        # elif category == 'water' and sheet_name == 'Water':
+        #     Water.objects.update_or_create(
+        #         user=user,
+        #         facility=facility,
+        #         DatePicker=datepicker,
+        #         defaults={
+        #             'generated_water': row.get('generated_water', 0),
+        #             'recycled_water': row.get('recycled_water', 0),
+        #             'softener_usage': row.get('softener_usage', 0),
+        #             'boiler_usage': row.get('boiler_usage', 0),
+        #             'other_usage': row.get('other_usage', 0),
+        #         }
+        #     )
+        # elif category == 'biodiversity' and sheet_name == 'Biodiversity':
+        #     Biodiversity.objects.update_or_create(
+        #         user=user,
+        #         facility=facility,
+        #         DatePicker=datepicker,
+        #         defaults={
+        #             'no_trees': row.get('no_trees', 0),
+        #             'species': row.get('species', ''),
+        #             'age': row.get('age', 0),
+        #             'height': row.get('height', 0.0),
+        #             'width': row.get('width', 0.0),
+        #             'total_area': row.get('total_area', 0.0),
+        #             'new_trees_planted': row.get('new_trees_planted', 0.0),
+        #             'head_count': row.get('head_count', 0.0),
+        #         }
+        #     )
+        # elif category == 'logistics' and sheet_name == 'Logistics':
+        #     logistics_types = row.get('logistics_types', 'Staff')
+        #     typeof_fuel = row.get('typeof_fuel', 'Diesel')
+
+        #     if logistics_types not in ['Staff', 'Cargo']:
+        #         raise ValueError(f"Invalid logistics type: {logistics_types}")
+
+        #     Logistics.objects.update_or_create(
+        #         user=user,
+        #         facility=facility,
+        #         DatePicker=datepicker,
+        #         defaults={
+        #             'logistics_types': logistics_types,
+        #             'distance': row.get('distance', 0),
+        #             'fuel_consumed': row.get('fuel_consumed', 0),
+        #             'typeof_fuel': typeof_fuel,
+        #         }
+        #     )
+
+
+
+
+# Inside the ExcelUploadView class
+
+
+
+
+
+# class ExcelUploadView(APIView):
+#     permission_classes = [IsAuthenticated]
+#     parser_classes = (MultiPartParser, FormParser)
+
+#     def post(self, request):
+#         if not request.FILES:
+#             return Response({"error": "No files uploaded."}, status=status.HTTP_400_BAD_REQUEST)
+
+#         for file_key, file_obj in request.FILES.items():
+#             if not file_obj.name.endswith(('.xls', '.xlsx')):
+#                 return Response(
+#                     {"error": f"Invalid file format for {file_obj.name}. Only .xls and .xlsx files are supported."},
+#                     status=status.HTTP_400_BAD_REQUEST
+#                 )
+
+#             try:
+#                 # Read the Excel file into a dictionary of DataFrames
+#                 excel_data = pd.read_excel(file_obj, sheet_name=None, header=0)
+
+#                 # List of required sheets
+#                 required_sheets = ['Water', 'Waste', 'Energy', 'Logistics', 'Biodiversity']
+#                 missing_sheets = [sheet for sheet in required_sheets if sheet not in excel_data]
+#                 if missing_sheets:
+#                     return Response(
+#                         {"error": f"Missing sheets: {', '.join(missing_sheets)} in {file_obj.name}."},
+#                         status=status.HTTP_400_BAD_REQUEST
+#                     )
+
+#                 # Loop through each sheet and process
+#                 for sheet_name, df in excel_data.items():
+#                     print(f"Processing sheet: {sheet_name}")
+
+#                     # Check raw column names for debugging
+#                     print(f"Raw Columns in {sheet_name}: {df.columns.tolist()}")
+
+#                     # Handle the 'Waste' sheet specifically
+#                     if sheet_name == "Waste":
+#                         expected_columns = [
+#                             'facility', 'date', 'category', 'solid_waste', 'food_waste',
+#                             'e_waste', 'liquid_discharge', 'biomedical_waste', 'other_waste',
+#                             'sent_for_recycling', 'sent_to_landfill','overall_usage'
+#                         ]
+
+#                         # Handle length mismatch or empty columns
+#                         if len(df.columns) != len(expected_columns):
+#                             return Response(
+#                                 {"error": f"Length mismatch in {sheet_name}: Expected {len(expected_columns)} columns, "
+#                                           f"but found {len(df.columns)}. Columns: {df.columns.tolist()}"},
+#                                 status=status.HTTP_400_BAD_REQUEST
+#                             )
+
+#                         # Assign column names
+#                         df.columns = expected_columns
+
+#                     # Normalize column names: strip spaces, lowercase, replace spaces/hyphens with underscores
+#                     df.columns = df.columns.str.strip().str.lower().str.replace(" ", "_").str.replace("-", "_")
+#                     print(f"Normalized Columns in {sheet_name}: {df.columns.tolist()}")
+
+#                     # Ensure required columns exist
+#                     required_columns = ['facility', 'date', 'category']
+#                     missing_columns = [col for col in required_columns if col not in df.columns]
+#                     if missing_columns:
+#                         return Response(
+#                             {"error": f"Missing required columns in {sheet_name}: {', '.join(missing_columns)}"},
+#                             status=status.HTTP_400_BAD_REQUEST
+#                         )
+
+#                     # Convert 'date' column to datetime format
+#                     df['date'] = pd.to_datetime(df['date'], errors='coerce')
+
+#                     # Log invalid date rows
+#                     invalid_date_rows = df[df['date'].isnull()]
+#                     if not invalid_date_rows.empty:
+#                         print(f"Invalid date rows in {sheet_name}:\n{invalid_date_rows}")
+#                         df = df.dropna(subset=['date'])
+
+#                     if df.empty:
+#                         return Response(
+#                             {"error": f"All rows have invalid dates in {sheet_name}."},
+#                             status=status.HTTP_400_BAD_REQUEST
+#                         )
+
+#                     # Remove duplicates based on key fields (facility, category, date)
+#                     df = df.drop_duplicates(subset=['facility', 'category', 'date'])
+
+#                     # Process each row in the DataFrame
+#                     for _, row in df.iterrows():
+#                         row = row.to_dict()
+#                         facility_name = row['facility']
+#                         category = row['category']
+#                         date = row['date']
+
+#                         # Validate the facility exists
+#                         facilities = Facility.objects.filter(facility_name=facility_name)
+#                         if not facilities.exists():
+#                             return Response(
+#                                 {"error": f"Facility '{facility_name}' does not exist in {file_obj.name}."},
+#                                 status=status.HTTP_400_BAD_REQUEST
+#                             )
+#                         elif facilities.count() > 1:
+#                             return Response(
+#                                 {"error": f"Multiple facilities found for '{facility_name}'. Resolve duplicates."},
+#                                 status=status.HTTP_400_BAD_REQUEST
+#                             )
+#                         facility = facilities.first()
+
+#                         # Handle category-specific data processing
+#                         try:
+#                             self.handle_category(category, request.user, facility, date, row, sheet_name)
+#                         except Exception as e:
+#                             logger.error(str(e))
+#                             return Response(
+#                                 {"error": f"Error processing category {category} in {sheet_name}: {str(e)}"},
+#                                 status=status.HTTP_400_BAD_REQUEST
+#                             )
+
+#             except Exception as e:
+#                 logger.error(str(e))
+#                 return Response(
+#                     {"error": f"Error processing file {file_obj.name}: {str(e)}"},
+#                     status=status.HTTP_400_BAD_REQUEST
+#                 )
+
+#         return Response({"message": "File processed successfully!"}, status=status.HTTP_201_CREATED)
+
+#     def handle_category(self, category, user, facility, date, row, sheet_name):
+#         """Process data based on category and sheet."""
+#         if category == 'waste' and sheet_name == 'Waste':
+#             Waste.objects.update_or_create(
+#                 user=user,
+#                 facility=facility,
+#                 date=date,
+#                 defaults={
+#                     'solid_waste': row.get('solid_waste', 0),
+#                     'food_waste': row.get('food_waste', 0),
+#                     'e_waste': row.get('e_waste', 0),
+#                     'liquid_discharge': row.get('liquid_discharge', 0),
+#                     'biomedical_waste': row.get('biomedical_waste', 0),
+#                     'other_waste': row.get('other_waste', 0),
+#                     'recycle_waste': row.get('sent_for_recycling', 0),
+#                     'landfill_waste': row.get('sent_to_landfill', 0),
+#                     'overall_usage': row.get('overall_usage', 0),
+#                 }
+#             )
+#         elif category == 'energy' and sheet_name == 'Energy':
+#             expected_columns = [
+#                 'facility', 'date', 'category', 'hvac', 'production',
+#                 'stp', 'admin_block', 'utilities', 'others', 'renewable_solar',
+#                 'renewable_other', 'overall_usage'
+#             ]
 #             Energy.objects.update_or_create(
 #                 user=user,
 #                 facility=facility,
-#                 DatePicker=datepicker,
+#                 date=date,
 #                 defaults={
 #                     'hvac': row.get('hvac', 0),
 #                     'production': row.get('production', 0),
@@ -5994,244 +5579,619 @@ logger = logging.getLogger(__name__)
 #                     'admin_block': row.get('admin_block', 0),
 #                     'utilities': row.get('utilities', 0),
 #                     'others': row.get('others', 0),
-#                     'coking_coal': row.get('coking_coal', 0),
-#                     'coke_oven_coal': row.get('coke_oven_coal', 0),
-#                     'natural_gas': row.get('natural_gas', 0),
-#                     'diesel': row.get('diesel', 0),
-#                     'biomass_wood': row.get('biomass_wood', 0),
-#                     'biomass_other_solid': row.get('biomass_other_solid', 0),
 #                     'renewable_solar': row.get('renewable_solar', 0),
 #                     'renewable_other': row.get('renewable_other', 0),
+#                     'overall_usage': row.get('overall_usage', 0),
 #                 }
 #             )
-#         elif category == 'water':
+#         elif category == 'water' and sheet_name == 'Water':
+#             expected_columns = [
+#                 'facility', 'date', 'category', 'generated_water', 'recycled_water',
+#                 'softener_usage', 'boiler_usage', 'other_usage', 'overall_usage'
+#             ]
 #             Water.objects.update_or_create(
 #                 user=user,
 #                 facility=facility,
-#                 DatePicker=datepicker,
+#                 date=date,
 #                 defaults={
-#                     'Generated_Water': row.get('Generated_Water', 0),
-#                     'Recycled_Water': row.get('Recycled_Water', 0),
-#                     'Softener_usage': row.get('Softener_usage', 0),
-#                     'Boiler_usage': row.get('Boiler_usage', 0),
-#                     'otherUsage': row.get('otherUsage', 0),
+#                     'generated_water': row.get('generated_water', 0),
+#                     'recycled_water': row.get('recycled_water', 0),
+#                     'softener_usage': row.get('softener_usage', 0),
+#                     'boiler_usage': row.get('boiler_usage', 0),
+#                     'other_usage': row.get('other_usage', 0),
+#                     'overall_usage': row.get('overall_usage', 0),
+                    
 #                 }
 #             )
-#         elif category == 'biodiversity':
+#         elif category == 'biodiversity' and sheet_name == 'Biodiversity':
 #             Biodiversity.objects.update_or_create(
 #                 user=user,
 #                 facility=facility,
-#                 DatePicker=datepicker,
+#                 date=date,
 #                 defaults={
 #                     'no_trees': row.get('no_trees', 0),
 #                     'species': row.get('species', ''),
 #                     'age': row.get('age', 0),
-#                     'height': row.get('height', 0),
-#                     'width': row.get('width', 0),
-#                     'totalArea': row.get('totalArea', 0),
-#                     'new_trees_planted': row.get('new_trees_planted', 0),
-#                     'head_count': row.get('head_count', 0),
+#                     'height': row.get('height', 0.0),
+#                     'width': row.get('width', 0.0),
+#                     'total_area': row.get('total_area', 0.0),
+#                     'new_trees_planted': row.get('new_trees_planted', 0.0),
+#                     'head_count': row.get('head_count', 0.0),
 #                 }
 #             )
-#         elif category == 'logistics':
-#             Logistices.objects.update_or_create(
+#         elif category == 'logistics' and sheet_name == 'Logistics':
+#             logistics_types = row.get('logistics_types', 'Staff')
+#             typeof_fuel = row.get('typeof_fuel', 'Diesel')
+
+#             if logistics_types not in ['Staff', 'Cargo']:
+#                 raise ValueError(f"Invalid logistics type: {logistics_types}")
+
+#             Logistics.objects.update_or_create(
 #                 user=user,
 #                 facility=facility,
-#                 DatePicker=datepicker,
+#                 date=date,
 #                 defaults={
-#                     'logistics_types': row.get('logistics_types', 'staff_logistics'),
-#                     'Typeof_fuel': row.get('Typeof_fuel', 'diesel'),
-#                     'km_travelled': row.get('km_travelled', 0),
-#                     'no_trips': row.get('no_trips', 0),
-#                     'fuel_consumption': row.get('fuel_consumption', 0),
-#                     'no_vehicles': row.get('no_vehicles', 0),
-#                     'spends_on_fuel': row.get('spends_on_fuel', 0),
+#                     'logistics_types': logistics_types,
+#                     'distance': row.get('distance', 0),
+#                     'fuel_consumed': row.get('fuel_consumed', 0),
+#                     'typeof_fuel': typeof_fuel,
 #                 }
 #             )
-#         else:
-#             raise ValueError(f"Unsupported category: {category}")
+#         # Add additional handlers for 'Biodiversity' and 'Logistics' categories
 
 
 
-class ExcelUploadView(APIView):
+
+
+
+# class ExcelUploadView(APIView):
+#     permission_classes = [IsAuthenticated]
+#     parser_classes = (MultiPartParser, FormParser)
+
+#     def post(self, request):
+#         if not request.FILES:
+#             return Response({"error": "No files uploaded."}, status=status.HTTP_400_BAD_REQUEST)
+
+#         for file_key, file_obj in request.FILES.items():
+#             if not file_obj.name.endswith(('.xls', '.xlsx')):
+#                 return Response(
+#                     {"error": f"Invalid file format for {file_obj.name}. Only .xls and .xlsx files are supported."},
+#                     status=status.HTTP_400_BAD_REQUEST
+#                 )
+
+#             try:
+#                 # Read the Excel file into a dictionary of DataFrames
+#                 excel_data = pd.read_excel(file_obj, sheet_name=None, header=0)
+
+#                 # List of required sheets
+#                 required_sheets = ['Water', 'Waste', 'Energy', 'Logistics', 'Biodiversity']
+#                 missing_sheets = [sheet for sheet in required_sheets if sheet not in excel_data]
+#                 if missing_sheets:
+#                     return Response(
+#                         {"error": f"Missing sheets: {', '.join(missing_sheets)} in {file_obj.name}."},
+#                         status=status.HTTP_400_BAD_REQUEST
+#                     )
+
+#                 # Loop through each sheet and process
+#                 for sheet_name, df in excel_data.items():
+#                     print(f"Processing sheet: {sheet_name}")
+
+#                     # Debug: Raw column names
+#                     print(f"Raw Columns in {sheet_name}: {df.columns.tolist()}")
+
+#                     # Normalize column names
+#                     df.columns = df.columns.str.strip().str.lower().str.replace(" ", "_").str.replace("-", "_")
+#                     print(f"Normalized Columns in {sheet_name}: {df.columns.tolist()}")
+
+#                     # Required columns based on the sheet
+#                     required_columns = ['facility', 'date', 'category']
+#                     if sheet_name == 'Waste':
+#                         required_columns += [
+#                             'solid_waste', 'food_waste', 'e_waste', 'liquid_discharge',
+#                             'biomedical_waste', 'other_waste', 'sent_for_recycling',
+#                             'sent_to_landfill', 'overall_usage'
+#                         ]
+#                     elif sheet_name == 'Energy':
+#                         required_columns += [
+#                             'hvac', 'production', 'stp', 'admin_block',
+#                             'utilities', 'others', 'renewable_solar', 'renewable_other', 'overall_usage'
+#                         ]
+#                     elif sheet_name == 'Water':
+#                         required_columns += [
+#                             'generated_water', 'recycled_water', 'softener_usage',
+#                             'boiler_usage', 'other_usage', 'overall_usage'
+#                         ]
+#                     elif sheet_name == 'Biodiversity':
+#                         required_columns += [
+#                             'no_trees', 'species', 'age', 'height', 'width', 
+#                             'total_area', 'new_trees_planted', 'head_count'
+#                         ]
+#                     elif sheet_name == 'Logistics':
+#                         required_columns += ['logistics_types', 'distance', 'fuel_consumed', 'typeof_fuel']
+
+#                     # Check for missing columns
+#                     missing_columns = [col for col in required_columns if col not in df.columns]
+#                     if missing_columns:
+#                         return Response(
+#                             {
+#                                 "error": f"Missing required columns in {sheet_name}: {', '.join(missing_columns)}. "
+#                                          f"Found columns: {', '.join(df.columns)}"
+#                             },
+#                             status=status.HTTP_400_BAD_REQUEST
+#                         )
+
+#                     # Convert 'date' column to datetime format
+#                     df['date'] = pd.to_datetime(df['date'], errors='coerce')
+
+#                     # Log invalid date rows
+#                     invalid_date_rows = df[df['date'].isnull()]
+#                     if not invalid_date_rows.empty:
+#                         print(f"Invalid date rows in {sheet_name}:\n{invalid_date_rows}")
+#                         df = df.dropna(subset=['date'])
+
+#                     if df.empty:
+#                         return Response(
+#                             {"error": f"All rows have invalid dates in {sheet_name}."},
+#                             status=status.HTTP_400_BAD_REQUEST
+#                         )
+
+#                     # Remove duplicates based on key fields (facility, category, date)
+#                     df = df.drop_duplicates(subset=['facility', 'category', 'date'])
+
+#                     # Process each row in the DataFrame
+#                     for _, row in df.iterrows():
+#                         row = row.to_dict()
+#                         facility_name = row['facility']
+#                         category = row['category']
+#                         date = row['date']
+
+#                         # Validate the facility exists
+#                         facilities = Facility.objects.filter(facility_name=facility_name)
+#                         if not facilities.exists():
+#                             return Response(
+#                                 {"error": f"Facility '{facility_name}' does not exist in {file_obj.name}."},
+#                                 status=status.HTTP_400_BAD_REQUEST
+#                             )
+#                         elif facilities.count() > 1:
+#                             return Response(
+#                                 {"error": f"Multiple facilities found for '{facility_name}'. Resolve duplicates."},
+#                                 status=status.HTTP_400_BAD_REQUEST
+#                             )
+#                         facility = facilities.first()
+
+#                         # Handle category-specific data processing
+#                         try:
+#                             self.handle_category(category, request.user, facility, date, row, sheet_name)
+#                         except Exception as e:
+#                             logger.error(str(e))
+#                             return Response(
+#                                 {"error": f"Error processing category {category} in {sheet_name}: {str(e)}"},
+#                                 status=status.HTTP_400_BAD_REQUEST
+#                             )
+
+#             except Exception as e:
+#                 logger.error(str(e))
+#                 return Response(
+#                     {"error": f"Error processing file {file_obj.name}: {str(e)}"},
+#                     status=status.HTTP_400_BAD_REQUEST
+#                 )
+
+#         return Response({"message": "File processed successfully!"}, status=status.HTTP_201_CREATED)
+
+#     def handle_category(self, category, user, facility, date, row, sheet_name):
+#         if category == 'waste' and sheet_name == 'Waste':
+#             Waste.objects.update_or_create(
+#             user=user,
+#             facility=facility,
+#             date=date,
+#             defaults={key: row.get(key, 0) for key in Waste._meta.get_fields_names()},
+#         )
+#     elif category == 'energy' and sheet_name == 'Energy':
+#         Energy.objects.update_or_create(
+#             user=user,
+#             facility=facility,
+#             date=date,
+#             defaults={key: row.get(key, 0) for key in Energy._meta.get_fields_names()},
+#         )
+#     elif category == 'water' and sheet_name == 'Water':
+#         Water.objects.update_or_create(
+#             user=user,
+#             facility=facility,
+#             date=date,
+#             defaults={key: row.get(key, 0) for key in Water._meta.get_fields_names()},
+#         )
+#     elif category == 'biodiversity' and sheet_name == 'Biodiversity':
+#         Biodiversity.objects.update_or_create(
+#             user=user,
+#             facility=facility,
+#             date=date,
+#             defaults={key: row.get(key, 0) for key in Biodiversity._meta.get_fields_names()},
+#         )
+#     elif category == 'logistics' and sheet_name == 'Logistics':
+#         Logistics.objects.update_or_create(
+#             user=user,
+#             facility=facility,
+#             date=date,
+#             defaults={key: row.get(key, 0) for key in Logistics._meta.get_fields_names()},
+#         )
+#     else:
+#         raise ValueError(f"Unhandled category '{category}' in sheet '{sheet_name}'.")
+
+
+
+
+# import logging
+
+# logger = logging.getLogger(__name__)
+
+# def get_field_names(model):
+#     return [
+#         field.name for field in model._meta.get_fields()
+#         if isinstance(field, Field) and not field.auto_created
+#     ]
+
+# class ExcelUploadView(APIView):
+#     permission_classes = [IsAuthenticated]
+#     parser_classes = (MultiPartParser, FormParser)
+
+#     def post(self, request):
+#         if not request.FILES:
+#             return Response({"error": "No files uploaded."}, status=status.HTTP_400_BAD_REQUEST)
+
+#         for file_key, file_obj in request.FILES.items():
+#             if not file_obj.name.endswith(('.xls', '.xlsx')):
+#                 return Response(
+#                     {"error": f"Invalid file format for {file_obj.name}. Only .xls and .xlsx files are supported."},
+#                     status=status.HTTP_400_BAD_REQUEST
+#                 )
+
+#             try:
+#                 excel_data = pd.read_excel(file_obj, sheet_name=None, header=0)
+
+#                 required_sheets = ['Water', 'Waste', 'Energy', 'Logistics', 'Biodiversity']
+#                 missing_sheets = [sheet for sheet in required_sheets if sheet not in excel_data]
+#                 if missing_sheets:
+#                     return Response(
+#                         {"error": f"Missing sheets: {', '.join(missing_sheets)} in {file_obj.name}."},
+#                         status=status.HTTP_400_BAD_REQUEST
+#                     )
+
+#                 for sheet_name, df in excel_data.items():
+#                     logger.info(f"Processing sheet: {sheet_name}")
+#                     df.columns = df.columns.str.strip().str.lower().str.replace(" ", "_").str.replace("-", "_")
+
+#                     # Required columns for each sheet
+#                     required_columns = self.get_required_columns(sheet_name)
+#                     missing_columns = [col for col in required_columns if col not in df.columns]
+#                     if missing_columns:
+#                         return Response(
+#                             {"error": f"Missing required columns in {sheet_name}: {', '.join(missing_columns)}."},
+#                             status=status.HTTP_400_BAD_REQUEST
+#                         )
+
+#                     df['date'] = pd.to_datetime(df['date'], errors='coerce')
+#                     df = df[df['date'].notnull()]
+
+#                     if df.empty:
+#                         return Response(
+#                             {"error": f"All rows have invalid dates in {sheet_name}."},
+#                             status=status.HTTP_400_BAD_REQUEST
+#                         )
+
+#                     df = df.drop_duplicates(subset=['facility', 'category', 'date'])
+
+#                     for _, row in df.iterrows():
+#                         row = row.to_dict()
+#                         facility_name = row['facility']
+#                         category = row['category']
+#                         date = row['date']
+
+#                         facilities = Facility.objects.filter(facility_name=facility_name)
+#                         if not facilities.exists():
+#                             return Response(
+#                                 {"error": f"Facility '{facility_name}' does not exist in {file_obj.name}."},
+#                                 status=status.HTTP_400_BAD_REQUEST
+#                             )
+#                         if facilities.count() > 1:
+#                             return Response(
+#                                 {"error": f"Multiple facilities found for '{facility_name}'. Resolve duplicates."},
+#                                 status=status.HTTP_400_BAD_REQUEST
+#                             )
+#                         facility = facilities.first()
+
+#                         try:
+#                             self.handle_category(category, request.user, facility, date, row, sheet_name)
+#                         except Exception as e:
+#                             logger.error(f"Error processing category {category} in {sheet_name}: {str(e)}")
+#                             return Response(
+#                                 {"error": f"Error processing category {category} in {sheet_name}: {str(e)}"},
+#                                 status=status.HTTP_400_BAD_REQUEST
+#                             )
+
+#             except Exception as e:
+#                 logger.error(f"Error processing file {file_obj.name}: {str(e)}")
+#                 return Response(
+#                     {"error": f"Error processing file {file_obj.name}: {str(e)}"},
+#                     status=status.HTTP_400_BAD_REQUEST
+#                 )
+
+#         return Response({"message": "File processed successfully!"}, status=status.HTTP_201_CREATED)
+
+#     def get_required_columns(self, sheet_name):
+#         required_columns = ['facility', 'date', 'category']
+#         if sheet_name == 'Waste':
+#             required_columns += [
+#                 'solid_waste', 'food_waste', 'e_waste', 'liquid_discharge',
+#                 'biomedical_waste', 'other_waste', 'sent_for_recycling',
+#                 'sent_to_landfill', 'overall_usage'
+#             ]
+#         elif sheet_name == 'Energy':
+#             required_columns += [
+#                 'hvac', 'production', 'stp', 'admin_block',
+#                 'utilities', 'others', 'renewable_solar', 'renewable_other', 'overall_usage'
+#             ]
+#         elif sheet_name == 'Water':
+#             required_columns += [
+#                 'generated_water', 'recycled_water', 'softener_usage',
+#                 'boiler_usage', 'other_usage', 'overall_usage'
+#             ]
+#         elif sheet_name == 'Biodiversity':
+#             required_columns += [
+#                 'no_trees', 'species', 'age', 'height', 'width',
+#                 'total_area', 'new_trees_planted', 'head_count'
+#             ]
+#         elif sheet_name == 'Logistics':
+#             required_columns += ['logistics_types', 'distance', 'fuel_consumed', 'typeof_fuel']
+#         return required_columns
+
+#     def handle_category(self, category, user, facility, date, row, sheet_name):
+#         model_map = {
+#             'waste': Waste,
+#             'energy': Energy,
+#             'water': Water,
+#             'biodiversity': Biodiversity,
+#             'logistics': Logistics
+#         }
+#         model = model_map.get(category.lower())
+#         if not model:
+#             raise ValueError(f"Unhandled category '{category}' in sheet '{sheet_name}'.")
+#         field_names = get_field_names(model)
+#         defaults = {key: row.get(key, 0) for key in field_names}
+#         model.objects.update_or_create(user=user, facility=facility, date=date, defaults=defaults)
+
+
+
+
+
+# # class ExcelUploadView(APIView):
+#     permission_classes = [IsAuthenticated]
+#     parser_classes = (MultiPartParser, FormParser)
+
+#     def post(self, request):
+#         if not request.FILES:
+#             return Response({"error": "No files uploaded."}, status=status.HTTP_400_BAD_REQUEST)
+
+#         for file_key, file_obj in request.FILES.items():
+#             if not file_obj.name.endswith(('.xls', '.xlsx')):
+#                 return Response(
+#                     {"error": f"Invalid file format for {file_obj.name}. Only .xls and .xlsx files are supported."},
+#                     status=status.HTTP_400_BAD_REQUEST
+#                 )
+
+#             try:
+#                 excel_data = pd.read_excel(file_obj, sheet_name=None, header=0)
+
+#                 required_sheets = ['Water', 'Waste', 'Energy', 'Logistics', 'Biodiversity']
+#                 missing_sheets = [sheet for sheet in required_sheets if sheet not in excel_data]
+#                 if missing_sheets:
+#                     return Response(
+#                         {"error": f"Missing sheets: {', '.join(missing_sheets)} in {file_obj.name}."},
+#                         status=status.HTTP_400_BAD_REQUEST
+#                     )
+
+#                 for sheet_name, df in excel_data.items():
+#                     logger.info(f"Processing sheet: {sheet_name}")
+#                     df.columns = df.columns.str.strip().str.lower().str.replace(" ", "_").str.replace("-", "_")
+
+#                     # Handle column name 'Total' as 'overall_usage' for the 'Waste' sheet
+#                     if sheet_name == 'Waste' and 'total' in df.columns:
+#                         df.rename(columns={'total': 'overall_usage'}, inplace=True)
+
+#                     required_columns = self.get_required_columns(sheet_name)
+#                     missing_columns = [col for col in required_columns if col not in df.columns]
+#                     if missing_columns:
+#                         return Response(
+#                             {"error": f"Missing required columns in {sheet_name}: {', '.join(missing_columns)}."},
+#                             status=status.HTTP_400_BAD_REQUEST
+#                         )
+
+#                     df['date'] = pd.to_datetime(df['date'], errors='coerce')
+#                     df = df[df['date'].notnull()]
+
+#                     if df.empty:
+#                         return Response(
+#                             {"error": f"All rows have invalid dates in {sheet_name}."},
+#                             status=status.HTTP_400_BAD_REQUEST
+#                         )
+
+#                     df = df.drop_duplicates(subset=['facility', 'category', 'date'])
+
+#                     for _, row in df.iterrows():
+#                         row = row.to_dict()
+#                         facility_name = row['facility']
+#                         category = row['category']
+#                         date = row['date']
+
+#                         facilities = Facility.objects.filter(facility_name=facility_name)
+#                         if not facilities.exists():
+#                             return Response(
+#                                 {"error": f"Facility '{facility_name}' does not exist in {file_obj.name}."},
+#                                 status=status.HTTP_400_BAD_REQUEST
+#                             )
+#                         if facilities.count() > 1:
+#                             return Response(
+#                                 {"error": f"Multiple facilities found for '{facility_name}'. Resolve duplicates."},
+#                                 status=status.HTTP_400_BAD_REQUEST
+#                             )
+#                         facility = facilities.first()
+
+#                         try:
+#                             self.handle_category(category, request.user, facility, date, row, sheet_name)
+#                         except Exception as e:
+#                             logger.error(f"Error processing category {category} in {sheet_name}: {str(e)}")
+#                             return Response(
+#                                 {"error": f"Error processing category {category} in {sheet_name}: {str(e)}"},
+#                                 status=status.HTTP_400_BAD_REQUEST
+#                             )
+
+#             except Exception as e:
+#                 logger.error(f"Error processing file {file_obj.name}: {str(e)}")
+#                 return Response(
+#                     {"error": f"Error processing file {file_obj.name}: {str(e)}"},
+#                     status=status.HTTP_400_BAD_REQUEST
+#                 )
+
+#         return Response({"message": "File processed successfully!"}, status=status.HTTP_201_CREATED)
+#     def get_required_columns(self, sheet_name):
+#         required_columns = ['facility', 'date', 'category']
+#         if sheet_name == 'Waste':
+#             required_columns += [
+#                 'solid_waste', 'food_waste', 'e_waste', 'liquid_discharge',
+#                 'biomedical_waste', 'other_waste', 'sent_for_recycling',
+#                 'sent_to_landfill', 'overall_usage'
+#             ]
+#         elif sheet_name == 'Energy':
+#             required_columns += [
+#                 'hvac', 'production', 'stp', 'admin_block',
+#                 'utilities', 'others', 'renewable_solar', 'renewable_other', 'overall_usage'
+#             ]
+#         elif sheet_name == 'Water':
+#             required_columns += [
+#                 'generated_water', 'recycled_water', 'softener_usage',
+#                 'boiler_usage', 'other_usage', 'overall_usage'
+#             ]
+#         elif sheet_name == 'Biodiversity':
+#             required_columns += [
+#                 'no_trees', 'species', 'age', 'height', 'width',
+#                 'total_area', 'new_trees_planted', 'head_count'
+#             ]
+#         elif sheet_name == 'Logistics':
+#             required_columns += ['logistics_types', 'distance', 'fuel_consumed', 'typeof_fuel']
+#         return required_columns
+
+#     def handle_category(self, category, user, facility, date, row, sheet_name):
+#         model_map = {
+#             'waste': Waste,
+#             'energy': Energy,
+#             'water': Water,
+#             'biodiversity': Biodiversity,
+#             'logistics': Logistics
+#         }
+#         model = model_map.get(category.lower())
+#         if not model:
+#             raise ValueError(f"Unhandled category '{category}' in sheet '{sheet_name}'.")
+#         field_names = get_field_names(model)
+#         defaults = {key: row.get(key, 0) for key in field_names}
+#         model.objects.update_or_create(user=user, facility=facility, date=date, defaults=defaults)
+
+
+class WasteExcelUploadView(APIView):
     permission_classes = [IsAuthenticated]
-    parser_classes = (MultiPartParser, FormParser)
 
     def post(self, request):
-        if not request.FILES:
-            return Response({"error": "No files uploaded."}, status=status.HTTP_400_BAD_REQUEST)
-
-        for file_key, file_obj in request.FILES.items():
-            if not file_obj.name.endswith(('.xls', '.xlsx')):
-                return Response(
-                    {"error": f"Invalid file format for {file_obj.name}. Only .xls and .xlsx files are supported."},
-                    status=status.HTTP_400_BAD_REQUEST
-                )
-
+        serializer = FileUploadSerializer(data=request.data)
+        if serializer.is_valid():
+            file = serializer.validated_data['file']
             try:
-                # Read the Excel file into a dataframe
-                df = pd.read_excel(file_obj, header=0)  # Read with headers
-                original_columns = df.columns.tolist()
-                print(f"Original Columns in {file_obj.name}: {original_columns}")
+                # Load Excel file
+                data = pd.read_excel(file)
 
-                # Normalize column names
-                df.columns = df.columns.str.strip().str.lower().str.replace(" ", "_").str.replace("-", "_")
-                print(f"Normalized Columns in {file_obj.name}: {df.columns.tolist()}")
+                # Map Excel columns to database fields
+                column_mapping = {
+                    'Facility': 'facility_id',  # Use facility_id instead of facility_id
+                    'Date': 'DatePicker',
+                    'Category': 'category',
+                    'Solid_Waste': 'solid_Waste',
+                    'Food_Waste': 'food_waste',
+                    'E_Waste': 'E_Waste',
+                    'Liquid_Discharge': 'liquid_discharge',
+                    'Biomedical_Waste': 'Biomedical_waste',
+                    'Other_Waste': 'other_waste',
+                    'Sent_for_Recycling': 'Recycle_waste',
+                    'Sent_to_Landfill': 'Landfill_waste',
+                    'Total': 'overall_usage'
+                }
 
-                # Check for missing required fields
-                required_fields = ['facility', 'category', 'datepicker']
-                missing_fields = [field for field in required_fields if field not in df.columns]
-                if missing_fields:
+                # Ensure required columns are present
+                required_columns = list(column_mapping.keys())
+                if not all(col in data.columns for col in required_columns):
                     return Response(
-                        {"error": f"Missing required fields: {', '.join(missing_fields)} in {file_obj.name}."},
+                        {"error": f"Missing required columns. Required: {', '.join(required_columns)}"},
                         status=status.HTTP_400_BAD_REQUEST
                     )
 
-                # Parse and validate the date column
-                df['datepicker'] = pd.to_datetime(df['datepicker'], errors='coerce')
-                if df['datepicker'].isnull().any():
-                    invalid_dates = df.loc[df['datepicker'].isnull()]
-                    return Response(
-                        {"error": f"Invalid date format in rows: {invalid_dates.index.tolist()} in {file_obj.name}."},
-                        status=status.HTTP_400_BAD_REQUEST
-                    )
+                # Rename columns for easier processing
+                data.rename(columns=column_mapping, inplace=True)
 
-                # Strip any extra spaces in text fields
-                df['facility'] = df['facility'].str.strip()
-                df['category'] = df['category'].str.strip().str.lower()
-
-                # Remove duplicates based on facility, category, and datepicker
-                initial_count = len(df)
-                df = df.drop_duplicates(subset=['facility', 'category', 'datepicker'])
-                removed_count = initial_count - len(df)
-                if removed_count > 0:
-                    print(f"Removed {removed_count} duplicate rows.")
-
-                # Process each row
-                for _, row in df.iterrows():
-                    row = row.to_dict()
-                    facility_name = row['facility']
+                # Process each row in the Excel file
+                user = request.user
+                skipped_rows = []
+                for _, row in data.iterrows():
+                    facility_id = row['facility_id']  # Get facility_id
+                    date = pd.to_datetime(row['DatePicker'])
                     category = row['category']
-                    datepicker = row['datepicker']
 
-                    # Validate facility existence
-                    facilities = Facility.objects.filter(facility_name=facility_name)
-                    if not facilities.exists():
-                        return Response(
-                            {"error": f"Facility '{facility_name}' does not exist in {file_obj.name}."},
-                            status=status.HTTP_400_BAD_REQUEST
-                        )
-                    elif facilities.count() > 1:
-                        return Response(
-                            {"error": f"Multiple facilities found for '{facility_name}'. Resolve duplicates."},
-                            status=status.HTTP_400_BAD_REQUEST
-                        )
-                    facility = facilities.first()
-
-                    # Process data by category
+                    # Validate facility by name
                     try:
-                        self.handle_category(category, request.user, facility, datepicker, row)
-                    except Exception as e:
-                        logger.error(traceback.format_exc())
-                        return Response(
-                            {"error": f"Error processing category {category} in {file_obj.name}: {str(e)}"},
-                            status=status.HTTP_400_BAD_REQUEST
+                        facility = Facility.objects.get(facility_id=facility_id, user=user)
+                    except Facility.DoesNotExist:
+                        skipped_rows.append(
+                            f"Facility '{facility_id}' does not exist."
                         )
+                        continue
+
+                    # Check for existing Waste entry
+                    month = date.month
+                    year = date.year
+                    existing_entry = Waste.objects.filter(
+                        facility=facility,
+                        DatePicker__year=year,
+                        DatePicker__month=month
+                    )
+
+                    if existing_entry.exists():
+                        # skipped_rows.append(
+                        #     f"Waste entry for facility '{facility_id}' already exists for {month}/{year}."
+                        # )
+                        continue
+
+                    # Create Waste entry
+                    Waste.objects.create(
+                        user=user,
+                        facility=facility,
+                        category=category,
+                        DatePicker=date,
+                        food_waste=row['food_waste'],
+                        solid_Waste=row['solid_Waste'],
+                        E_Waste=row['E_Waste'],
+                        Biomedical_waste=row['Biomedical_waste'],
+                        liquid_discharge=row['liquid_discharge'],
+                        other_waste=row['other_waste'],
+                        Recycle_waste=row['Recycle_waste'],
+                        Landfill_waste=row['Landfill_waste'],
+                        overall_usage=row['overall_usage']
+                    )
+
+                # Return response with success and skipped rows
+                response_message = {
+                    "message": "Waste Excel data uploaded successfully.",
+                }
+                return Response(response_message, status=status.HTTP_201_CREATED)
 
             except Exception as e:
-                logger.error(traceback.format_exc())
                 return Response(
-                    {"error": f"Error processing file {file_obj.name}: {str(e)}"},
-                    status=status.HTTP_400_BAD_REQUEST
+                    {"error": f"An error occurred while processing the file: {str(e)}"},
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR
                 )
 
-        return Response({"message": "File processed successfully!"}, status=status.HTTP_201_CREATED)
-
-    def handle_category(self, category, user, facility, datepicker, row):
-        if category == 'waste':
-            Waste.objects.update_or_create(
-                user=user,
-                facility=facility,
-                DatePicker=datepicker,
-                defaults={
-                    'food_waste': row.get('food_waste', 0),
-                    'solid_waste': row.get('solid_waste', 0),
-                    'e_waste': row.get('e_waste', 0),
-                    'biomedical_waste': row.get('biomedical_waste', 0),
-                    'liquid_discharge': row.get('liquid_discharge', 0),
-                    'other_waste': row.get('other_waste', 0),
-                    'recycle_waste': row.get('recycle_waste', 0),
-                    'landfill_waste': row.get('landfill_waste', 0),
-                }
-            )
-        elif category == 'energy':
-            Energy.objects.update_or_create(
-                user=user,
-                facility=facility,
-                DatePicker=datepicker,
-                defaults={
-                    'hvac': row.get('hvac', 0),
-                    'production': row.get('production', 0),
-                    'stp': row.get('stp', 0),
-                    'admin_block': row.get('admin_block', 0),
-                    'utilities': row.get('utilities', 0),
-                    'others': row.get('others', 0),
-                    'coking_coal': row.get('coking_coal', 0),
-                    'coke_oven_coal': row.get('coke_oven_coal', 0),
-                    'natural_gas': row.get('natural_gas', 0),
-                    'diesel': row.get('diesel', 0),
-                    'biomass_wood': row.get('biomass_wood', 0),
-                    'biomass_other_solid': row.get('biomass_other_solid', 0),
-                    'renewable_solar': row.get('renewable_solar', 0),
-                    'renewable_other': row.get('renewable_other', 0),
-                }
-            )
-        elif category == 'water':
-            Water.objects.update_or_create(
-                user=user,
-                facility=facility,
-                DatePicker=datepicker,
-                defaults={
-                    'generated_water': row.get('generated_water', 0),
-                    'recycled_water': row.get('recycled_water', 0),
-                    'softener_usage': row.get('softener_usage', 0),
-                    'boiler_usage': row.get('boiler_usage', 0),
-                    'other_usage': row.get('other_usage', 0),
-                }
-            )
-        elif category == 'biodiversity':
-            Biodiversity.objects.update_or_create(
-                user=user,
-                facility=facility,
-                DatePicker=datepicker,
-                defaults={
-                    'no_trees': row.get('no_trees', 0),
-                    'species': row.get('species', ''),
-                    'age': row.get('age', 0),
-                    'location': row.get('location', ''),
-                }
-            )
-        elif category == 'logistics':
-            logistices_types = row.get('logistices_types', 'Staff')
-            typeof_fuel = row.get('typeof_fuel', 'Diesel')
-
-            # Validate choices
-            if logistices_types not in ['Staff', 'Cargo']:
-                raise ValueError(f"Invalid logistics type: {logistices_types}")
-            if typeof_fuel not in ['Diesel', 'Petrol']:
-                raise ValueError(f"Invalid fuel type: {typeof_fuel}")
-
-            Logistices.objects.update_or_create(
-                user=user,
-                facility=facility,
-                DatePicker=datepicker,
-                defaults={
-                    'logistices_types': logistices_types,
-                    'typeof_fuel': typeof_fuel,
-                    'km_travelled': row.get('km_travelled', 0),
-                    'no_trips': row.get('no_trips', 0),
-                    'fuel_consumption': row.get('fuel_consumption', 0),
-                    'no_vehicles': row.get('no_vehicles', 0),
-                    'spends_on_fuel': row.get('spends_on_fuel', 0),
-                }
-            )
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

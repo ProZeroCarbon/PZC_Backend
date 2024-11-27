@@ -2,7 +2,7 @@ from datetime import datetime
 from django_filters import rest_framework as filters
 from django.core.exceptions import ValidationError
 import django_filters
-from users_pzc.models import Waste, Energy, Water, Biodiversity, Logistices, Facility
+from users_pzc.models import Waste, Energy, Water, Biodiversity, Logistics, Facility
 
 class FacilityFilter(filters.FilterSet):
     search = filters.CharFilter(field_name='facility_name', lookup_expr='icontains')
@@ -82,8 +82,8 @@ class BiodiversityFilter(FacilityDateFilterBase):
         model = Biodiversity
 
 
-class LogisticesFilter(FacilityDateFilterBase):
+class LogisticsFilter(FacilityDateFilterBase):
     class Meta(FacilityDateFilterBase.Meta):
-        model = Logistices
+        model = Logistics
 
 
