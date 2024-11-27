@@ -178,15 +178,36 @@ class FacilityDeleteView(APIView):
 
 '''Waste CRUD Operations Starts'''
 #Watste Create Form
+# class WasteCreateView(APIView):
+#     permission_classes = [IsAuthenticated]
+
+#     def post(self, request):
+#         serializer = WasteCreateSerializer(data=request.data, context={'request': request})
+#         if serializer.is_valid():
+#             serializer.save()
+#             return Response({"message": "Waste data added successfully."}, status=status.HTTP_201_CREATED)
+#         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
 class WasteCreateView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
-        serializer = WasteCreateSerializer(data=request.data, context={'request': request})
+        # Check if data is a list (for multiple entries) or a single object
+        is_bulk = isinstance(request.data, list)
+        if is_bulk:
+            serializer = WasteCreateSerializer(data=request.data, many=True, context={'request': request})
+        else:
+            serializer = WasteCreateSerializer(data=request.data, context={'request': request})
+
+        # Validate and save the serializer
         if serializer.is_valid():
             serializer.save()
-            return Response({"message": "Waste data added successfully."}, status=status.HTTP_201_CREATED)
+            message = "Waste data added successfully." if not is_bulk else "All Waste entries added successfully."
+            return Response({"message": message}, status=status.HTTP_201_CREATED)
+
+        # Return validation errors
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
 
 class WasteView(APIView):
     permission_classes = [IsAuthenticated]
@@ -298,7 +319,11 @@ class WasteDeleteView(APIView):
 class EnergyCreateView(APIView):
     permission_classes = [IsAuthenticated]
     def post(self, request):
-        serializer = EnergyCreateSerializer(data=request.data,context={'request':request})
+        is_bulk = isinstance(request.data, list)
+        if is_bulk:
+            serializer = EnergyCreateSerializer(data=request.data, many=True, context={'request': request})
+        else:
+            serializer = EnergyCreateSerializer(data=request.data,context={'request':request})
         if serializer.is_valid():
             serializer.save()
             return Response({"messages":"Energy data added Succesfully"},status=status.HTTP_201_CREATED)
@@ -487,7 +512,11 @@ class EnergyDeleteView(APIView):
 class WaterCreateView(APIView):
     permission_classes = [IsAuthenticated]
     def post(self,request):
-        serializer = WaterCreateSerializer(data=request.data,context={'request':request})
+        is_bulk = isinstance(request.data, list)
+        if is_bulk:
+            serializer = WaterCreateSerializer(data=request.data, many=True, context={'request': request})
+        else:
+            serializer = WaterCreateSerializer(data=request.data,context={'request':request})
         if serializer.is_valid():
             serializer.save()
             return Response({"messages":"Water data added succesfully"},status=status.HTTP_201_CREATED)
@@ -602,7 +631,11 @@ class WaterDeleteView(APIView):
 class BiodiversityCreateView(APIView):
     permission_classes = [IsAuthenticated]
     def post(self,request):
-        serializer = BiodiversityCreateSerializer(data=request.data,context={'request':request})
+        is_bulk = isinstance(request.data, list)
+        if is_bulk:
+            serializer = BiodiversityCreateSerializer(data=request.data, many=True, context={'request': request})
+        else:
+            serializer = BiodiversityCreateSerializer(data=request.data,context={'request':request})
         if serializer.is_valid():
             serializer.save()
             return Response({'messages':'Biodiversity data added Succesfully'},status=status.HTTP_201_CREATED)
@@ -720,7 +753,11 @@ class LogisticsCreateView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
-        serializer = LogisticsSerializer(data=request.data, context={'request': request})
+        is_bulk = isinstance(request.data, list)
+        if is_bulk:
+            serializer = LogisticsSerializer(data=request.data, many=True, context={'request': request})
+        else:
+            serializer = LogisticsSerializer(data=request.data, context={'request': request})
         if serializer.is_valid():
             serializer.save(user=request.user)
             return Response({"message": "Logistics data added successfully."}, status=status.HTTP_201_CREATED)
@@ -874,89 +911,6 @@ class LogoutView(APIView):
     
     
 '''OverViwe of allTotal_Usages '''
-# class OverallUsageView(APIView):
-#     permission_classes = [IsAuthenticated]
-
-#     def get(self, request):
-#         user = request.user
-#         facility_id = request.GET.get('facility_id', 'all')
-#         year = request.GET.get('year')
-
-#         try:
-#             if year:
-#                 year = int(year)
-#             else:
-#                 current_date = datetime.now()
-#                 year = current_date.year - 1 if current_date.month < 4 else current_date.year
-
-#             start_date = datetime(year, 4, 1)
-#             end_date = datetime(year + 1, 3, 31)
-#         except ValueError:
-#             return Response(
-#                 {"error": "Invalid fiscal year format. Please provide a valid year, e.g., 2023."},
-#                 status=status.HTTP_400_BAD_REQUEST
-#             )
-
-#         overall_data = {
-#             "waste_usage": 0,
-#             "energy_usage": 0,
-#             "water_usage": 0,
-#             "biodiversity_usage": 0,
-#             "logistics_usage": 0,
-#         }
-
-#         filters = {'user': user, 'DatePicker__range': (start_date, end_date)}
-#         if facility_id.lower() != 'all':
-#             filters['facility__facility_id'] = facility_id
-
-#         waste_data = Waste.objects.filter(**filters)
-#         overall_data["waste_usage"] = waste_data.aggregate(
-#             total=Sum('food_waste') + Sum('solid_Waste') + Sum('E_Waste') + 
-#                   Sum('Biomedical_waste') + Sum('other_waste')
-#         )['total'] or 0
-
-#         energy_data = Energy.objects.filter(**filters)
-#         overall_data["energy_usage"] = energy_data.aggregate(
-#             total=Sum('hvac') + Sum('production') + Sum('stp') + 
-#                   Sum('admin_block') + Sum('utilities') + Sum('others')
-#         )['total'] or 0
-
-#         # Water usage
-#         water_data = Water.objects.filter(**filters)
-#         overall_data["water_usage"] = water_data.aggregate(total=Sum('overall_usage'))['total'] or 0
-
-#         # Biodiversity usage
-#         biodiversity_data = Biodiversity.objects.filter(**filters)
-#         overall_data["biodiversity_usage"] = biodiversity_data.aggregate(total=Sum('overall_Trees'))['total'] or 0
-
-#         # Logistics usage
-#         logistics_data = Logistics.objects.filter(**filters)
-#         overall_data["logistics_usage"] = logistics_data.aggregate(total=Sum('total_fuelconsumption'))['total'] or 0
-
-#         # Serialize data for each model
-#         waste_serializer = WasteSerializer(waste_data, many=True)
-#         energy_serializer = EnergySerializer(energy_data, many=True)
-#         water_serializer = WaterSerializer(water_data, many=True)
-#         biodiversity_serializer = BiodiversitySerializer(biodiversity_data, many=True)
-#         logistics_serializer = LogisticsSerializer(logistics_data, many=True)
-
-#         # Format response data
-#         response_data = {
-#             "email": user.email,
-#             "year": year,
-#             "facility_id": facility_id,
-#             "overall_data": overall_data,
-#             "details": {
-#                 "waste_data": waste_serializer.data,
-#                 "energy_data": energy_serializer.data,
-#                 "water_data": water_serializer.data,
-#                 "biodiversity_data": biodiversity_serializer.data,
-#                 "logistics_data": logistics_serializer.data
-#             }
-#         }
-
-#         return Response(response_data, status=status.HTTP_200_OK)
-
 class OverallUsageView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -3611,7 +3565,6 @@ class EnergyAnalyticsView(APIView):
 
 '''Water Overview Cards ,Graphs and Individual Line Charts and donut Charts Starts'''
 #Water Card OverView
-
 class WaterViewCard_Over(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -4798,7 +4751,7 @@ class LogisticsOverviewAndGraphs(APIView):
             return Response({"error": str(e)}, status=500)
 
 '''LOgistics overview Graphs ends'''
-
+'''Emissions Calculations starts'''
 class EmissionCalculations(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -4950,7 +4903,9 @@ class EmissionCalculations(APIView):
             error_message = f"An error occurred: {str(e)}"
             print(error_message)
             return Response({'error': error_message}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+'''Emissions Calculations starts'''
 
+'''YearFilter Starts'''
 class YearFacilityDataAPIView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -5005,8 +4960,9 @@ class YearFacilityDataAPIView(APIView):
             error_message = f"An error occurred: {str(e)}"
             print(error_message)  # For debugging purposes, consider using a logger in production
             return Response({'error': error_message}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+'''YearFilter Ends'''
 
-
+'''ExcelSheets Upload Starts'''
 class WasteExcelUploadView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -5121,3 +5077,5 @@ class WasteExcelUploadView(APIView):
                 )
 
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+'''Excel Sheets Upload Ends'''
