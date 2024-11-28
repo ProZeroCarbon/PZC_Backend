@@ -12,7 +12,7 @@ from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated,AllowAny
 from rest_framework_simplejwt.tokens import RefreshToken
-from .serializers import UserRegisterSerializer, UserLoginSerializer,WasteSerializer,WasteCreateSerializer,EnergyCreateSerializer,EnergySerializer,WaterCreateSerializer,WaterSerializer,BiodiversityCreateSerializer,BiodiversitySerializer,FacilitySerializer,LogisticesSerializer,OrganizationSerializer,FileUploadSerializer
+from .serializers import UserRegisterSerializer, UserLoginSerializer,WasteSerializer,WasteCreateSerializer,EnergyCreateSerializer,EnergySerializer,WaterCreateSerializer,WaterSerializer,BiodiversityCreateSerializer,BiodiversitySerializer,FacilitySerializer,LogisticesSerializer,OrganizationSerializer
 from .models import CustomUser,Waste,Energy,Water,Biodiversity,Facility,Logistices,Org_registration
 from django.db.models import Q
 from django.db.models import Field
@@ -108,7 +108,7 @@ class FacilityCreateView(APIView):
             serializer.save()
             return Response({"message": "Facility added successfully."}, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-    
+
 class FacilityView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -124,21 +124,31 @@ class FacilityView(APIView):
         # Apply optional filters based on query parameters
         if facility_id.lower() != 'all':
             facility_data = facility_data.filter(facility_id=facility_id)
-        
+
         if location:
             facility_data = facility_data.filter(location__icontains=location)
 
         if action:
             facility_data = facility_data.filter(action__icontains=action)
 
-        # Serialize and prepare the response
-        facility_serializer = FacilitySerializer(facility_data, many=True)
-        
+        # Prepare the response
+        if not facility_data.exists():
+            # Provide "N/A" for each field
+            facility_data_response = [{
+                "facility_id": "N/A",
+                "facility_name": "N/A",
+                "facility_head": "N/A",
+                "location": "N/A",
+            }]
+        else:
+            facility_serializer = FacilitySerializer(facility_data, many=True)
+            facility_data_response = facility_serializer.data
+
         user_data = {
             'email': user.email,
-            'facility_data': facility_serializer.data,
+            'facility_data': facility_data_response,
         }
-        
+
         return Response(user_data, status=status.HTTP_200_OK)
 
 class FacilityEditView(APIView):

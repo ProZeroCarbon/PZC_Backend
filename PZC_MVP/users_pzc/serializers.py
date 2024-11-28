@@ -10,7 +10,7 @@ from django.utils.translation import gettext as _
 from .models import CustomUser,Waste,Energy,Water,Biodiversity,Facility,Logistices,Org_registration
 import logging
 
-
+#Registration Serializers starts
 class UserRegisterSerializer(serializers.ModelSerializer):
     class Meta:
         model = CustomUser
@@ -42,8 +42,9 @@ class UserRegisterSerializer(serializers.ModelSerializer):
         user.set_password(validated_data['password'])
         user.save()
         return user
+#Registration Serializers Ends
 
-
+#LOgin Serializers Starts
 class UserLoginSerializer(serializers.Serializer):
     email = serializers.EmailField()
     password = serializers.CharField(write_only=True, min_length=8, max_length=128)
@@ -73,6 +74,8 @@ class UserLoginSerializer(serializers.Serializer):
 
         data['user'] = user
         return data
+
+#LOgin Serializers Ends
 
 
 class OrganizationSerializer(serializers.ModelSerializer):
@@ -131,6 +134,7 @@ class OrganizationSerializer(serializers.ModelSerializer):
         organization = Org_registration.objects.create(user=user, **validated_data)
         return organization
 
+#Facility Serializers Starts
 class FacilitySerializer(serializers.ModelSerializer):
     user_id = serializers.IntegerField(source='user.id', read_only=True)  # Include user_id
 
@@ -164,8 +168,8 @@ class FacilitySerializer(serializers.ModelSerializer):
         validated_data.pop('user', None)  # Ensure user is not explicitly passed
         facility = Facility.objects.create(user=user, **validated_data)
         return facility
-
-
+#Facility Serializers ENds
+#Waste Serializers Starts
 class WasteSerializer(serializers.ModelSerializer):
     class Meta:
         model = Waste
@@ -288,6 +292,8 @@ class WasteCreateSerializer(serializers.ModelSerializer):
         representation['facility_id'] = instance.facility.facility_id
         representation.pop('facility', None)
         return representation
+#Waste Serializers Ends
+#Energy Serializers Starts
 class EnergySerializer(serializers.ModelSerializer):
     class Meta:
         model = Energy
@@ -449,7 +455,9 @@ class EnergyCreateSerializer(serializers.ModelSerializer):
         representation['facility_id'] = instance.facility.facility_id
         representation.pop('facility', None)
         return representation
+#Energy Serializers Ends
 
+#Water Serializers Starts
 class WaterSerializer(serializers.ModelSerializer):
     class Meta:
         model = Water
@@ -562,12 +570,13 @@ class WaterCreateSerializer(serializers.ModelSerializer):
         water = Water.objects.create(**validated_data)
         return water
 
+#Water Serializers Ends
+#Biodiversity Serializers Starts
 
 class BiodiversitySerializer(serializers.ModelSerializer):
     class Meta:
         model = Biodiversity
         fields = ['facility_id','DatePicker','category','no_trees', 'species', 'age', 'height', 'width','totalArea','new_trees_planted','head_count', 'biodiversity_id']
-
 
 class BiodiversityCreateSerializer(serializers.ModelSerializer):
     facility_id = serializers.CharField(
@@ -665,7 +674,8 @@ class BiodiversityCreateSerializer(serializers.ModelSerializer):
 
         biodiversity = Biodiversity.objects.create(**validated_data)
         return biodiversity
-  
+#Biodiversity Serializers Ends
+#Logistices Serializer Starts
 class LogisticesSerializer(serializers.ModelSerializer):
     facility_id = serializers.CharField(
         write_only=True,
@@ -789,34 +799,4 @@ class LogisticesSerializer(serializers.ModelSerializer):
         instance.save()
         return instance
     
-    
-    
-    
-    
-    
-class FileUploadSerializer(serializers.Serializer):
-    file = serializers.FileField(
-        required=True,
-        error_messages={
-            'required': 'An Excel file is required.',
-            'invalid': 'Invalid file format.'
-        }
-    )
-
-    def validate_file(self, file):
-        # Check the file extension
-        valid_extensions = ['.xls', '.xlsx']
-        file_name = file.name.lower()
-        if not any(file_name.endswith(ext) for ext in valid_extensions):
-            raise serializers.ValidationError(
-                "Invalid file format. Only '.xls' and '.xlsx' files are allowed."
-            )
-
-        # Check file size (example: max 5MB)
-        max_file_size = 5 * 1024 * 1024  # 5 MB
-        if file.size > max_file_size:
-            raise serializers.ValidationError(
-                "File size exceeds the 5MB limit."
-            )
-
-        return file
+#Logistices Serializer Ends
