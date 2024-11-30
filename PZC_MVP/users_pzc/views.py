@@ -18,6 +18,7 @@ from django.db.models import Q
 from django.db.models import Field
 import logging
 
+
 logger = logging.getLogger(__name__)
 
 #Register View
@@ -753,15 +754,31 @@ class LogisticesCreateView(APIView):
 
     def post(self, request):
         is_bulk = isinstance(request.data, list)
-        if is_bulk:
-            serializer = LogisticesSerializer(data=request.data, many=True, context={'request': request})
-        else:
-            serializer = LogisticesSerializer(data=request.data, context={'request': request})
+        data = request.data if is_bulk else [request.data]
+        validated_data_list = []
+
+        # Check for duplicates within the incoming data
+        seen = set()
+        for entry in data:
+            key = (
+                entry.get('facility_id'),
+                entry.get('DatePicker'),
+                entry.get('logistices_types'),
+                entry.get('Typeof_fuel'),
+            )
+            if key in seen:
+                return Response(
+                    {"non_field_errors": "Duplicate entries detected in the submitted data."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            seen.add(key)
+
+        # Validate and save
+        serializer = LogisticesSerializer(data=data, many=True, context={'request': request})
         if serializer.is_valid():
             serializer.save(user=request.user)
             return Response({"message": "Logistices data added successfully."}, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-    
 #View Logistices
 class LogisticesView(APIView):
     permission_classes = [IsAuthenticated]
@@ -4637,7 +4654,7 @@ class LogisticesOverviewAndGraphs(APIView):
                         "total_km_travelled": 0.0,
                         "total_fuel_consumed": 0.0
                     },
-                    "line_chart_data": [
+                    "bar_chart_data": [
                         {"month": datetime(1900, month, 1).strftime('%b'), "Co2": 0.0}
                         for month in range(1, 13)
                     ],
@@ -4982,120 +4999,3 @@ class YearFacilityDataAPIView(APIView):
 
 '''YearFilter Ends'''
 
-'''ExcelSheets Upload Starts'''
-class WasteExcelUploadView(APIView):
-    permission_classes = [IsAuthenticated]
-
-    def post(self, request):
-        serializer = FileUploadSerializer(data=request.data)
-        if serializer.is_valid():
-            file = serializer.validated_data['file']
-            try:
-                # Load Excel file
-                data = pd.read_excel(file)
-
-                # Map Excel columns to database fields
-                column_mapping = {
-                    'Facility': 'facility_id',  # Use facility_id for facility mapping
-                    'Date': 'DatePicker',
-                    'Category': 'category',
-                    'Solid_Waste': 'solid_Waste',
-                    'Food_Waste': 'food_waste',
-                    'E_Waste': 'E_Waste',
-                    'Liquid_Discharge': 'liquid_discharge',
-                    'Biomedical_Waste': 'Biomedical_waste',
-                    'Other_Waste': 'other_waste',
-                    'Sent_for_Recycling': 'Recycle_waste',
-                    'Sent_to_Landfill': 'Landfill_waste',
-                    'Total': 'overall_usage'
-                }
-
-                # Ensure required columns are present
-                required_columns = list(column_mapping.keys())
-                if not all(col in data.columns for col in required_columns):
-                    return Response(
-                        {"error": f"Missing required columns. Required: {', '.join(required_columns)}"},
-                        status=status.HTTP_400_BAD_REQUEST
-                    )
-
-                # Rename columns for easier processing
-                data.rename(columns=column_mapping, inplace=True)
-
-                # Process each row in the Excel file
-                user = request.user
-                results = []
-
-                for _, row in data.iterrows():
-                    facility_id = row['facility_id']
-                    date = pd.to_datetime(row['DatePicker'])
-                    category = row['category']
-
-                    row_result = {
-                        "facility_id": facility_id,
-                        "category": category,
-                        "DatePicker": date.strftime('%Y-%m-%d'),
-                        "food_waste": row['food_waste'],
-                        "solid_Waste": row['solid_Waste'],
-                        "E_Waste": row['E_Waste'],
-                        "Biomedical_waste": row['Biomedical_waste'],
-                        "liquid_discharge": row['liquid_discharge'],
-                        "other_waste": row['other_waste'],
-                        "Recycle_waste": row['Recycle_waste'],
-                        "Landfill_waste": row['Landfill_waste'],
-                        "overall_usage": row['overall_usage'],
-                        "status": "Success"  # Default status
-                    }
-
-                    # Validate facility
-                    try:
-                        facility = Facility.objects.get(facility_id=facility_id, user=user)
-                    except Facility.DoesNotExist:
-                        row_result["status"] = f"Failed: Facility '{facility_id}' does not exist"
-                        results.append(row_result)
-                        continue
-
-                    # Check for existing Waste entry
-                    month = date.month
-                    year = date.year
-                    existing_entry = Waste.objects.filter(
-                        facility=facility,
-                        DatePicker__year=year,
-                        DatePicker__month=month
-                    )
-
-                    if existing_entry.exists():
-                        # Skip silently for duplicate data
-                        continue
-
-                    # Create Waste entry
-                    Waste.objects.create(
-                        user=user,
-                        facility=facility,
-                        category=category,
-                        DatePicker=date,
-                        food_waste=row['food_waste'],
-                        solid_Waste=row['solid_Waste'],
-                        E_Waste=row['E_Waste'],
-                        Biomedical_waste=row['Biomedical_waste'],
-                        liquid_discharge=row['liquid_discharge'],
-                        other_waste=row['other_waste'],
-                        Recycle_waste=row['Recycle_waste'],
-                        Landfill_waste=row['Landfill_waste'],
-                        overall_usage=row['overall_usage']
-                    )
-
-                    # Add successful row
-                    results.append(row_result)
-
-                # Return results directly as an array
-                return Response(results, status=status.HTTP_200_OK)
-
-            except Exception as e:
-                return Response(
-                    {"error": f"An error occurred while processing the file: {str(e)}"},
-                    status=status.HTTP_500_INTERNAL_SERVER_ERROR
-                )
-
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-'''Excel Sheets Upload Ends'''

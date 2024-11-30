@@ -674,8 +674,10 @@ class BiodiversityCreateSerializer(serializers.ModelSerializer):
 
         biodiversity = Biodiversity.objects.create(**validated_data)
         return biodiversity
+
 #Biodiversity Serializers Ends
 #Logistices Serializer Starts
+
 class LogisticesSerializer(serializers.ModelSerializer):
     facility_id = serializers.CharField(
         write_only=True,
@@ -736,6 +738,7 @@ class LogisticesSerializer(serializers.ModelSerializer):
 
     logger = logging.getLogger(__name__)
 
+    
     def validate(self, data):
         facility_id = data.get('facility_id')
         date = data.get('DatePicker')
@@ -751,9 +754,6 @@ class LogisticesSerializer(serializers.ModelSerializer):
 
         month = date.month
         year = date.year
-
-        self.logger.debug(f"Checking for existing entry with parameters: "
-                          f"facility={facility}, date={date}, types={logistices_types}, fuel={Typeof_fuel}")
 
         # Check if an entry already exists for the same logistices_types and Typeof_fuel
         existing_entry = Logistices.objects.filter(
@@ -778,25 +778,8 @@ class LogisticesSerializer(serializers.ModelSerializer):
 
         return data
 
-    def create(self, validated_data):
-        # Add the user from the context
-        user = self.context['request'].user
-        validated_data['user'] = user
-        validated_data.pop('facility_id', None)
 
-        # Create the logistices entry
-        logistices = Logistices.objects.create(**validated_data)
-        return logistices
-
-    def update(self, instance, validated_data):
-        # Pop facility_id as it's write-only
-        validated_data.pop('facility_id', None)
-
-        # Update the logistices instance
-        for attr, value in validated_data.items():
-            setattr(instance, attr, value)
-
-        instance.save()
-        return instance
-    
 #Logistices Serializer Ends
+
+
+
