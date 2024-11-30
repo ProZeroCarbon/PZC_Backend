@@ -87,7 +87,7 @@ urlpatterns = [
    #Apis For Stacked Graph,donuts Graphs Overview
    path('StackedWasteOverviewView/',StackedWasteOverviewView.as_view(),name='StackedWasteOverviewView'),
    path('WasteOverallDonutChartView/',WasteOverallDonutChartView.as_view(),name='WasteOverallDonutChartView'),
-   path('Sent_To_Landfill_OverviewView/',SentToLandfillOverviewView.as_view(),name='Sent_To_Landfill_OverviewView'),
+   path('SentToLandfillOverviewView/',SentToLandfillOverviewView.as_view(),name='Sent_To_Landfill_OverviewView'),
    path('SentToRecycledOverviewView/',SentToRecycledOverviewView.as_view(),name='SentToRecycledOverviewView'),
    #Apis for Waste overviewgraphs Ends
    
