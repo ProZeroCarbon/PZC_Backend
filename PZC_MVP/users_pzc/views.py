@@ -3294,21 +3294,6 @@ class Fuel_Used_OperationsOverView(APIView):
             # Define the month order (April to March)
             month_order = [4, 5, 6, 7, 8, 9, 10, 11, 12, 1, 2, 3]
             today = datetime.now()
-
-            # for month in month_order:
-            #     month_name = datetime(1900, month, 1).strftime('%b')
-            #     # Include data up to the current month, set future months to zero
-            #     if (year == today.year and month <= today.month) or (year < today.year):
-            #         line_chart_data.append({
-            #             "month": month_name,
-            #             "fuel_used_in_operations": fuel_used_in_operations.get(month, 0)
-            #         })
-            #     else:
-            #         line_chart_data.append({
-            #             "month": month_name,
-            #             "fuel_used_in_operations": 0
-            #         })
-            # Loop through each month from April to March
             for month in month_order:
                 month_name = datetime(1900, month, 1).strftime('%b')
 
@@ -4294,6 +4279,7 @@ class StackedWaterOverviewView(APIView):
         except Exception as e:
             print(f"Error occurred: {e}") 
             return Response({'error': f'An error occurred: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
 #Water Anaytics Donut Chart And Line Graph
 class WaterAnalyticsView(APIView):
     permission_classes = [IsAuthenticated]
