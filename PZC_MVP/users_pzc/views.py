@@ -16,8 +16,7 @@ from .serializers import UserRegisterSerializer, UserLoginSerializer,WasteSerial
 from .models import CustomUser,Waste,Energy,Water,Biodiversity,Facility,Logistices,Org_registration
 from django.db.models import Q
 from django.db.models import Field
-import logging
-#Version One
+#Version One.one
 #Register View
 class RegisterView(APIView):
     permission_classes = [AllowAny]
