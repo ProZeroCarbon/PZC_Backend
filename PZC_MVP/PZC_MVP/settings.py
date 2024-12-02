@@ -43,11 +43,13 @@ INSTALLED_APPS = [
     'django_filters',
     'rest_framework_simplejwt.token_blacklist',
     'users_pzc',
+    'auth_registration',
 ]
 
-AUTH_USER_MODEL = 'users_pzc.CustomUser'
+AUTH_USER_MODEL = 'auth_registration.CustomUser'
 
 SIMPLE_JWT = {
+    'USER_ID_FIELD': 'user_id',
     'BLACKLIST_AFTER_ROTATION': True,  # Blacklist refresh tokens after rotation
     'ROTATE_REFRESH_TOKENS': True,     # Rotate tokens after each refresh
     'ACCESS_TOKEN_LIFETIME': timedelta(minutes=60),  # Customize token lifetime as needed
@@ -58,12 +60,23 @@ SIMPLE_JWT = {
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',
+        'auth_registration.authentication.CustomJWTAuthentication',
     ),
     'DEFAULT_FILTER_BACKENDS': ['django_filters.rest_framework.DjangoFilterBackend'],
     'DEFAULT_PERMISSION_CLASSES': [
         'rest_framework.permissions.IsAuthenticated',
     ],
 }
+# REST_FRAMEWORK = {
+#     'DEFAULT_AUTHENTICATION_CLASSES': (
+#         'auth_registration.authentication.CustomJWTAuthentication',  # Use CustomJWTAuthentication exclusively
+#     ),
+#     'DEFAULT_FILTER_BACKENDS': ['django_filters.rest_framework.DjangoFilterBackend'],
+#     'DEFAULT_PERMISSION_CLASSES': [
+#         'rest_framework.permissions.IsAuthenticated',
+#     ],
+# }
+
 
 CORS_ALLOW_ALL_ORIGINS = True 
 CORS_ALLOWED_ORIGINS = [

@@ -1,25 +1,10 @@
 
 from django.urls import   path
-from .views import RegisterView, LoginView, DashboardView, LogoutView,WasteCreateView,WasteView,WasteEditView,WasteDeleteView,EnergyCreateView,EnergyView,EnergyEditView,EnergyDeleteView,WaterView,WaterCreateView,WaterEditView,WaterDeleteView,BiodiversityCreateView,BiodiversityView,BiodiversityEditView,BiodiversityDeleteView,FacilityCreateView,FacilityView,FacilityEditView,FacilityDeleteView,LogisticesCreateView,LogisticesView,LogisticesEditView,LogisticesDeleteView,OrganizationCreate,OrganizationView,FoodWasteOverviewView,SolidWasteOverviewView,E_WasteOverviewView,Biomedical_WasteOverviewView,Liquid_DischargeOverviewView,OthersOverviewView,Waste_Sent_For_RecycleOverviewView,Waste_Sent_For_LandFillOverviewView,StackedWasteOverviewView,WasteOverallDonutChartView,SentToLandfillOverviewView,SentToRecycledOverviewView,HVACOverviewView,ProductionOverviewView,StpOverviewView,Admin_BlockOverviewView,Utilities_OverviewView,WasteViewCard_Over,EnergyViewCard_Over,Others_OverviewView,Renewable_EnergyOverView,StackedEnergyOverviewView,OverallUsageView,Fuel_Used_OperationsOverView,WaterViewCard_Over,Generated_WaterOverviewView,Recycle_WaterOverviewView,Softener_usageOverviewView,Boiler_usageOverviewView,otherUsage_OverviewView,StackedWaterOverviewView,EnergyAnalyticsView,WaterAnalyticsView,BiodiversityMetricsGraphsView,LogisticesOverviewAndGraphs,EmissionCalculations,YearFacilityDataAPIView
+from .views import WasteCreateView,WasteView,WasteEditView,WasteDeleteView,EnergyCreateView,EnergyView,EnergyEditView,EnergyDeleteView,WaterView,WaterCreateView,WaterEditView,WaterDeleteView,BiodiversityCreateView,BiodiversityView,BiodiversityEditView,BiodiversityDeleteView,FacilityCreateView,FacilityView,FacilityEditView,FacilityDeleteView,LogisticesCreateView,LogisticesView,LogisticesEditView,LogisticesDeleteView,OrganizationCreate,OrganizationView,FoodWasteOverviewView,SolidWasteOverviewView,E_WasteOverviewView,Biomedical_WasteOverviewView,Liquid_DischargeOverviewView,OthersOverviewView,Waste_Sent_For_RecycleOverviewView,Waste_Sent_For_LandFillOverviewView,StackedWasteOverviewView,WasteOverallDonutChartView,SentToLandfillOverviewView,SentToRecycledOverviewView,HVACOverviewView,ProductionOverviewView,StpOverviewView,Admin_BlockOverviewView,Utilities_OverviewView,WasteViewCard_Over,EnergyViewCard_Over,Others_OverviewView,Renewable_EnergyOverView,StackedEnergyOverviewView,OverallUsageView,Fuel_Used_OperationsOverView,WaterViewCard_Over,Generated_WaterOverviewView,Recycle_WaterOverviewView,Softener_usageOverviewView,Boiler_usageOverviewView,otherUsage_OverviewView,StackedWaterOverviewView,EnergyAnalyticsView,WaterAnalyticsView,BiodiversityMetricsGraphsView,LogisticesOverviewAndGraphs,EmissionCalculations,YearFacilityDataAPIView
 
 
-from rest_framework_simplejwt.views import (
-    TokenObtainPairView,
-    TokenRefreshView,
-)
 urlpatterns = [
    
-   #JWT-Token Refresh Starts
-   path('api/token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
-   path('api/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
-   #JWT-Token Refresh Ends
-   
-   #Apis for Registration and Login  starts
-   path('register/', RegisterView.as_view(), name='register'),
-   path('login/', LoginView.as_view(), name='login'),
-   path('dashboard/', DashboardView.as_view(), name='dashboard'),
-   path('logout/', LogoutView.as_view(), name='logout'),
-   #Apis for Registration and Login Ends
     
    #Apis For Organization_Registration Starts
    path('Organization_Create/',OrganizationCreate.as_view(),name='Organization_Create'),

@@ -1,55 +1,21 @@
-import pandas as pd
+
 from datetime import datetime
 from collections import defaultdict
+import logging
 from django.db.models import Sum, Value, FloatField,Min, Max,F
 from django.db.models.functions import Coalesce, Cast, ExtractMonth
-from rest_framework.parsers import MultiPartParser, FormParser
 from django.utils import timezone
 from django.contrib.auth import authenticate
 from django.shortcuts import get_object_or_404
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
-from rest_framework.permissions import IsAuthenticated,AllowAny
+from rest_framework.permissions import IsAuthenticated
 from rest_framework_simplejwt.tokens import RefreshToken
-from .serializers import UserRegisterSerializer, UserLoginSerializer,WasteSerializer,WasteCreateSerializer,EnergyCreateSerializer,EnergySerializer,WaterCreateSerializer,WaterSerializer,BiodiversityCreateSerializer,BiodiversitySerializer,FacilitySerializer,LogisticesSerializer,OrganizationSerializer
-from .models import CustomUser,Waste,Energy,Water,Biodiversity,Facility,Logistices,Org_registration
+from .serializers import WasteSerializer,WasteCreateSerializer,EnergyCreateSerializer,EnergySerializer,WaterCreateSerializer,WaterSerializer,BiodiversityCreateSerializer,BiodiversitySerializer,FacilitySerializer,LogisticesSerializer,OrganizationSerializer
+from .models import Waste,Energy,Water,Biodiversity,Facility,Logistices,Org_registration
 from django.db.models import Q
 from django.db.models import Field
-#Version One.one
-#Register View
-class RegisterView(APIView):
-    permission_classes = [AllowAny]
-    def post(self, request):
-        serializer = UserRegisterSerializer(data=request.data)
-        if serializer.is_valid():
-            user = serializer.save()
-            return Response({"msg": "User registered successfully."}, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-#LoginView
-class LoginView(APIView):
-    
-    permission_classes = [AllowAny]
-    
-    def post(self, request):
-        serializer = UserLoginSerializer(data=request.data)
-        if serializer.is_valid():
-            email = serializer.validated_data['email']
-            password = serializer.validated_data['password']
-            user = authenticate(email=email, password=password)  # Use authenticate here
-            if user is None:
-                return Response({"error": "Invalid credentials"}, status=status.HTTP_401_UNAUTHORIZED)
-
-            refresh = RefreshToken.for_user(user)
-            response = Response({
-                'refresh': str(refresh),
-                'access': str(refresh.access_token),
-            }, status=status.HTTP_200_OK)
-            response.set_cookie('access_token', str(refresh.access_token), httponly=True)
-            return response
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
 #Dashboard View
 class DashboardView(APIView):
     permission_classes = [IsAuthenticated]
@@ -143,6 +109,7 @@ class FacilityView(APIView):
 
         user_data = {
             'email': user.email,
+            'user_id':user.user_id,
             'facility_data': facility_data_response,
         }
 
@@ -4725,6 +4692,7 @@ class LogisticesOverviewAndGraphs(APIView):
             # Structure the final response
             data = {
                 "year": year,
+                "email":user.email,
                 "facility_id": facility_id,
                 "logistices_totals": {
                     "total_vehicles": total_vehicles,
