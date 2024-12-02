@@ -17,10 +17,7 @@ from .models import CustomUser,Waste,Energy,Water,Biodiversity,Facility,Logistic
 from django.db.models import Q
 from django.db.models import Field
 import logging
-
-
-logger = logging.getLogger(__name__)
-
+#Version One
 #Register View
 class RegisterView(APIView):
     permission_classes = [AllowAny]
