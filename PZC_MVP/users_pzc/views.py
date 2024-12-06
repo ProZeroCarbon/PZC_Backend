@@ -12,8 +12,8 @@ from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework_simplejwt.tokens import RefreshToken
-from .serializers import WasteSerializer,WasteCreateSerializer,EnergyCreateSerializer,EnergySerializer,WaterCreateSerializer,WaterSerializer,BiodiversityCreateSerializer,BiodiversitySerializer,FacilitySerializer,LogisticesSerializer,OrganizationSerializer
-from .models import Waste,Energy,Water,Biodiversity,Facility,Logistices,Org_registration
+from .serializers import WasteSerializer,WasteCreateSerializer,EnergyCreateSerializer,EnergySerializer,WaterCreateSerializer,WaterSerializer,BiodiversityCreateSerializer,BiodiversitySerializer,FacilitySerializer,LogisticesSerializer
+from .models import Waste,Energy,Water,Biodiversity,Facility,Logistices
 from django.db.models import Q
 from django.db.models import Field
 #Dashboard View
@@ -29,36 +29,6 @@ class DashboardView(APIView):
         }
         return Response(user_data, status=status.HTTP_200_OK)
 
-
-
-'''Organization Crud Operations Starts'''
-
-# OrganizationCreate
-class OrganizationCreate(APIView):
-    permission_classes = [IsAuthenticated]
-    
-    def post(self, request):
-        serializer = OrganizationSerializer(data=request.data, context={'request': request})
-        if serializer.is_valid():
-            serializer.save()
-            return Response({"message": "Organization Registration added successfully"}, status=status.HTTP_201_CREATED)
-        
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-# OrganizationView
-class OrganizationView(APIView):
-    permission_classes = [IsAuthenticated]
-    
-    def get(self, request):
-        user = request.user
-        org_reg_data = Org_registration.objects.filter(user=user)
-        organization_serializer = OrganizationSerializer(org_reg_data, many=True)
-        user_data = {
-            'email': user.email,
-            'org_reg_data': organization_serializer.data
-        }
-        return Response(user_data, status=status.HTTP_200_OK)
-'''Oragnization Crud Operations Ends'''
 
 '''Facility Crud Operations starts'''
 #FacilityCreate

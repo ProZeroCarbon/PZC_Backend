@@ -3,18 +3,6 @@ import uuid
 from django.db import models
 from django.utils import timezone
 from auth_registration.models import CustomUser 
-class Org_registration(models.Model):
-    user = models.ForeignKey(CustomUser,on_delete=models.CASCADE)
-    Organization_Name = models.CharField(max_length=255)
-    Business_executive_Name = models.CharField(max_length=255)
-    Location = models.CharField( max_length=255,null=True,blank=True)
-    Branch_ID = models.CharField(max_length=255)
-    description = models.CharField(max_length=255)
-    
-    def __str__(self):
-        return f"Organization: {self.organization_name} for {self.user.email}"
-    
-
 class Facility(models.Model):
     user = models.ForeignKey(CustomUser, on_delete=models.CASCADE,related_name='facilities')
     facility_id = models.CharField(max_length=255, primary_key=True, editable=False)

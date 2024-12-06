@@ -1,6 +1,6 @@
 # auth_registration/urls.py
 from django.urls import path
-from .views import RegisterView, LoginView, LogoutView,AdminDashboardView
+from .views import Registercreate,RegisterView,RegisterUpdate,RegisterDelete, LoginView,LogoutView,AdminDashboardView,Add_Summary,GetSummaries,SuperuserListView
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
 urlpatterns = [
@@ -10,9 +10,16 @@ urlpatterns = [
     # JWT-Token Refresh End
 
     # APIs for Registration and Login
-    path('register/', RegisterView.as_view(), name='register'),
     path('login/', LoginView.as_view(), name='login'),
+    path('add_clients/', Registercreate.as_view(), name='add_clients'),
+    path('view_clients/',RegisterView.as_view(),name="view_clients"),
+    path('update_clients/<str:user_id>/',RegisterUpdate.as_view(),name="update_clients"),
+    path('delete_clients/<str:user_id>/',RegisterDelete.as_view(),name="delete_clients"),
+    
+    
     path("admin_dashboard/",AdminDashboardView.as_view(),name="admin_dash"),
-    path('superusers/',AdminDashboardView.as_view(),name='superuser'),
+    path("add_summary/",Add_Summary.as_view(),name="add_summary"),
+    path("view_summary/",GetSummaries.as_view(),name="view_summary"),
+    path('superusers/',SuperuserListView.as_view(),name='superuser'),
     path('logout/', LogoutView.as_view(), name='logout'),
 ]
