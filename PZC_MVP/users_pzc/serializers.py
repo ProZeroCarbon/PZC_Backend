@@ -7,66 +7,9 @@ from django.contrib.auth import authenticate
 from django.core.exceptions import ValidationError
 from django.utils.translation import gettext_lazy as _
 from django.utils.translation import gettext as _
-from .models import CustomUser,Waste,Energy,Water,Biodiversity,Facility,Logistices,Org_registration
+from .models import CustomUser,Waste,Energy,Water,Biodiversity,Facility,Logistices
 import logging
 
-
-
-class OrganizationSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Org_registration
-        fields = ['Organization_Name', 'Business_executive_Name', 'Location', 'Branch_ID', 'description']
-
-    # Validation for 'organization_name'
-    def validate_Organization_Name(self, value):
-        request = self.context.get('request')
-        
-        if request and request.method in ['PUT', 'PATCH']:
-            organization_id = request.parser_context['kwargs'].get('pk')
-            if Org_registration.objects.exclude(pk=organization_id).filter(Organization_Name=value).exists():
-                raise serializers.ValidationError("An organization with this name already exists.")
-        else:
-            if Org_registration.objects.filter(Organization_Name=value).exists():
-                raise serializers.ValidationError("An organization with this name already exists.")
-        
-        if len(value) < 3:
-            raise serializers.ValidationError("Organization name must be at least 3 characters long.")
-        
-        if not re.match("^[A-Za-z\s]*$", value):
-            raise serializers.ValidationError("Organization name must contain only letters and spaces.")
-        
-        return value
-
-    def validate_business_executive_name(self, value):
-        if not re.match("^[A-Za-z\s]*$", value):
-            raise serializers.ValidationError("Business Executive name must contain only letters and spaces.")
-        return value
-    
-    def validate_location(self, value):
-        if value and not re.match("^[A-Za-z0-9\s,]*$", value):
-            raise serializers.ValidationError("Location can only contain letters, numbers, commas, and spaces.")
-        return value
-    
-    def validate_branch_id(self, value):
-        if not re.match("^[A-Za-z0-9]*$", value):
-            raise serializers.ValidationError("Branch ID must be alphanumeric.")
-        if len(value) < 5 or len(value) > 10:
-            raise serializers.ValidationError("Branch ID must be between 5 and 10 characters long.")
-        return value
-
-    def validate_description(self, value):
-        if value is None or value.strip() == '':
-            raise serializers.ValidationError("Description cannot be empty.")
-        if len(value) < 10:
-            raise serializers.ValidationError("Description must be at least 10 characters long.")
-        if value.lower() in ['na', 'none', 'not applicable']:
-            raise serializers.ValidationError("Please provide a valid description.")
-        return value
-
-    def create(self, validated_data):
-        user = self.context['request'].user
-        organization = Org_registration.objects.create(user=user, **validated_data)
-        return organization
 
 #Facility Serializers Starts
 class FacilitySerializer(serializers.ModelSerializer):

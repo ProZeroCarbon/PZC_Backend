@@ -74,7 +74,7 @@ CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",  # React development server
     # Other domains if needed
 ]
-
+ENCRYPTION_KEY = "wOpYeqSpxjgZK3LCAi9XGY--M4l3mKJNXJ0ENBLmX6Q="
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
