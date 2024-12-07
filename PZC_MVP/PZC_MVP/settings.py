@@ -74,7 +74,9 @@ CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",  # React development server
     # Other domains if needed
 ]
-ENCRYPTION_KEY = "wOpYeqSpxjgZK3LCAi9XGY--M4l3mKJNXJ0ENBLmX6Q="
+
+# ENCRYPTION_KEY = os.getenv('ENCRYPTION_KEY', '6EqxUi7a2YqJJb7xCwkRT_smTf8NB_z5ETadLt2pTxI=')
+ENCRYPTION_KEY = "eWxJSWNvYXdabkdSemcxdFQ0SEx4a1FqMS1EeGpoOTAyV3lvQU5LOVZYMD0="
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
