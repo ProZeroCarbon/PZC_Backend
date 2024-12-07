@@ -1,6 +1,6 @@
 # auth_registration/urls.py
 from django.urls import path
-from .views import Registercreate,RegisterView,RegisterUpdate,RegisterDelete, LoginView,LogoutView,AdminDashboardView,Add_Summary,GetSummaries,SuperuserListView
+from .views import Registercreate,RegisterView,RegisterUpdate,RegisterDelete, LoginView,LogoutView,AdminDashboardView,Add_Summary,GetSummaries,SuperuserListView,ReportUpload,DownloadReport
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
 urlpatterns = [
@@ -20,6 +20,11 @@ urlpatterns = [
     path("admin_dashboard/",AdminDashboardView.as_view(),name="admin_dash"),
     path("add_summary/",Add_Summary.as_view(),name="add_summary"),
     path("view_summary/",GetSummaries.as_view(),name="view_summary"),
+    
+    
+    path('upload_report/',ReportUpload.as_view(),name="upload_report"),
+    path('download_report/',DownloadReport.as_view(),name="download_report"),
+    
     path('superusers/',SuperuserListView.as_view(),name='superuser'),
     path('logout/', LogoutView.as_view(), name='logout'),
 ]

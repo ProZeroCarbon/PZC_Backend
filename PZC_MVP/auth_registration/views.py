@@ -1,7 +1,7 @@
 from datetime import date, datetime
 from django.shortcuts import render
-from auth_registration.models import CustomUser,Summary
-from .serializers import UserRegisterSerializer, UserLoginSerializer,SummarySerializer
+from auth_registration.models import CustomUser,Summary,UploadReport
+from .serializers import UserRegisterSerializer, UserLoginSerializer,SummarySerializer,UploadReportSerializer
 from rest_framework.permissions import BasePermission
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -266,6 +266,79 @@ class GetSummaries(APIView):
             'summary':summary_data
             }, status=status.HTTP_200_OK)
 
+class ReportUpload(APIView):
+    permission_classes = [IsAuthenticated, IsAdminUser]
+    
+    def post(self, request):
+        # Create a mutable copy of the request data
+        data = request.data.copy()
+
+        # Get the user_id from the request to associate the file with a specific user
+        user_id = request.data.get('user_id')  # The admin specifies the target user
+
+        if not user_id:
+            return Response(
+                {"error": "User ID is required."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        try:
+            # Ensure the user exists
+            user = CustomUser.objects.get(user_id=user_id)
+            data['user'] = user.user_id  # Associate the user with the report
+        except CustomUser.DoesNotExist:
+            return Response(
+                {"error": "User not found."},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        # Check if a file is included in the request
+        if 'uploaded_file' not in request.FILES or not request.FILES['uploaded_file']:
+            return Response(
+                {"error": "File not uploaded. Please attach a file to upload."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Serialize the data
+        serializer = UploadReportSerializer(data=data)
+        
+        if serializer.is_valid():
+            # Save the report to the database
+            serializer.save()
+            return Response(
+                {"success": "File uploaded successfully.", "data": serializer.data},
+                status=status.HTTP_201_CREATED
+            )
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+class DownloadReport(APIView):
+    permission_classes = [IsAuthenticated]
+    def get(self, request):
+        user_id = request.query_params.get('user_id', None)
+        
+        # If user_id is provided, retrieve reports for that specific user
+        if user_id:
+            try:
+                user = CustomUser.objects.get(user_id=user_id)
+                reports = UploadReport.objects.filter(user=user)
+            except CustomUser.DoesNotExist:
+                return Response({"error": "User not found."}, status=status.HTTP_404_NOT_FOUND)
+        else:
+            # If no user_id is provided, return all reports (Admin access only)
+            reports = UploadReport.objects.all()
+
+        # Serialize the reports
+        Reportserializer = UploadReportSerializer(reports, many=True)
+        uploaded_report=Reportserializer.data
+        
+
+        return Response({
+            "Uploaded Reports":uploaded_report
+        },
+        status=status.HTTP_200_OK)
+    
+   
+    
 class SuperuserListView(APIView):
     permission_classes = [IsAdmin,IsAuthenticated]  # Only admin users can access this view
 
