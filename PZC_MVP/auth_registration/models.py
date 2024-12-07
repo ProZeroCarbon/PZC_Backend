@@ -144,3 +144,28 @@ class Summary(models.Model):
         if not self.summary_id:
             self.summary_id = uuid.uuid4().hex[:8].upper()
         super().save(*args, **kwargs)
+        
+
+
+class UploadReport(models.Model):
+    user= models.ForeignKey('auth_registration.CustomUser',on_delete=models.CASCADE)
+    report_id =  models.CharField(max_length=255, primary_key=True, editable=False)
+    organisation_name = models.CharField(max_length=255, default='')
+    financial_year = models.CharField(max_length=255, help_text="e.g., 2024-2025")
+    uploaded_file = models.FileField(upload_to='Report_records/', blank=True, null=True)
+    
+    def __str__(self):
+        return f"{self.organisation_name} - {self.financial_year}"
+    
+    def save(self, *args, **kwargs):
+        if not self.report_id:
+            self.report_id = uuid.uuid4().hex[:8].upper()
+        super().save(*args, **kwargs)
+        
+    
+    
+    
+    
+    
+    
+    

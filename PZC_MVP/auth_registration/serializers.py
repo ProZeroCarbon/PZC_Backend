@@ -8,7 +8,7 @@ from django.contrib.auth import authenticate
 from django.core.exceptions import ValidationError
 from django.utils.translation import gettext_lazy as _
 from django.utils.translation import gettext as _
-from auth_registration.models import CustomUser,Summary
+from auth_registration.models import CustomUser,Summary,UploadReport
 from users_pzc.models import Waste,Water,Energy,Biodiversity,Logistices,Facility
 import logging
 
@@ -129,6 +129,7 @@ class UserLoginSerializer(serializers.Serializer):
         return data
     
 #LOgin Serializers Ends
+
 class SummarySerializer(serializers.ModelSerializer):
     organisation_name = serializers.CharField(source="organisation.organisation_name", read_only=True)
     facility_name = serializers.CharField(source="facility.facility_name", read_only=True)
@@ -297,4 +298,45 @@ class SummarySerializer(serializers.ModelSerializer):
         representation.pop('facility', None)
         return representation
 
+class UploadReportSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = UploadReport
+        fields = ['report_id', 'user', 'organisation_name', 'financial_year', 'uploaded_file']
+        read_only_fields = ['report_id']
+        
+    def validate(self, data):
+        # Check if financial_year is provided
+        if not data.get('financial_year'):
+            raise serializers.ValidationError({"financial_year": "Financial year is required."})
 
+        # Check if organisation_name is provided
+        if not data.get('organisation_name'):
+            raise serializers.ValidationError({"organisation_name": "Organisation name is required."})
+
+        # Check if uploaded_file is provided and if it's a PDF
+        if not data.get('uploaded_file'):
+            raise serializers.ValidationError({"uploaded_file": "File is required."})
+        elif not data['uploaded_file'].name.endswith('.pdf'):
+            raise serializers.ValidationError({"uploaded_file": "Only PDF files are allowed."})
+
+        # Check if the uploaded file size is under the 5MB limit
+        if data['uploaded_file'].size > 5 * 1024 * 1024:
+            raise serializers.ValidationError({"uploaded_file": "File size must be less than 5MB."})
+
+        # Check for duplicate report for the same user and financial_year
+        user = data.get('user')
+        financial_year = data.get('financial_year')
+        
+        # Check if a report already exists for this user and financial year
+        if UploadReport.objects.filter(user=user, financial_year=financial_year).exists():
+            raise serializers.ValidationError({"non_field_errors": "A report for this financial year already exists for this user."})
+
+        return data
+
+    def create(self, validated_data):
+        # Ensure report_id is generated
+        if not validated_data.get('report_id'):
+            validated_data['report_id'] = uuid.uuid4().hex[:8].upper()
+
+        # Let Django handle user assignment, it's set automatically during serializer validation.
+        return super().create(validated_data)

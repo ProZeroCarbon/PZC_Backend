@@ -46,7 +46,6 @@ class Waste(models.Model):
         
         super().save(*args, **kwargs)
 
-
 class Energy(models.Model):
     user = models.ForeignKey(CustomUser,on_delete=models.CASCADE)
     facility = models.ForeignKey(Facility, on_delete=models.CASCADE)
