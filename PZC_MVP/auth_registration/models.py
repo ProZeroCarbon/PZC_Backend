@@ -1,9 +1,8 @@
-
+import base64
 import uuid
 from django.db import models
 from django.utils.timezone import now
 from django.conf import settings
-
 from cryptography.fernet import Fernet
 from django.contrib.auth.models import AbstractBaseUser, BaseUserManager, PermissionsMixin
 
@@ -56,6 +55,7 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
     alternative_contact_no = models.CharField(max_length=15, blank=True, null=True)
     description = models.TextField()
     
+    encrypted_password = models.TextField(blank=True, null=True)
 
     objects = CustomUserManager()
 
@@ -69,21 +69,44 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
         if not self.user_id:
             self.user_id = uuid.uuid4().hex[:8].upper()
         super().save(*args, **kwargs)
-    # def encrypt_password(self, password):
-    #     cipher = Fernet(settings.ENCRYPTION_KEY.encode())
-    #     return cipher.encrypt(password.encode()).decode()
+        
+    def encrypt_password(self, plain_password):
+        """
+        Encrypt the plain password using Fernet symmetric encryption.
+        """
+        encryption_key = getattr(settings, 'ENCRYPTION_KEY', None)
+        
+        # Decode the key from base64 and ensure it's 32 bytes
+        decoded_key = base64.urlsafe_b64decode(encryption_key.encode())  # Decode to bytes
+        valid_key = decoded_key[:32]  # Ensure it is 32 bytes
 
-    # def decrypt_password(self):
-    #     if self.plaintext_password_encrypted:
-    #         cipher = Fernet(settings.ENCRYPTION_KEY.encode())
-    #         return cipher.decrypt(self.plaintext_password_encrypted.encode()).decode()
+        # Create Fernet cipher suite with valid 32-byte key
+        cipher_suite = Fernet(base64.urlsafe_b64encode(valid_key))  # Re-encode the key to base64
+        return cipher_suite.encrypt(plain_password.encode()).decode()
+
+    def decrypt_password(self):
+        """
+        Decrypt the stored encrypted password.
+        """
+        if not self.encrypted_password:
+            return None
+        
+        encryption_key = getattr(settings, 'ENCRYPTION_KEY', None)
+        
+        # Decode and ensure it's 32 bytes
+        decoded_key = base64.urlsafe_b64decode(encryption_key.encode())
+        valid_key = decoded_key[:32]
+
+        # Create Fernet cipher suite with valid 32-byte key
+        cipher_suite = Fernet(base64.urlsafe_b64encode(valid_key))  # Recreate Fernet instance
+        return cipher_suite.decrypt(self.encrypted_password.encode()).decode()
 
 class Summary(models.Model):
-    user= models.ForeignKey(CustomUser,on_delete=models.CASCADE)
+    user= models.ForeignKey('auth_registration.CustomUser',on_delete=models.CASCADE)
     SUMMARY_TYPE_CHOICES = [
         ('Summary', 'Summary'),
         ('Brief Summary', 'Brief Summary'),
-        ('Long Summary','Load Summary'),
+        ('Long Summary','Long Summary'),
     ]
 
     CATEGORY_CHOICES = [
@@ -97,11 +120,11 @@ class Summary(models.Model):
     summary_id = models.CharField(max_length=255, primary_key=True, editable=False)
     summary_type = models.CharField(max_length=50, choices=SUMMARY_TYPE_CHOICES)
     financial_year = models.CharField(max_length=9)
-    organisation = models.ForeignKey(CustomUser,on_delete=models.CASCADE,related_name='organisation_summaries',limit_choices_to={'role': 'user'},  # Only users can have summaries
+    organisation = models.ForeignKey('auth_registration.CustomUser',on_delete=models.CASCADE,related_name='organisation_summaries',limit_choices_to={'role': 'user'},  # Only users can have summaries
     )
     facility = models.ForeignKey('users_pzc.Facility',on_delete=models.CASCADE,related_name='facility_summaries',
     )
-    category = models.CharField(max_length=50, choices=CATEGORY_CHOICES, null=True, blank=True)
+    category = models.CharField(max_length=50, choices=CATEGORY_CHOICES)
     add_summary = models.TextField()
 
     def __str__(self):
@@ -111,15 +134,13 @@ class Summary(models.Model):
         if not self.summary_id:
             self.summary_id = uuid.uuid4().hex[:8].upper()
             
+        # Use provided financial year or calculate based on DatePicker
         if not self.financial_year:
             if self.organisation.DatePicker:
                 start_year = self.organisation.DatePicker.year
-                if self.organisation.DatePicker.month < 4: 
+                if self.organisation.DatePicker.month < 4:  # Financial year starts in April
                     start_year -= 1
                 self.financial_year = f"{start_year}-{start_year + 1}"
         if not self.summary_id:
             self.summary_id = uuid.uuid4().hex[:8].upper()
-        if self.summary_type == 'Long Summary':
-            self.category = None
         super().save(*args, **kwargs)
-    

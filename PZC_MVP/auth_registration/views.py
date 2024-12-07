@@ -8,6 +8,7 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAdminUser
 from .permissions import IsAdmin
 from rest_framework import status
+from users_pzc.models import Facility
 from rest_framework.permissions import IsAuthenticated,AllowAny
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.auth import authenticate
@@ -29,19 +30,21 @@ class Registercreate(APIView):
     
 #Register View
 class RegisterView(APIView):
-    permission_classes = [IsAuthenticated, IsAdminUser]
+    permission_classes = [IsAuthenticated, IsAdmin]
 
     def get(self, request):
         try:
-            # Get the organisation_name query parameter (if provided)
+            if not request.user.is_superuser:
+                return Response({"msg": "Permission denied. Only superusers can access this."}, status=status.HTTP_403_FORBIDDEN)
+    
             organisation_name = request.query_params.get('organisation_name', None)
-
-            # Base queryset: exclude staff and superusers
             query = CustomUser.objects.filter(is_staff=False, is_superuser=False)
 
             # Apply filter only if organisation_name is provided
             if organisation_name:
                 query = query.filter(organisation_name__icontains=organisation_name)
+            for user in query:
+                user.plain_password = "Plain password is only available during user creation."
 
             # If no data exists, return a default structure with "-" values
             if not query.exists():
@@ -62,12 +65,13 @@ class RegisterView(APIView):
                             "alternative_contact_no": "-",
                             "email": "-",
                             "description": "-",
+                            "plain_password": "-"
                         }
                     ]
                 }, status=status.HTTP_200_OK)
 
             # Serialize the resulting queryset
-            users_serializer = UserRegisterSerializer(query, many=True)
+            users_serializer = UserRegisterSerializer(query, many=True, context={'request': request})
             client_data = users_serializer.data
 
             return Response({
@@ -214,27 +218,6 @@ class Add_Summary(APIView):
             )
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-# class GetSummaries(APIView):
-#     permission_classes = [IsAuthenticated]
-
-#     def get(self, request):
-#         user = request.user
-#         organisation_id = request.query_params.get('organisation', None)
-#         category = request.query_params.get('category', None)
-
-#         # Base queryset filtered for the authenticated user
-#         queryset = Summary.objects.filter(user=user)
-
-#         # Apply additional filters
-#         if organisation_id:
-#             queryset = queryset.filter(organisation__user_id=organisation_id)
-#         if category:
-#             queryset = queryset.filter(category=category)
-
-#         # Serialize the data
-#         serializer = SummarySerializer(queryset, many=True)
-        
-#         return Response(serializer.data, status=status.HTTP_200_OK)
 class GetSummaries(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -244,6 +227,7 @@ class GetSummaries(APIView):
         facility_id = request.query_params.get('facility_id', None)
         category = request.query_params.get('category', None)
         year_param = request.query_params.get('year', None)
+        summary_type = request.query_params.get('summary_type', None)  # Optional summary_type filter
 
         # Validate year parameter
         try:
@@ -260,21 +244,28 @@ class GetSummaries(APIView):
         # Base queryset filtered for the authenticated user
         queryset = Summary.objects.filter(user=user)
 
-        # Apply additional filters
+        # Apply additional filters based on query params
         if organisation_name:
             queryset = queryset.filter(organisation__organisation_name__icontains=organisation_name)
         if facility_id:
-            queryset = queryset.filter(facility__id=facility_id)  # Use facility_id instead of facility_name
+            queryset = queryset.filter(facility=facility_id)  # Filter by specific facility_id
         if category:
             queryset = queryset.filter(category=category)
-        if year:
-            # Filter by financial year if year is provided (Assuming financial_year is in "YYYY-YYYY" format)
-            queryset = queryset.filter(financial_year__startswith=str(year))
+        if summary_type:
+            queryset = queryset.filter(summary_type=summary_type)
+        if year_param:
+            # Filter by financial year based on the "YYYY-YYYY" format
+            queryset = queryset.filter(financial_year__startswith=str(year_param))
 
-        # Serialize the data
-        serializer = SummarySerializer(queryset, many=True)
+        # Serialize the filtered queryset
+        summaryserializer = SummarySerializer(queryset, many=True)
+        summary_data = summaryserializer.data
 
-        return Response(serializer.data, status=status.HTTP_200_OK)
+        # Return the serialized data in the response
+        return Response({
+            'summary':summary_data
+            }, status=status.HTTP_200_OK)
+
 class SuperuserListView(APIView):
     permission_classes = [IsAdmin,IsAuthenticated]  # Only admin users can access this view
 
