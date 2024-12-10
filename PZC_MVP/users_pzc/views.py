@@ -16,6 +16,9 @@ from .serializers import UserRegisterSerializer, UserLoginSerializer,WasteSerial
 from .models import CustomUser,Waste,Energy,Water,Biodiversity,Facility,Logistices,Org_registration
 from django.db.models import Q
 from django.db.models import Field
+from .filters import FacilityFilter, WasteFilter, EnergyFilter, WaterFilter, BiodiversityFilter, LogisticesFilter
+from django_filters.rest_framework import DjangoFilterBackend
+
 import logging
 #Version One
 #Register View
@@ -1074,6 +1077,7 @@ class WasteViewCard_Over(APIView):
             if year:
                 start_date = datetime(year, 4, 1)
                 end_date = datetime(year + 1, 3, 31)
+                # waste_data = Waste.objects.filter(user=user, DatePicker__range=(start_date, end_date))
             else:
                 # Get the latest year with available data
                 latest_entry = Waste.objects.filter(user=user).order_by('-DatePicker').first()
@@ -1155,16 +1159,19 @@ class FoodWasteOverviewView(APIView):
         year = request.GET.get('year', None)
 
         try:
+            # Determine year
             if not year:
-                year = self.get_latest_available_year(user)
+                year = self.get_latest_available_fiscal_year(user)
 
             try:
                 year = int(year)
             except ValueError:
                 return Response({'error': 'Invalid year parameter.'}, status=status.HTTP_400_BAD_REQUEST)
 
+            # Get fiscal year range
             start_date, end_date = self.get_fiscal_year_range(year)
 
+            # Build filters
             filters = {
                 'user': user,
                 'DatePicker__range': (start_date.date(), end_date.date())
@@ -1174,10 +1181,12 @@ class FoodWasteOverviewView(APIView):
             if facility_location:
                 filters['facility__location__icontains'] = facility_location
 
+            # Query filtered data
             waste_data = Waste.objects.filter(**filters)
             if not waste_data.exists():
                 return self.get_empty_response(year)
 
+            # Line chart data: monthly food waste
             monthly_food_waste = (
                 waste_data
                 .values('DatePicker__month')
@@ -1197,7 +1206,7 @@ class FoodWasteOverviewView(APIView):
                 for month in month_order
             ]
 
-            # Prepare facility data for donut chart
+            # Donut chart data: facility contribution
             facility_food_waste = (
                 waste_data
                 .values('facility__facility_name')
@@ -1214,6 +1223,7 @@ class FoodWasteOverviewView(APIView):
                 for entry in facility_food_waste
             ]
 
+            # Construct response
             response_data = {
                 "year": year,
                 "line_chart_data": line_chart_data,
@@ -1223,19 +1233,24 @@ class FoodWasteOverviewView(APIView):
             return Response(response_data, status=status.HTTP_200_OK)
 
         except Exception as e:
-            import traceback
-            print(f"Error: {str(e)}")
-            print("Traceback:", traceback.format_exc())
             return Response(
                 {'error': f'An error occurred while processing your request: {str(e)}'},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 
-    def get_latest_available_year(self, user):
+    def get_latest_available_fiscal_year(self, user):
+        """
+        Adjusted to return the latest fiscal year (April to March) with available data.
+        """
         latest_waste = Waste.objects.filter(user=user).order_by('-DatePicker').first()
         if latest_waste:
-            return latest_waste.DatePicker.year
-        return datetime.now().year  # Default to current year if no data is available
+            latest_date = latest_waste.DatePicker
+            # Adjust fiscal year if the data is after March
+            if latest_date.month >= 4:
+                return latest_date.year
+            else:
+                return latest_date.year - 1
+        return datetime.now().year  # Default to current fiscal year if no data is available
 
     def get_fiscal_year_range(self, year):
         start_date = datetime(year, 4, 1)
@@ -1263,15 +1278,19 @@ class SolidWasteOverviewView(APIView):
         year = request.GET.get('year', None)
 
         try:
+            # Determine year
             if not year:
-                year = self.get_latest_available_year(user)
+                year = self.get_latest_available_fiscal_year(user)
 
             try:
                 year = int(year)
             except ValueError:
                 return Response({'error': 'Invalid year parameter.'}, status=status.HTTP_400_BAD_REQUEST)
 
+            # Get fiscal year range
             start_date, end_date = self.get_fiscal_year_range(year)
+
+
 
             filters = {
                 'user': user,
@@ -1339,11 +1358,19 @@ class SolidWasteOverviewView(APIView):
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 
-    def get_latest_available_year(self, user):
+    def get_latest_available_fiscal_year(self, user):
+        """
+        Adjusted to return the latest fiscal year (April to March) with available data.
+        """
         latest_waste = Waste.objects.filter(user=user).order_by('-DatePicker').first()
         if latest_waste:
-            return latest_waste.DatePicker.year
-        return datetime.now().year  # Default to current year if no data is available
+            latest_date = latest_waste.DatePicker
+            # Adjust fiscal year if the data is after March
+            if latest_date.month >= 4:
+                return latest_date.year
+            else:
+                return latest_date.year - 1
+        return datetime.now().year  # Default to current fiscal year if no data is available
 
     def get_fiscal_year_range(self, year):
         start_date = datetime(year, 4, 1)
@@ -1450,8 +1477,13 @@ class E_WasteOverviewView(APIView):
     def get_latest_available_year(self, user):
         latest_waste = Waste.objects.filter(user=user).order_by('-DatePicker').first()
         if latest_waste:
-            return latest_waste.DatePicker.year
-        return datetime.now().year 
+            latest_date = latest_waste.DatePicker
+            # Adjust fiscal year if the data is after March
+            if latest_date.month >= 4:
+                return latest_date.year
+            else:
+                return latest_date.year - 1
+        return datetime.now().year
 
     def get_fiscal_year_range(self, year):
         start_date = datetime(year, 4, 1)
@@ -1555,11 +1587,16 @@ class Biomedical_WasteOverviewView(APIView):
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 
-    def get_latest_available_year(self, user):
+    def get_latest_available_year(self, user): 
         latest_waste = Waste.objects.filter(user=user).order_by('-DatePicker').first()
         if latest_waste:
-            return latest_waste.DatePicker.year
-        return datetime.now().year 
+            latest_date = latest_waste.DatePicker
+            # Adjust fiscal year if the data is after March
+            if latest_date.month >= 4:
+                return latest_date.year
+            else:
+                return latest_date.year - 1
+        return datetime.now().year
 
     def get_fiscal_year_range(self, year):
         start_date = datetime(year, 4, 1)
@@ -1666,8 +1703,13 @@ class Liquid_DischargeOverviewView(APIView):
     def get_latest_available_year(self, user):
         latest_waste = Waste.objects.filter(user=user).order_by('-DatePicker').first()
         if latest_waste:
-            return latest_waste.DatePicker.year
-        return datetime.now().year 
+            latest_date = latest_waste.DatePicker
+            # Adjust fiscal year if the data is after March
+            if latest_date.month >= 4:
+                return latest_date.year
+            else:
+                return latest_date.year - 1
+        return datetime.now().year
 
     def get_fiscal_year_range(self, year):
         start_date = datetime(year, 4, 1)
@@ -1774,7 +1816,12 @@ class OthersOverviewView(APIView):
     def get_latest_available_year(self, user):
         latest_waste = Waste.objects.filter(user=user).order_by('-DatePicker').first()
         if latest_waste:
-            return latest_waste.DatePicker.year
+            latest_date = latest_waste.DatePicker
+            # Adjust fiscal year if the data is after March
+            if latest_date.month >= 4:
+                return latest_date.year
+            else:
+                return latest_date.year - 1
         return datetime.now().year 
 
     def get_fiscal_year_range(self, year):
@@ -1882,7 +1929,12 @@ class Waste_Sent_For_RecycleOverviewView(APIView):
     def get_latest_available_year(self, user):
         latest_waste = Waste.objects.filter(user=user).order_by('-DatePicker').first()
         if latest_waste:
-            return latest_waste.DatePicker.year
+            latest_date = latest_waste.DatePicker
+            # Adjust fiscal year if the data is after March
+            if latest_date.month >= 4:
+                return latest_date.year
+            else:
+                return latest_date.year - 1
         return datetime.now().year 
 
     def get_fiscal_year_range(self, year):
@@ -1990,7 +2042,12 @@ class Waste_Sent_For_LandFillOverviewView(APIView):
     def get_latest_available_year(self, user):
         latest_waste = Waste.objects.filter(user=user).order_by('-DatePicker').first()
         if latest_waste:
-            return latest_waste.DatePicker.year
+            latest_date = latest_waste.DatePicker
+            # Adjust fiscal year if the data is after March
+            if latest_date.month >= 4:
+                return latest_date.year
+            else:
+                return latest_date.year - 1
         return datetime.now().year 
 
     def get_fiscal_year_range(self, year):
@@ -2021,32 +2078,29 @@ class StackedWasteOverviewView(APIView):
         try:
             filters = {'user': user}
 
-            # Determine the latest available year if no year is specified
+            # Determine the year to use
             if not year:
                 latest_waste = Waste.objects.filter(user=user).aggregate(latest_date=Max('DatePicker'))
                 if latest_waste['latest_date']:
                     latest_date = latest_waste['latest_date']
-                    year = latest_date.year
+                    year = latest_date.year if latest_date.month >= 4 else latest_date.year - 1
                 else:
-                    year = datetime.now().year  # Default to the current year if no data exists
+                    # Default to the current fiscal year if no data exists
+                    today = datetime.now()
+                    year = today.year if today.month >= 4 else today.year - 1
 
             year = int(year)  # Ensure year is an integer
-            today = datetime.now()
 
             # Determine fiscal year range
-            if today.month >= 4:
-                start_date = datetime(year, 4, 1)
-                end_date = datetime(year + 1, 3, 31)
-            else:
-                start_date = datetime(year - 1, 4, 1)
-                end_date = datetime(year, 3, 31)
+            start_date = datetime(year, 4, 1)
+            end_date = datetime(year + 1, 3, 31)
             filters['DatePicker__range'] = (start_date, end_date)
 
             # Facility filters if specified
             if facility_id and facility_id.lower() != 'all':
                 filters['facility__facility_id'] = facility_id
             if facility_location and facility_location.lower() != 'all':
-                filters['facility__facility_location__icontains'] = facility_location
+                filters['facility__location__icontains'] = facility_location
 
             waste_types = [
                 'food_waste', 'solid_Waste', 'E_Waste', 'Biomedical_waste',
@@ -2057,20 +2111,18 @@ class StackedWasteOverviewView(APIView):
             monthly_data = {month: {waste_type: 0 for waste_type in waste_types} for month in range(1, 13)}
 
             # Fetch and aggregate monthly data
-            for waste_type in waste_types:
-                queryset = Waste.objects.filter(**filters)
-
-                # Aggregate monthly data with explicit output_field for each waste type
-                monthly_waste = (
-                    queryset
-                    .values('DatePicker__month')
-                    .annotate(total=Coalesce(Sum(waste_type, output_field=FloatField()), Value(0, output_field=FloatField())))
-                    .order_by('DatePicker__month')
-                )
-
-                for entry in monthly_waste:
-                    month = entry['DatePicker__month']
-                    monthly_data[month][waste_type] = entry['total']
+            queryset = Waste.objects.filter(**filters)
+            if queryset.exists():
+                for waste_type in waste_types:
+                    monthly_waste = (
+                        queryset
+                        .values('DatePicker__month')
+                        .annotate(total=Coalesce(Sum(waste_type, output_field=FloatField()), Value(0, output_field=FloatField())))
+                        .order_by('DatePicker__month')
+                    )
+                    for entry in monthly_waste:
+                        month = entry['DatePicker__month']
+                        monthly_data[month][waste_type] = entry['total']
 
             # Prepare response data in fiscal month order (April to March)
             stacked_bar_data = []
@@ -2094,6 +2146,8 @@ class StackedWasteOverviewView(APIView):
         except Exception as e:
             print(f"Error occurred: {e}") 
             return Response({'error': f'An error occurred: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
 #WasteOverview Donut chart
 class WasteOverallDonutChartView(APIView):
     permission_classes = [IsAuthenticated]
@@ -2112,28 +2166,41 @@ class WasteOverallDonutChartView(APIView):
             today = datetime.now()
 
             # Determine the latest available year based on the data in the database
+            # if not year:
+            #     latest_waste = Waste.objects.filter(user=user).aggregate(latest_date=Max('DatePicker'))
+            #     if latest_waste['latest_date']:
+            #         latest_date = latest_waste['latest_date']
+            #         year = latest_date.year  # Use the year from the latest available date
+            #     else:
+            #         year = today.year  # Default to current year if no data exists
+            # else:
+            #     try:
+            #         year = int(year)  # Ensure the 'year' is an integer
+            #     except ValueError:
+            #         return Response({'error': 'Invalid year parameter.'}, status=status.HTTP_400_BAD_REQUEST)
+
+            # # Fiscal year calculation based on the month
+            # if today.month >= 4:  # If today is after March, use the current year for the fiscal year
+            #     start_date = datetime(year, 4, 1)
+            #     end_date = datetime(year + 1, 3, 31)
+            # else:  # If before April, use the previous year for the fiscal year
+            #     start_date = datetime(year - 1, 4, 1)
+            #     end_date = datetime(year, 3, 31)
             if not year:
                 latest_waste = Waste.objects.filter(user=user).aggregate(latest_date=Max('DatePicker'))
                 if latest_waste['latest_date']:
                     latest_date = latest_waste['latest_date']
-                    year = latest_date.year  # Use the year from the latest available date
+                    year = latest_date.year if latest_date.month >= 4 else latest_date.year - 1
                 else:
-                    year = today.year  # Default to current year if no data exists
-            else:
-                try:
-                    year = int(year)  # Ensure the 'year' is an integer
-                except ValueError:
-                    return Response({'error': 'Invalid year parameter.'}, status=status.HTTP_400_BAD_REQUEST)
+                    # Default to the current fiscal year if no data exists
+                    today = datetime.now()
+                    year = today.year if today.month >= 4 else today.year - 1
 
-            # Fiscal year calculation based on the month
-            if today.month >= 4:  # If today is after March, use the current year for the fiscal year
-                start_date = datetime(year, 4, 1)
-                end_date = datetime(year + 1, 3, 31)
-            else:  # If before April, use the previous year for the fiscal year
-                start_date = datetime(year - 1, 4, 1)
-                end_date = datetime(year, 3, 31)
+            year = int(year)  # Ensure year is an integer
 
-            # Apply the fiscal year range filter
+            # Determine fiscal year range
+            start_date = datetime(year, 4, 1)
+            end_date = datetime(year + 1, 3, 31)
             filters['DatePicker__range'] = (start_date, end_date)
 
             # Facility ID filtering
@@ -2198,83 +2265,102 @@ class WasteOverallDonutChartView(APIView):
 class SentToLandfillOverviewView(APIView):
     permission_classes = [IsAuthenticated]
 
+    def get_fiscal_year_dates(self, year):
+        start_date = datetime(year, 4, 1)  # Fiscal year starts on April 1
+        end_date = datetime(year + 1, 3, 31)  # Ends on March 31 of the next year
+        return start_date, end_date
+
     def get(self, request):
         user = request.user
-        
+
         # Get parameters from the request
         year = request.GET.get('year', None)
         facility_id = request.GET.get('facility_id', None)
         facility_location = request.GET.get('facility_location', None)
         
-        # Default to the current year if 'year' is not provided
-        if not year:
-            # Get the latest available year based on the waste data in the database
-            latest_waste = Waste.objects.filter(user=user).aggregate(latest_date=Max('DatePicker'))
-            if latest_waste['latest_date']:
-                latest_date = latest_waste['latest_date']
-                year = latest_date.year  # Use the year from the latest available date
-            else:
-                year = timezone.now().year  # Default to current year if no data exists
-        else:
-            try:
-                year = int(year)  # Ensure the 'year' parameter is a valid integer
-            except ValueError:
-                return Response({'error': 'Invalid year parameter.'}, status=status.HTTP_400_BAD_REQUEST)
-        
-        # Initialize the filters with the user and year
-        filters = {'user': user, 'DatePicker__year': year}
-        
         try:
-            # Define the list of waste fields to calculate the overall total
+            # Default to the current fiscal year if no year is provided
+            if not year:
+                latest_waste = Waste.objects.filter(user=user).aggregate(latest_date=Max('DatePicker'))
+                if latest_waste['latest_date']:
+                    latest_date = latest_waste['latest_date']
+                    year = latest_date.year if latest_date.month >= 4 else latest_date.year - 1
+                else:
+                    current_date = timezone.now()
+                    year = current_date.year if current_date.month >= 4 else current_date.year - 1
+            else:
+                year = int(year)  # Ensure the 'year' is an integer
+
+            # Get fiscal year start and end dates
+            start_date, end_date = self.get_fiscal_year_dates(year)
+
+            # Initialize filters
+            filters = {'user': user, 'DatePicker__range': (start_date, end_date)}
+
+            # Start with the base queryset
+            queryset = Waste.objects.filter(**filters)
+
+            # Apply facility_id filter if provided and not 'all'
+            if facility_id and facility_id.lower() != 'all':
+                queryset = queryset.filter(facility__facility_id=facility_id)
+
+            # Apply facility_location filter if provided and not 'all'
+            if facility_location and facility_location.lower() != 'all':
+                queryset = queryset.filter(facility__facility_location__icontains=facility_location)
+
+            if not queryset.exists():
+                # Return zero data if no matching records
+                response_data = {
+                    "landfill_percentage": 0,
+                    "remaining_percentage": 0
+                }
+                return Response(
+                    {
+                        "fiscal_year": f"{year}-{year + 1}",
+                        "sentToLandFill": response_data
+                    },
+                    status=status.HTTP_200_OK
+                )
+
+            # Define waste fields for calculations
             overall_total_fields = [
                 'food_waste', 'solid_Waste', 'E_Waste', 'Biomedical_waste', 'other_waste'
             ]
 
-            # Start with the base queryset filtered by user and year
-            queryset = Waste.objects.filter(**filters)
-
-            # Apply facility_id filter if provided (and not 'all')
-            if facility_id and facility_id.lower() != 'all':
-                queryset = queryset.filter(facility__facility_id=facility_id)
-            
-            # Apply facility_location filter if provided (and not 'all')
-            if facility_location and facility_location.lower() != 'all':
-                queryset = queryset.filter(facility__facility_location__icontains=facility_location)
-
-            # Calculate the total 'Landfill_waste'
+            # Calculate total 'Landfill_waste'
             Landfill_waste_total = queryset.aggregate(
                 total=Coalesce(Sum(Cast('Landfill_waste', FloatField())), 0.0)
             )['total']
 
-            # Calculate the overall total waste (sum of food_waste, solid_Waste, etc.)
-            overall_total = sum(
-                queryset.aggregate(
-                    **{f"{waste_type}_total": Coalesce(Sum(Cast(waste_type, FloatField())), 0.0)
-                       for waste_type in overall_total_fields}
-                ).values()
+            # Calculate overall total waste
+            overall_totals = queryset.aggregate(
+                **{f"{waste_type}_total": Coalesce(Sum(Cast(waste_type, FloatField())), 0.0)
+                   for waste_type in overall_total_fields}
             )
+            overall_total = sum(overall_totals.values())
 
-            # Calculate the remaining waste (excluding Landfill waste)
+            # Calculate remaining waste and percentages
             remaining_waste_total = overall_total - Landfill_waste_total
-
-            # Calculate the landfill and remaining waste percentages
+            
             landfill_percentage = (Landfill_waste_total / overall_total) * 100 if overall_total else 0
             remaining_percentage = (remaining_waste_total / overall_total) * 100 if overall_total else 0
 
             # Prepare the response data
             response_data = {
-                "landfill_percentage": landfill_percentage,
-                "remaining_percentage": remaining_percentage
+                "landfill_percentage": round(landfill_percentage, 2),
+                "remaining_percentage": round(remaining_percentage, 2)
             }
 
             return Response(
                 {
-                    "year":year,
-                    "sentToLandFill":response_data
+                    "fiscal_year": f"{year}-{year + 1}",
+                    "sentToLandFill": response_data
                 },
                 status=status.HTTP_200_OK
-                )
+            )
 
+        except ValueError:
+            return Response({'error': 'Invalid year parameter.'}, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
             print(f"Error occurred: {e}")
             return Response({'error': f'An error occurred: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
@@ -2283,82 +2369,102 @@ class SentToLandfillOverviewView(APIView):
 class SentToRecycledOverviewView(APIView):
     permission_classes = [IsAuthenticated]
 
+    def get_fiscal_year_dates(self, year):
+        start_date = datetime(year, 4, 1)  # Fiscal year starts on April 1
+        end_date = datetime(year + 1, 3, 31)  # Ends on March 31 of the next year
+        return start_date, end_date
+
     def get(self, request):
         user = request.user
-        
+
         # Get parameters from the request
         year = request.GET.get('year', None)
         facility_id = request.GET.get('facility_id', None)
         facility_location = request.GET.get('facility_location', None)
         
-        # Default to the current year if 'year' is not provided
-        if not year:
-            # Get the latest available year based on the waste data in the database
-            latest_waste = Waste.objects.filter(user=user).aggregate(latest_date=Max('DatePicker'))
-            if latest_waste['latest_date']:
-                latest_date = latest_waste['latest_date']
-                year = latest_date.year  # Use the year from the latest available date
-            else:
-                year = timezone.now().year  # Default to current year if no data exists
-        else:
-            try:
-                year = int(year)  # Ensure the 'year' parameter is a valid integer
-            except ValueError:
-                return Response({'error': 'Invalid year parameter.'}, status=status.HTTP_400_BAD_REQUEST)
-        
-        # Initialize the filters with the user and year
-        filters = {'user': user, 'DatePicker__year': year}
-        
         try:
-            # Define the list of waste fields to calculate the overall total
+            # Default to the current fiscal year if no year is provided
+            if not year:
+                latest_waste = Waste.objects.filter(user=user).aggregate(latest_date=Max('DatePicker'))
+                if latest_waste['latest_date']:
+                    latest_date = latest_waste['latest_date']
+                    year = latest_date.year if latest_date.month >= 4 else latest_date.year - 1
+                else:
+                    current_date = timezone.now()
+                    year = current_date.year if current_date.month >= 4 else current_date.year - 1
+            else:
+                year = int(year)  # Ensure the 'year' is an integer
+
+            # Get fiscal year start and end dates
+            start_date, end_date = self.get_fiscal_year_dates(year)
+
+            # Initialize filters
+            filters = {'user': user, 'DatePicker__range': (start_date, end_date)}
+
+            # Start with the base queryset
+            queryset = Waste.objects.filter(**filters)
+
+            # Apply facility_id filter if provided and not 'all'
+            if facility_id and facility_id.lower() != 'all':
+                queryset = queryset.filter(facility__facility_id=facility_id)
+
+            # Apply facility_location filter if provided and not 'all'
+            if facility_location and facility_location.lower() != 'all':
+                queryset = queryset.filter(facility__facility_location__icontains=facility_location)
+
+            if not queryset.exists():
+                # Return zero data if no matching records
+                response_data = {
+                    "recycle_percentage": 0,
+                    "remaining_percentage": 0
+                }
+                return Response(
+                    {
+                        "fiscal_year": f"{year}-{year + 1}",
+                        "Senttorecycle": response_data
+                    },
+                    status=status.HTTP_200_OK
+                )
+
+            # Define waste fields for calculations
             overall_total_fields = [
                 'food_waste', 'solid_Waste', 'E_Waste', 'Biomedical_waste', 'other_waste'
             ]
 
-            # Start with the base queryset filtered by user and year
-            queryset = Waste.objects.filter(**filters)
-
-            # Apply facility_id filter if provided (and not 'all')
-            if facility_id and facility_id.lower() != 'all':
-                queryset = queryset.filter(facility__facility_id=facility_id)
-            
-            # Apply facility_location filter if provided (and not 'all')
-            if facility_location and facility_location.lower() != 'all':
-                queryset = queryset.filter(facility__facility_location__icontains=facility_location)
-
-            # Calculate the total 'Landfill_waste'
+            # Calculate total 'Landfill_waste'
             Recycle_waste_total = queryset.aggregate(
-                total=Coalesce(Sum(Cast('Recycle_waste', FloatField())), 0.0)
+                total=Coalesce(Sum(Cast('Landfill_waste', FloatField())), 0.0)
             )['total']
 
-            # Calculate the overall total waste (sum of food_waste, solid_Waste, etc.)
-            overall_total = sum(
-                queryset.aggregate(
-                    **{f"{waste_type}_total": Coalesce(Sum(Cast(waste_type, FloatField())), 0.0)
-                       for waste_type in overall_total_fields}
-                ).values()
+            # Calculate overall total waste
+            overall_totals = queryset.aggregate(
+                **{f"{waste_type}_total": Coalesce(Sum(Cast(waste_type, FloatField())), 0.0)
+                   for waste_type in overall_total_fields}
             )
+            overall_total = sum(overall_totals.values())
 
-            # Calculate the remaining waste (excluding Recycle waste)
+            # Calculate remaining waste and percentages
             remaining_waste_total = overall_total - Recycle_waste_total
-
-            # Calculate the Recycle and remaining waste percentages
-            Recycle_percentage = (Recycle_waste_total / overall_total) * 100 if overall_total else 0
+            
+            recycle_percentage = (Recycle_waste_total / overall_total) * 100 if overall_total else 0
             remaining_percentage = (remaining_waste_total / overall_total) * 100 if overall_total else 0
 
             # Prepare the response data
             response_data = {
-                "Recycle_percentage": Recycle_percentage,
-                "remaining_percentage": remaining_percentage
+                "recycle_percentage": round(recycle_percentage, 2),
+                "remaining_percentage": round(remaining_percentage, 2)
             }
 
             return Response(
                 {
-                    "year":year,
-                    "SentToRecycle":response_data
+                    "fiscal_year": f"{year}-{year + 1}",
+                    "sentToLandFill": response_data
                 },
-                status=status.HTTP_200_OK)
+                status=status.HTTP_200_OK
+            )
 
+        except ValueError:
+            return Response({'error': 'Invalid year parameter.'}, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
             print(f"Error occurred: {e}")
             return Response({'error': f'An error occurred: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
@@ -2467,7 +2573,6 @@ class EnergyViewCard_Over(APIView):
             print(error_message)
             return Response({'error': error_message}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-
 #HVAC Line Charts and Donut Chart 
 class HVACOverviewView(APIView):
     permission_classes = [IsAuthenticated]
@@ -2558,7 +2663,12 @@ class HVACOverviewView(APIView):
     def get_latest_available_year(self, user):
         latest_energy = Energy.objects.filter(user=user).order_by('-DatePicker').first()
         if latest_energy:
-            return latest_energy.DatePicker.year
+            latest_date = latest_energy.DatePicker
+            # Adjust fiscal year if the data is after March
+            if latest_date.month >= 4:
+                return latest_date.year
+            else:
+                return latest_date.year - 1
         return datetime.now().year  # Default to current year if no data is available
 
     def get_fiscal_year_range(self, year):
@@ -2666,7 +2776,12 @@ class ProductionOverviewView(APIView):
     def get_latest_available_year(self, user):
         latest_energy = Energy.objects.filter(user=user).order_by('-DatePicker').first()
         if latest_energy:
-            return latest_energy.DatePicker.year
+            latest_date = latest_energy.DatePicker
+            # Adjust fiscal year if the data is after March
+            if latest_date.month >= 4:
+                return latest_date.year
+            else:
+                return latest_date.year - 1
         return datetime.now().year  # Default to current year if no data is available
 
     def get_fiscal_year_range(self, year):
@@ -2774,7 +2889,12 @@ class StpOverviewView(APIView):
     def get_latest_available_year(self, user):
         latest_energy = Energy.objects.filter(user=user).order_by('-DatePicker').first()
         if latest_energy:
-            return latest_energy.DatePicker.year
+            latest_date = latest_energy.DatePicker
+            # Adjust fiscal year if the data is after March
+            if latest_date.month >= 4:
+                return latest_date.year
+            else:
+                return latest_date.year - 1
         return datetime.now().year  # Default to current year if no data is available
 
     def get_fiscal_year_range(self, year):
@@ -2882,7 +3002,12 @@ class Admin_BlockOverviewView(APIView):
     def get_latest_available_year(self, user):
         latest_energy = Energy.objects.filter(user=user).order_by('-DatePicker').first()
         if latest_energy:
-            return latest_energy.DatePicker.year
+            latest_date = latest_energy.DatePicker
+            # Adjust fiscal year if the data is after March
+            if latest_date.month >= 4:
+                return latest_date.year
+            else:
+                return latest_date.year - 1
         return datetime.now().year  # Default to current year if no data is available
 
     def get_fiscal_year_range(self, year):
@@ -2990,7 +3115,12 @@ class Utilities_OverviewView(APIView):
     def get_latest_available_year(self, user):
         latest_energy = Energy.objects.filter(user=user).order_by('-DatePicker').first()
         if latest_energy:
-            return latest_energy.DatePicker.year
+            latest_date = latest_energy.DatePicker
+            # Adjust fiscal year if the data is after March
+            if latest_date.month >= 4:
+                return latest_date.year
+            else:
+                return latest_date.year - 1
         return datetime.now().year  # Default to current year if no data is available
 
     def get_fiscal_year_range(self, year):
@@ -3007,7 +3137,6 @@ class Utilities_OverviewView(APIView):
             "line_chart_data": line_chart_data,
             "donut_chart_data": donut_chart_data
         }, status=status.HTTP_200_OK)
-
 
 # Others Overview Linecharts andDonut charts
 class Others_OverviewView(APIView):
@@ -3099,7 +3228,12 @@ class Others_OverviewView(APIView):
     def get_latest_available_year(self, user):
         latest_energy = Energy.objects.filter(user=user).order_by('-DatePicker').first()
         if latest_energy:
-            return latest_energy.DatePicker.year
+            latest_date = latest_energy.DatePicker
+            # Adjust fiscal year if the data is after March
+            if latest_date.month >= 4:
+                return latest_date.year
+            else:
+                return latest_date.year - 1
         return datetime.now().year  # Default to current year if no data is available
 
     def get_fiscal_year_range(self, year):
@@ -3117,7 +3251,6 @@ class Others_OverviewView(APIView):
             "donut_chart_data": donut_chart_data
         }, status=status.HTTP_200_OK)
 
-
 #Renewable_EnergyOverview Line Charts And Donut Charts
 class Renewable_EnergyOverView(APIView):
     permission_classes = [IsAuthenticated]
@@ -3129,75 +3262,66 @@ class Renewable_EnergyOverView(APIView):
         year = request.GET.get('year', None)
 
         try:
+            # Initialize filters
             filters = {'user': user}
-            
-            # If year is not provided, get the latest available year based on the Energy model
+
+            # Determine fiscal year range
             if not year:
                 latest_energy = Energy.objects.filter(user=user).aggregate(latest_date=Max('DatePicker'))
                 if latest_energy['latest_date']:
                     latest_date = latest_energy['latest_date']
-                    year = latest_date.year 
+                    year = latest_date.year if latest_date.month >= 4 else latest_date.year - 1
                 else:
-                    year = datetime.now().year
-            else:
-                try:
-                    year = int(year)
-                except ValueError:
-                    return Response({'error': 'Invalid year parameter.'}, status=status.HTTP_400_BAD_REQUEST)
+                    today = datetime.now()
+                    year = today.year if today.month >= 4 else today.year - 1
 
-           
-            if datetime.now().month >= 4: 
-                start_date = datetime(year, 4, 1)
-                end_date = datetime(year + 1, 3, 31)
-            else:  # Last fiscal year
-                start_date = datetime(year - 1, 4, 1)
-                end_date = datetime(year, 3, 31)
-            
+            year = int(year)
+            start_date = datetime(year, 4, 1)
+            end_date = datetime(year + 1, 3, 31)
             filters['DatePicker__range'] = (start_date, end_date)
 
-
+            # Apply additional filters for facility
             if facility_id and facility_id.lower() != 'all':
                 filters['facility__facility_id'] = facility_id
             if facility_location:
                 filters['facility__facility_location__icontains'] = facility_location
 
+            # Query monthly renewable energy data
             monthly_renewable_energy = (
                 Energy.objects.filter(**filters)
                 .values('DatePicker__month')
-                .annotate(total_renewable_energy=Sum('renewable_solar') + Sum('renewable_other'))
+                .annotate(
+                    total_solar=Sum('renewable_solar'),
+                    total_other=Sum('renewable_other')
+                )
                 .order_by('DatePicker__month')
             )
 
-            line_chart_data = []
+            # Map data to fiscal year months
             renewable_energy = defaultdict(float)
-            
             for entry in monthly_renewable_energy:
-                renewable_energy[entry['DatePicker__month']] = entry['total_renewable_energy']
+                month = entry['DatePicker__month']
+                total_energy = entry['total_solar'] + entry['total_other']
+                renewable_energy[month] = total_energy
 
-    
+            # Prepare line chart data
             month_order = [4, 5, 6, 7, 8, 9, 10, 11, 12, 1, 2, 3]
-            today = datetime.now()
-
+            line_chart_data = []
             for month in month_order:
                 month_name = datetime(1900, month, 1).strftime('%b')
-    
-                if (year == today.year and month <= today.month) or (year < today.year):
-                    line_chart_data.append({
-                        "month": month_name,
-                        "renewable_energy": renewable_energy.get(month, 0)
-                    })
-                else:
-                    line_chart_data.append({
-                        "month": month_name,
-                        "renewable_energy": 0
-                    })
+                line_chart_data.append({
+                    "month": month_name,
+                    "renewable_energy": renewable_energy.get(month, 0)
+                })
 
+            # Query facility-wise renewable energy data
             facility_filters = {
                 'user': user,
                 'DatePicker__range': (start_date, end_date)
             }
             if facility_id and facility_id.lower() != 'all':
                 facility_filters['facility__facility_id'] = facility_id
+
             facility_renewable_energy = (
                 Energy.objects.filter(**facility_filters)
                 .values('facility__facility_name')
@@ -3205,8 +3329,10 @@ class Renewable_EnergyOverView(APIView):
                 .order_by('-total_renewable_energy')
             )
 
-            # Prepare donut chart data
+            # Calculate total renewable energy for percentage calculations
             total_renewable_energy = sum(entry['total_renewable_energy'] for entry in facility_renewable_energy)
+
+            # Prepare donut chart data
             donut_chart_data = [
                 {
                     "facility_name": entry['facility__facility_name'],
@@ -3215,8 +3341,9 @@ class Renewable_EnergyOverView(APIView):
                 for entry in facility_renewable_energy
             ]
 
+            # Prepare and return response
             response_data = {
-                "year":year,
+                "year": year,
                 "line_chart_data": line_chart_data,
                 "donut_chart_data": donut_chart_data
             }
@@ -3247,23 +3374,16 @@ class Fuel_Used_OperationsOverView(APIView):
                 latest_energy = Energy.objects.filter(user=user).aggregate(latest_date=Max('DatePicker'))
                 if latest_energy['latest_date']:
                     latest_date = latest_energy['latest_date']
-                    year = latest_date.year  # Use the year from the latest available date
+                    year = latest_date.year if latest_date.month >= 4 else latest_date.year - 1
                 else:
-                    year = datetime.now().year  # Default to the current year if no data exists
-            else:
-                try:
-                    year = int(year)
-                except ValueError:
-                    return Response({'error': 'Invalid year parameter.'}, status=status.HTTP_400_BAD_REQUEST)
+                    # Default to the current fiscal year if no data exists
+                    today = datetime.now()
+                    year = today.year if today.month >= 4 else today.year - 1
 
-            # Define fiscal year range
-            if datetime.now().month >= 4:  # Current fiscal year starts in April
-                start_date = datetime(year, 4, 1)
-                end_date = datetime(year + 1, 3, 31)
-            else:  # Last fiscal year
-                start_date = datetime(year - 1, 4, 1)
-                end_date = datetime(year, 3, 31)
-            
+            year = int(year)
+            start_date = datetime(year, 4, 1)
+            end_date = datetime(year + 1, 3, 31)
+
             filters['DatePicker__range'] = (start_date, end_date)
 
             # Apply facility filters if provided
@@ -3355,25 +3475,19 @@ class StackedEnergyOverviewView(APIView):
         try:
             filters = {'user': user}
 
-            if year:
-                try:
-                    year = int(year)
-                except ValueError:
-                    return Response({'error': 'Invalid year parameter.'}, status=status.HTTP_400_BAD_REQUEST)
-            else:
+            if not year:
                 latest_energy = Energy.objects.filter(user=user).aggregate(latest_date=Max('DatePicker'))
                 if latest_energy['latest_date']:
-                    year = latest_energy['latest_date'].year 
+                    latest_date = latest_energy['latest_date']
+                    year = latest_date.year if latest_date.month >= 4 else latest_date.year - 1
                 else:
-                    year = datetime.now().year
+                    # Default to the current fiscal year if no data exists
+                    today = datetime.now()
+                    year = today.year if today.month >= 4 else today.year - 1
 
-            today = datetime.now()
-            if today.month >= 4: 
-                start_date = datetime(year, 4, 1)
-                end_date = datetime(year + 1, 3, 31)
-            else: 
-                start_date = datetime(year - 1, 4, 1)
-                end_date = datetime(year, 3, 31)
+            year = int(year)
+            start_date = datetime(year, 4, 1)
+            end_date = datetime(year + 1, 3, 31)
 
             filters['DatePicker__range'] = (start_date, end_date)
 
@@ -3464,24 +3578,19 @@ class EnergyAnalyticsView(APIView):
 
             today = datetime.now()
             
-            if year:
-                try:
-                    year = int(year)
-                except ValueError:
-                    return Response({'error': 'Invalid year parameter.'}, status=status.HTTP_400_BAD_REQUEST)
-            else:
+            if not year:
                 latest_energy = Energy.objects.filter(user=user).aggregate(latest_date=Max('DatePicker'))
                 if latest_energy['latest_date']:
-                    year = latest_energy['latest_date'].year
+                    latest_date = latest_energy['latest_date']
+                    year = latest_date.year if latest_date.month >= 4 else latest_date.year - 1
                 else:
-                    year = today.year 
-           
-            if today.month >= 4:
-                start_date = datetime(year, 4, 1)
-                end_date = datetime(year + 1, 3, 31)
-            else:
-                start_date = datetime(year - 1, 4, 1)
-                end_date = datetime(year, 3, 31)
+                    # Default to the current fiscal year if no data exists
+                    today = datetime.now()
+                    year = today.year if today.month >= 4 else today.year - 1
+
+            year = int(year)
+            start_date = datetime(year, 4, 1)
+            end_date = datetime(year + 1, 3, 31)
 
             filters['DatePicker__range'] = (start_date, end_date)
 
@@ -3547,7 +3656,8 @@ class EnergyAnalyticsView(APIView):
                 "year": year,
                 "facility_location": facility_location,
                 "pie_chart_data": pie_chart_data,
-                "energy_percentages": energy_percentages
+                "energy_percentages": {key: round(value, 2) for key, value in energy_percentages.items()}
+
             }
 
             return Response(response_data, status=status.HTTP_200_OK)
@@ -3720,7 +3830,12 @@ class Generated_WaterOverviewView(APIView):
     def get_latest_available_year(self, user):
         latest_water = Water.objects.filter(user=user).order_by('-DatePicker').first()
         if latest_water:
-            return latest_water.DatePicker.year
+            latest_date = latest_water.DatePicker
+            # Adjust fiscal year if the data is after March
+            if latest_date.month >= 4:
+                return latest_date.year
+            else:
+                return latest_date.year - 1
         return datetime.now().year  # Default to current year if no data is available
 
     def get_fiscal_year_range(self, year):
@@ -3829,7 +3944,12 @@ class Recycle_WaterOverviewView(APIView):
     def get_latest_available_year(self, user):
         latest_water = Water.objects.filter(user=user).order_by('-DatePicker').first()
         if latest_water:
-            return latest_water.DatePicker.year
+            latest_date = latest_water.DatePicker
+            # Adjust fiscal year if the data is after March
+            if latest_date.month >= 4:
+                return latest_date.year
+            else:
+                return latest_date.year - 1
         return datetime.now().year  # Default to current year if no data is available
 
     def get_fiscal_year_range(self, year):
@@ -3937,7 +4057,12 @@ class Softener_usageOverviewView(APIView):
     def get_latest_available_year(self, user):
         latest_water = Water.objects.filter(user=user).order_by('-DatePicker').first()
         if latest_water:
-            return latest_water.DatePicker.year
+            latest_date = latest_water.DatePicker
+            # Adjust fiscal year if the data is after March
+            if latest_date.month >= 4:
+                return latest_date.year
+            else:
+                return latest_date.year - 1
         return datetime.now().year  # Default to current year if no data is available
 
     def get_fiscal_year_range(self, year):
@@ -4045,8 +4170,13 @@ class Boiler_usageOverviewView(APIView):
     def get_latest_available_year(self, user):
         latest_water = Water.objects.filter(user=user).order_by('-DatePicker').first()
         if latest_water:
-            return latest_water.DatePicker.year
-        return datetime.now().year  # Default to current year if no data is available
+            latest_date = latest_water.DatePicker
+            # Adjust fiscal year if the data is after March
+            if latest_date.month >= 4:
+                return latest_date.year
+            else:
+                return latest_date.year - 1
+        return datetime.now().year # Default to current year if no data is available
 
     def get_fiscal_year_range(self, year):
         start_date = datetime(year, 4, 1)
@@ -4153,7 +4283,12 @@ class otherUsage_OverviewView(APIView):
     def get_latest_available_year(self, user):
         latest_water = Water.objects.filter(user=user).order_by('-DatePicker').first()
         if latest_water:
-            return latest_water.DatePicker.year
+            latest_date = latest_water.DatePicker
+            # Adjust fiscal year if the data is after March
+            if latest_date.month >= 4:
+                return latest_date.year
+            else:
+                return latest_date.year - 1
         return datetime.now().year  # Default to current year if no data is available
 
     def get_fiscal_year_range(self, year):
@@ -4184,26 +4319,21 @@ class StackedWaterOverviewView(APIView):
         try:
             filters = {'user': user}
 
-            if year:
-                try:
-                    year = int(year)
-                except ValueError:
-                    return Response({'error': 'Invalid year parameter.'}, status=status.HTTP_400_BAD_REQUEST)
-            else:
+            if not year:
                 latest_water = Water.objects.filter(user=user).aggregate(latest_date=Max('DatePicker'))
                 if latest_water['latest_date']:
-                    year = latest_water['latest_date'].year 
+                    latest_date = latest_water['latest_date']
+                    year = latest_date.year if latest_date.month >= 4 else latest_date.year - 1
                 else:
-                    year = datetime.now().year
+                    # Default to the current fiscal year if no data exists
+                    today = datetime.now()
+                    year = today.year if today.month >= 4 else today.year - 1
 
-            today = datetime.now()
-            if today.month >= 4: 
-                start_date = datetime(year, 4, 1)
-                end_date = datetime(year + 1, 3, 31)
-            else: 
-                start_date = datetime(year - 1, 4, 1)
-                end_date = datetime(year, 3, 31)
+            year = int(year)  # Ensure year is an integer
 
+            # Determine fiscal year range
+            start_date = datetime(year, 4, 1)
+            end_date = datetime(year + 1, 3, 31)
             filters['DatePicker__range'] = (start_date, end_date)
 
           
@@ -4292,21 +4422,21 @@ class WaterAnalyticsView(APIView):
             today = datetime.now()
 
             # Year calculation
-            if year:
-                try:
-                    year = int(year)
-                except ValueError:
-                    return Response({'error': 'Invalid year parameter.'}, status=status.HTTP_400_BAD_REQUEST)
-            else:
+            if not year:
                 latest_water = Water.objects.filter(user=user).aggregate(latest_date=Max('DatePicker'))
-                year = latest_water['latest_date'].year if latest_water['latest_date'] else today.year
+                if latest_water['latest_date']:
+                    latest_date = latest_water['latest_date']
+                    year = latest_date.year if latest_date.month >= 4 else latest_date.year - 1
+                else:
+                    # Default to the current fiscal year if no data exists
+                    today = datetime.now()
+                    year = today.year if today.month >= 4 else today.year - 1
 
-            # Fiscal year range
-            start_date, end_date = (
-                (datetime(year, 4, 1), datetime(year + 1, 3, 31))
-                if today.month >= 4
-                else (datetime(year - 1, 4, 1), datetime(year, 3, 31))
-            )
+            year = int(year)  # Ensure year is an integer
+
+            # Determine fiscal year range
+            start_date = datetime(year, 4, 1)
+            end_date = datetime(year + 1, 3, 31)
             filters['DatePicker__range'] = (start_date, end_date)
 
             # Facility ID filtering
@@ -4376,7 +4506,7 @@ class WaterAnalyticsView(APIView):
                 "year": year,
                 "facility_id": facility_id,
                 "facility_location": facility_location,
-                "donut_chart_data": water_percentages,
+                "donut_chart_data":{key: round(value, 2) for key, value in water_percentages.items()},
                 "pie_chart_data": pie_chart_data
             }, status=status.HTTP_200_OK)
 
@@ -4477,7 +4607,8 @@ class BiodiversityMetricsGraphsView(APIView):
                 })
 
             # Sort results by year
-            results.sort(key=lambda x: x['year'])
+            results.sort(key=lambda x: x['year'], reverse=True)
+            results = results[:5]
 
             # Prepare chart data in the requested structure
             offset_year_data = []
@@ -4587,6 +4718,7 @@ class BiodiversityMetricsGraphsView(APIView):
 '''Biodiversity Overview Cards Ends'''
 
 '''LOgistices overview Graphs starts'''
+
 class LogisticesOverviewAndGraphs(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -4598,8 +4730,15 @@ class LogisticesOverviewAndGraphs(APIView):
         try:
             # Determine the fiscal year if no year is specified
             if not year:
+                # Get the latest date from the Logistices model for the user
                 latest_date = Logistices.objects.filter(user=user).aggregate(latest_date=Max('DatePicker'))['latest_date']
-                year = latest_date.year if latest_date else datetime.now().year
+                
+                if latest_date:
+                    # Determine the fiscal year for the latest available date
+                    year = latest_date.year if latest_date.month >= 4 else latest_date.year - 1
+                else:
+                    # Default to the current year if no data is available
+                    year = datetime.now().year
             else:
                 year = int(year)
 
@@ -4612,7 +4751,7 @@ class LogisticesOverviewAndGraphs(APIView):
             if facility_id != 'all':
                 filters['facility__facility_id'] = facility_id
 
-            # Query data for the current year
+            # Query data for the current fiscal year
             current_year_data = Logistices.objects.filter(**filters)
 
             # If no data exists, set all fields to 0
@@ -4628,17 +4767,17 @@ class LogisticesOverviewAndGraphs(APIView):
                     },
                     "bar_chart_data": [
                         {"month": datetime(1900, month, 1).strftime('%b'), "Co2": 0.0}
-                        for month in range(1, 13)
+                        for month in list(range(4, 13)) + list(range(1, 4))
                     ],
                     "donut_chart_data": [{"facility_name": "No Facility", "percentage": 0}],
                     "logistices_fuel_comparison": {
                         "cargo": [
                             {"month": datetime(1900, month, 1).strftime('%b'), "cargo": 0.0}
-                            for month in range(1, 13)
+                            for month in list(range(4, 13)) + list(range(1, 4))
                         ],
                         "staff": [
                             {"month": datetime(1900, month, 1).strftime('%b'), "staff": 0.0}
-                            for month in range(1, 13)
+                            for month in list(range(4, 13)) + list(range(1, 4))
                         ]
                     }
                 }, status=200)
@@ -4751,6 +4890,177 @@ class LogisticesOverviewAndGraphs(APIView):
 
 '''LOgistices overview Graphs ends'''
 # '''Emissions Calculations starts'''
+# class EmissionCalculations(APIView):
+#     permission_classes = [IsAuthenticated]
+
+#     def get(self, request):
+#         user = request.user
+#         year = request.GET.get('year', None)
+#         facility_id = request.GET.get('facility_id', 'all')
+#         facility_location = request.GET.get('facility_location', None)
+
+#         try:
+#             filters = {'user': user}
+#             today = datetime.now()
+
+#             # Year calculation
+#             if year:
+#                 try:
+#                     year = int(year)
+#                 except ValueError:
+#                     return Response({'error': 'Invalid year parameter.'}, status=status.HTTP_400_BAD_REQUEST)
+#             else:
+#                 # Get latest dates from all relevant models
+#                 latest_energy_date = Energy.objects.filter(user=user).aggregate(latest_date=Max('DatePicker'))['latest_date']
+#                 latest_water_date = Water.objects.filter(user=user).aggregate(latest_date=Max('DatePicker'))['latest_date']
+#                 latest_waste_date = Waste.objects.filter(user=user).aggregate(latest_date=Max('DatePicker'))['latest_date']
+#                 latest_logistices_date = Logistices.objects.filter(user=user).aggregate(latest_date=Max('DatePicker'))['latest_date']
+
+#                 # If there are no records, default to current year
+#                 latest_dates = [latest_energy_date, latest_water_date, latest_waste_date, latest_logistices_date]
+#                 latest_date = max(filter(None, latest_dates), default=None)
+#                 # year = latest_date.year if latest_date else today.year
+#                 if latest_date:
+#                     # Get the fiscal year from the latest available date
+#                     year = latest_date.year if latest_date.month >= 4 else latest_date.year + 1
+#                 else:
+#                     # If no data exists, default to the current fiscal year
+#                     year = today.year if today.month >= 4 else today.year - 1
+                
+#             # Fiscal year range
+#             start_date, end_date = (
+#                 (datetime(year, 4, 1), datetime(year + 1, 3, 31))
+#                 if today.month >= 4
+#                 else (datetime(year - 1, 4, 1), datetime(year, 3, 31))
+#             )
+#             filters['DatePicker__range'] = (start_date, end_date)
+
+#             # Facility ID filtering
+#             if facility_id.lower() != 'all':
+#                 if not Facility.objects.filter(facility_id=facility_id).exists():
+#                     return Response({'error': f'Facility with ID {facility_id} does not exist.'}, status=status.HTTP_400_BAD_REQUEST)
+#                 filters['facility__facility_id'] = facility_id
+
+#             # Facility location filtering
+#             if facility_location and facility_location.lower() != 'all':
+#                 if not Facility.objects.filter(facility_location__icontains=facility_location).exists():
+#                     return Response({'error': f'No facility found with location {facility_location}.'}, status=status.HTTP_400_BAD_REQUEST)
+#                 filters['facility__facility_location__icontains'] = facility_location
+
+#             # Fetch energy and water data
+#             energy_data = Energy.objects.filter(**filters)
+#             water_data = Water.objects.filter(**filters)
+#             waste_data = Waste.objects.filter(**filters)
+#             logistices_data = Logistices.objects.filter(**filters)
+
+#             # Check if data exists, if not set all emissions to zero
+#             if not any([energy_data, water_data, waste_data, logistices_data]):
+#                 return Response({
+#                     'year': year,
+#                     'line_chart_data': [
+#                         {"month": datetime(1900, month, 1).strftime('%b'), "total_emissions": 0}
+#                         for month in list(range(4, 13)) + list(range(1, 4))
+#                     ]
+#                 }, status=status.HTTP_200_OK)
+
+#             # Energy Emission factors
+#             electricity_factor = 0.82
+#             fuel_factors = {
+#                 'coking_coal': 2.66,
+#                 'coke_oven_coal': 3.1,
+#                 'natural_gas': 2.7,
+#                 'diesel': 2.91 * 1000,  # Diesel in liters, convert to kg
+#                 'biomass_wood': 1.75,
+#                 'biomass_other_solid': 1.16
+#             }
+#             petrol_factor = 2.29 * 1000
+#             diesel_factor = 2.91 * 1000
+
+#             # Monthly totals (ordered by fiscal year: April - March)
+#             month_order = [4, 5, 6, 7, 8, 9, 10, 11, 12, 1, 2, 3]
+#             monthly_total_emissions = {}
+
+#             for month in month_order:  # Loop over fiscal months
+#                 # Filter data for the specific month
+#                 monthly_energy = energy_data.filter(DatePicker__month=month)
+#                 monthly_water = water_data.filter(DatePicker__month=month)
+#                 monthly_waste = waste_data.filter(DatePicker__month=month)
+#                 monthly_logistices = logistices_data.filter(DatePicker__month=month)
+
+#                 # Calculate electricity emissions
+#                 hvac_sum = monthly_energy.aggregate(total=Coalesce(Sum('hvac'), 0.0))['total'] or 0
+#                 production_sum = monthly_energy.aggregate(total=Coalesce(Sum('production'), 0.0))['total'] or 0
+#                 stp_sum = monthly_energy.aggregate(total=Coalesce(Sum('stp'), 0.0))['total'] or 0
+#                 admin_block_sum = monthly_energy.aggregate(total=Coalesce(Sum('admin_block'), 0.0))['total'] or 0
+#                 utilities_sum = monthly_energy.aggregate(total=Coalesce(Sum('utilities'), 0.0))['total'] or 0
+#                 others_sum = monthly_energy.aggregate(total=Coalesce(Sum('others'), 0.0))['total'] or 0
+
+#                 electricity_emissions = (
+#                     hvac_sum + production_sum + stp_sum + admin_block_sum + utilities_sum + others_sum
+#                 ) * electricity_factor
+
+#                 # Calculate fuel emissions
+#                 fuel_emissions = sum([
+#                     (monthly_energy.aggregate(total=Coalesce(Sum('coking_coal'), 0.0))['total'] or 0) * fuel_factors['coking_coal'],
+#                     (monthly_energy.aggregate(total=Coalesce(Sum('coke_oven_coal'), 0.0))['total'] or 0) * fuel_factors['coke_oven_coal'],
+#                     (monthly_energy.aggregate(total=Coalesce(Sum('natural_gas'), 0.0))['total'] or 0) * fuel_factors['natural_gas'],
+#                     (monthly_energy.aggregate(total=Coalesce(Sum('diesel'), 0.0))['total'] or 0) * fuel_factors['diesel'],
+#                     (monthly_energy.aggregate(total=Coalesce(Sum('biomass_wood'), 0.0))['total'] or 0) * fuel_factors['biomass_wood'],
+#                     (monthly_energy.aggregate(total=Coalesce(Sum('biomass_other_solid'), 0.0))['total'] or 0) * fuel_factors['biomass_other_solid']
+#                 ])
+#                 total_energy_emissions = electricity_emissions + fuel_emissions
+
+#                 # Calculate water usage Emissions
+#                 total_water = monthly_water.aggregate(
+#                     total=Coalesce(Sum('Generated_Water'), 0.0)
+#                     + Coalesce(Sum('Recycled_Water'), 0.0)
+#                     + Coalesce(Sum('Softener_usage'), 0.0)
+#                     + Coalesce(Sum('Boiler_usage'), 0.0)
+#                     + Coalesce(Sum('otherUsage'), 0.0)
+#                 )['total']
+                
+#                 total_water_emissions = total_water * 0.46
+                
+#                 # Calculate waste emissions
+#                 total_waste_emissions = sum([
+#                     (monthly_waste.aggregate(total=Coalesce(Sum('Landfill_waste'), 0.0))['total'] or 0) * 300,
+#                     (monthly_waste.aggregate(total=Coalesce(Sum('Recycle_waste'), 0.0))['total'] or 0) * 10
+#                 ])
+                
+#                 # Calculate Logistices emissions
+#                 total_logistices_emissions = sum([
+#                     (monthly_logistices.filter(Typeof_fuel='diesel').aggregate(
+#                         total=Coalesce(Sum('fuel_consumption'), 0.0))['total'] or 0) * diesel_factor,
+#                     (monthly_logistices.filter(Typeof_fuel='petrol').aggregate(
+#                         total=Coalesce(Sum('fuel_consumption'), 0.0))['total'] or 0) * petrol_factor
+#                 ])
+                
+#                 # Total emissions (energy + water + waste + logistices)
+#                 total_emissions = total_energy_emissions + total_water_emissions + total_waste_emissions + total_logistices_emissions
+                
+#                 # Store monthly emissions data
+#                 monthly_total_emissions[month] = total_emissions
+
+#             # Prepare the response data for line chart
+#             line_chart_data = []
+#             for month in month_order:
+#                 month_name = datetime(1900, month, 1).strftime('%b')  # Get month name
+#                 line_chart_data.append({
+#                     "month": month_name,
+#                     "total_emissions": monthly_total_emissions.get(month, 0)
+#                 })
+
+#             response_data = {
+#                 'year': year,
+#                 'line_chart_data': line_chart_data
+#             }
+
+#             return Response(response_data, status=status.HTTP_200_OK)
+
+#         except Exception as e:
+#             error_message = f"An error occurred: {str(e)}"
+#             print(error_message)
+#             return Response({'error': error_message}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 class EmissionCalculations(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -4780,8 +5090,14 @@ class EmissionCalculations(APIView):
                 # If there are no records, default to current year
                 latest_dates = [latest_energy_date, latest_water_date, latest_waste_date, latest_logistices_date]
                 latest_date = max(filter(None, latest_dates), default=None)
-                year = latest_date.year if latest_date else today.year
-                
+
+                if latest_date:
+                    # Get the fiscal year from the latest available date
+                    year = latest_date.year if latest_date.month >= 4 else latest_date.year - 1
+                else:
+                    # If no data exists, default to the current fiscal year
+                    year = today.year if today.month >= 4 else today.year - 1
+
             # Fiscal year range
             start_date, end_date = (
                 (datetime(year, 4, 1), datetime(year + 1, 3, 31))
@@ -4802,7 +5118,7 @@ class EmissionCalculations(APIView):
                     return Response({'error': f'No facility found with location {facility_location}.'}, status=status.HTTP_400_BAD_REQUEST)
                 filters['facility__facility_location__icontains'] = facility_location
 
-            # Fetch energy and water data
+            # Fetch energy, water, waste, and logistices data
             energy_data = Energy.objects.filter(**filters)
             water_data = Water.objects.filter(**filters)
             waste_data = Waste.objects.filter(**filters)
@@ -4813,7 +5129,8 @@ class EmissionCalculations(APIView):
                 return Response({
                     'year': year,
                     'line_chart_data': [
-                        {"month": datetime(1900, month, 1).strftime('%b'), "total_emissions": 0} for month in range(1, 13)
+                        {"month": datetime(1900, month, 1).strftime('%b'), "total_emissions": 0}
+                        for month in list(range(4, 13)) + list(range(1, 4))
                     ]
                 }, status=status.HTTP_200_OK)
 
@@ -4842,25 +5159,25 @@ class EmissionCalculations(APIView):
                 monthly_logistices = logistices_data.filter(DatePicker__month=month)
 
                 # Calculate electricity emissions
-                hvac_sum = monthly_energy.aggregate(total=Coalesce(Sum('hvac'), 0.0))['total']
-                production_sum = monthly_energy.aggregate(total=Coalesce(Sum('production'), 0.0))['total']
-                stp_sum = monthly_energy.aggregate(total=Coalesce(Sum('stp'), 0.0))['total']
-                admin_block_sum = monthly_energy.aggregate(total=Coalesce(Sum('admin_block'), 0.0))['total']
-                utilities_sum = monthly_energy.aggregate(total=Coalesce(Sum('utilities'), 0.0))['total']
-                others_sum = monthly_energy.aggregate(total=Coalesce(Sum('others'), 0.0))['total']
+                hvac_sum = monthly_energy.aggregate(total=Coalesce(Sum('hvac'), 0.0))['total'] or 0
+                production_sum = monthly_energy.aggregate(total=Coalesce(Sum('production'), 0.0))['total'] or 0
+                stp_sum = monthly_energy.aggregate(total=Coalesce(Sum('stp'), 0.0))['total'] or 0
+                admin_block_sum = monthly_energy.aggregate(total=Coalesce(Sum('admin_block'), 0.0))['total'] or 0
+                utilities_sum = monthly_energy.aggregate(total=Coalesce(Sum('utilities'), 0.0))['total'] or 0
+                others_sum = monthly_energy.aggregate(total=Coalesce(Sum('others'), 0.0))['total'] or 0
 
                 electricity_emissions = (
                     hvac_sum + production_sum + stp_sum + admin_block_sum + utilities_sum + others_sum
                 ) * electricity_factor
 
                 # Calculate fuel emissions
-                fuel_emissions = sum([
-                    monthly_energy.aggregate(total=Coalesce(Sum('coking_coal'), 0.0))['total'] * fuel_factors['coking_coal'],
-                    monthly_energy.aggregate(total=Coalesce(Sum('coke_oven_coal'), 0.0))['total'] * fuel_factors['coke_oven_coal'],
-                    monthly_energy.aggregate(total=Coalesce(Sum('natural_gas'), 0.0))['total'] * fuel_factors['natural_gas'],
-                    monthly_energy.aggregate(total=Coalesce(Sum('diesel'), 0.0))['total'] * fuel_factors['diesel'],
-                    monthly_energy.aggregate(total=Coalesce(Sum('biomass_wood'), 0.0))['total'] * fuel_factors['biomass_wood'],
-                    monthly_energy.aggregate(total=Coalesce(Sum('biomass_other_solid'), 0.0))['total'] * fuel_factors['biomass_other_solid']
+                fuel_emissions = sum([ 
+                    (monthly_energy.aggregate(total=Coalesce(Sum('coking_coal'), 0.0))['total'] or 0) * fuel_factors['coking_coal'],
+                    (monthly_energy.aggregate(total=Coalesce(Sum('coke_oven_coal'), 0.0))['total'] or 0) * fuel_factors['coke_oven_coal'],
+                    (monthly_energy.aggregate(total=Coalesce(Sum('natural_gas'), 0.0))['total'] or 0) * fuel_factors['natural_gas'],
+                    (monthly_energy.aggregate(total=Coalesce(Sum('diesel'), 0.0))['total'] or 0) * fuel_factors['diesel'],
+                    (monthly_energy.aggregate(total=Coalesce(Sum('biomass_wood'), 0.0))['total'] or 0) * fuel_factors['biomass_wood'],
+                    (monthly_energy.aggregate(total=Coalesce(Sum('biomass_other_solid'), 0.0))['total'] or 0) * fuel_factors['biomass_other_solid']
                 ])
                 total_energy_emissions = electricity_emissions + fuel_emissions
 
@@ -4877,16 +5194,16 @@ class EmissionCalculations(APIView):
                 
                 # Calculate waste emissions
                 total_waste_emissions = sum([
-                    monthly_waste.aggregate(total=Coalesce(Sum('Landfill_waste'), 0.0))['total'] * 300,
-                    monthly_waste.aggregate(total=Coalesce(Sum('Recycle_waste'), 0.0))['total'] * 10
+                    (monthly_waste.aggregate(total=Coalesce(Sum('Landfill_waste'), 0.0))['total'] or 0) * 300,
+                    (monthly_waste.aggregate(total=Coalesce(Sum('Recycle_waste'), 0.0))['total'] or 0) * 10
                 ])
                 
                 # Calculate Logistices emissions
                 total_logistices_emissions = sum([
-                    monthly_logistices.filter(Typeof_fuel='diesel').aggregate(
-                        total=Coalesce(Sum('fuel_consumption'), 0.0))['total'] * diesel_factor,
-                    monthly_logistices.filter(Typeof_fuel='petrol').aggregate(
-                        total=Coalesce(Sum('fuel_consumption'), 0.0))['total'] * petrol_factor
+                    (monthly_logistices.filter(Typeof_fuel='diesel').aggregate(
+                        total=Coalesce(Sum('fuel_consumption'), 0.0))['total'] or 0) * diesel_factor,
+                    (monthly_logistices.filter(Typeof_fuel='petrol').aggregate(
+                        total=Coalesce(Sum('fuel_consumption'), 0.0))['total'] or 0) * petrol_factor
                 ])
                 
                 # Total emissions (energy + water + waste + logistices)
@@ -4910,11 +5227,8 @@ class EmissionCalculations(APIView):
             }
 
             return Response(response_data, status=status.HTTP_200_OK)
-
         except Exception as e:
-            error_message = f"An error occurred: {str(e)}"
-            print(error_message)
-            return Response({'error': error_message}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
 # '''Emissions Calculations starts'''
 
@@ -4925,7 +5239,7 @@ class YearFacilityDataAPIView(APIView):
     def get(self, request):
         try:
             user = request.user
-            facility_id = request.query_params.get('facility_id', 'all')  # Default to 'all'
+            facility_id = request.query_params.get('facility_id', 'all')
 
             # Validate facility
             if facility_id != 'all' and not Facility.objects.filter(facility_id=facility_id, user=user).exists():
@@ -4934,7 +5248,7 @@ class YearFacilityDataAPIView(APIView):
                     status=status.HTTP_400_BAD_REQUEST
                 )
 
-            # Map categories to models (but we will only be interested in the years)
+            # Map categories to models (but we will only be interested in the fiscal years)
             model_serializer_map = {
                 'waste': Waste,
                 'energy': Energy,
@@ -4943,21 +5257,30 @@ class YearFacilityDataAPIView(APIView):
                 'logistics': Logistices,
             }
 
-            # Fetch years from all categories (models)
-            years_set = set()
+            # Fetch fiscal years from all categories (models)
+            fiscal_years_set = set()
             for model in model_serializer_map.values():
                 queryset = model.objects.filter(user=user)
                 if facility_id != 'all':
                     queryset = queryset.filter(facility__facility_id=facility_id)
-                
-                years_set.update(queryset.values_list('DatePicker__year', flat=True))
 
-            # If no years found, default to 0
-            if not years_set:
+                # Map each record's year to the fiscal year
+                for record in queryset.values('DatePicker'):
+                    record_date = record['DatePicker']
+                    if record_date:
+                        record_year = record_date.year
+                        record_month = record_date.month
+                        
+                        # Adjust year based on fiscal year (April to March)
+                        fiscal_year = record_year if record_month >= 4 else record_year - 1
+                        fiscal_years_set.add(fiscal_year)
+
+            # If no fiscal years found, default to 0
+            if not fiscal_years_set:
                 years_list = [{"year": 0}]
             else:
-                # Convert set to list and sort the years
-                years_list = [{"year": year} for year in sorted(list(years_set), reverse=True)]
+                # Convert set to list and sort the fiscal years
+                years_list = [{"year": year} for year in sorted(list(fiscal_years_set), reverse=True)]
 
             return Response({
                 "facility_id": facility_id,
